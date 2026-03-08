@@ -1,145 +1,154 @@
 /* ============================================================
-   autocomplete.js — Tab Completion Logic
+   autocomplete.js — Factory: AutocompleteFactory.makeAutocomplete(terminal, names)
    ============================================================ */
 
 'use strict';
 
-const Autocomplete = (() => {
+const AutocompleteFactory = (() => {
 
-  const inputEl        = document.getElementById('terminalInput');
-  const ghostTextEl    = document.getElementById('ghostText');
-  const autocompleteEl = document.getElementById('autocompleteList');
+  /**
+   * Wire tab-completion onto a terminal instance.
+   * @param {object}   terminal      — TerminalFactory instance
+   * @param {string[]} commandNames  — list of available command names
+   */
+  function makeAutocomplete(terminal, commandNames) {
+    const inputEl        = terminal.inputEl;
+    const ghostEl        = terminal.ghostEl;
+    const autocompleteEl = terminal.autocompleteEl;
 
-  // Cycle state
-  let cycleMatches  = [];
-  let cycleIndex    = -1;
-  let cycleBase     = '';   // text before the completion token
-  let cycleToken    = '';   // token being completed
+    // Cycle state (per instance)
+    let cycleMatches = [];
+    let cycleIndex   = -1;
+    let cycleBase    = '';
+    let cycleToken   = '';
 
-  // ── Tokenise input ────────────────────────────────────────
-  // Returns { base, token }
-  // base = everything before the final partial word
-  // token = the partial word being completed
-  function tokenise(input) {
-    // Split on spaces but keep base
-    const lastSpace = input.lastIndexOf(' ');
-    if (lastSpace === -1) {
-      return { base: '', token: input };
-    }
-    return {
-      base: input.slice(0, lastSpace + 1),
-      token: input.slice(lastSpace + 1),
-    };
-  }
-
-  // ── Build candidate list ──────────────────────────────────
-  function getCandidates(input, currentPath) {
-    const { base, token } = tokenise(input);
-    const parts = input.trimStart().split(/\s+/);
-    const isFirstWord = parts.length === 1 && !input.endsWith(' ');
-
-    let candidates;
-
-    if (isFirstWord) {
-      // Complete command names
-      candidates = Commands.names();
-    } else {
-      // Complete filenames / dirnames in current virtual dir
-      candidates = fsEntriesAt(currentPath);
+    // ── Tokenise ──────────────────────────────────────────────
+    function tokenise(input) {
+      const lastSpace = input.lastIndexOf(' ');
+      if (lastSpace === -1) return { base: '', token: input };
+      return {
+        base:  input.slice(0, lastSpace + 1),
+        token: input.slice(lastSpace + 1),
+      };
     }
 
-    const lower = token.toLowerCase();
-    const matches = candidates.filter(c => c.toLowerCase().startsWith(lower));
+    // ── Build candidate list ──────────────────────────────────
+    function getCandidates(input) {
+      const { base, token } = tokenise(input);
+      const parts = input.trimStart().split(/\s+/);
+      const isFirstWord = parts.length === 1 && !input.endsWith(' ');
 
-    return { base, token, matches };
-  }
+      const candidates = isFirstWord
+        ? commandNames
+        : fsEntriesAt(terminal.currentPath);
 
-  // ── Ghost text (single match inline hint) ─────────────────
-  function updateGhost(input, currentPath) {
-    if (!input) {
-      ghostTextEl.textContent = '';
-      return;
-    }
-    const { base, token, matches } = getCandidates(input, currentPath);
-    if (matches.length === 1 && token.length > 0) {
-      // Show the completion suffix as ghost
-      const completion = matches[0];
-      const suffix = completion.slice(token.length);
-      // Ghost text must align with the typed text
-      ghostTextEl.textContent = input + suffix;
-    } else {
-      ghostTextEl.textContent = '';
-    }
-  }
+      const lower   = token.toLowerCase();
+      const matches = candidates.filter(c => c.toLowerCase().startsWith(lower));
 
-  // ── Tab trigger ───────────────────────────────────────────
-  function trigger(input, currentPath) {
-    const { base, token, matches } = getCandidates(input, currentPath);
-
-    if (matches.length === 0) {
-      // Nothing to complete
-      hide();
-      ghostTextEl.textContent = '';
-      return;
+      return { base, token, matches };
     }
 
-    if (matches.length === 1) {
-      // Complete immediately
-      inputEl.value = base + matches[0];
-      ghostTextEl.textContent = '';
-      hide();
-      resetCycle();
-      return;
+    // ── Ghost text ────────────────────────────────────────────
+    function updateGhost(input) {
+      if (!input) { ghostEl.textContent = ''; return; }
+      const { token, matches } = getCandidates(input);
+      if (matches.length === 1 && token.length > 0) {
+        ghostEl.textContent = input + matches[0].slice(token.length);
+      } else {
+        ghostEl.textContent = '';
+      }
     }
 
-    // Multiple matches — check if we're already cycling
-    const startingNewCycle =
-      cycleMatches.join(',') !== matches.join(',') ||
-      cycleBase !== base;
+    // ── Tab trigger ───────────────────────────────────────────
+    function trigger(input) {
+      const { base, token, matches } = getCandidates(input);
 
-    if (startingNewCycle) {
-      cycleMatches = matches;
-      cycleBase    = base;
-      cycleToken   = token;
+      if (matches.length === 0) {
+        hide();
+        ghostEl.textContent = '';
+        return;
+      }
+
+      if (matches.length === 1) {
+        inputEl.value = base + matches[0];
+        ghostEl.textContent = '';
+        hide();
+        resetCycle();
+        return;
+      }
+
+      const startingNew =
+        cycleMatches.join(',') !== matches.join(',') || cycleBase !== base;
+
+      if (startingNew) {
+        cycleMatches = matches;
+        cycleBase    = base;
+        cycleToken   = token;
+        cycleIndex   = -1;
+      }
+
+      cycleIndex    = (cycleIndex + 1) % cycleMatches.length;
+      inputEl.value = cycleBase + cycleMatches[cycleIndex];
+      ghostEl.textContent = '';
+
+      showList(cycleMatches, cycleIndex);
+    }
+
+    // ── List rendering ────────────────────────────────────────
+    function showList(matches, activeIndex) {
+      autocompleteEl.innerHTML = '';
+      matches.forEach((m, i) => {
+        const span = document.createElement('span');
+        span.className = 'autocomplete-item' + (i === activeIndex ? ' current' : '');
+        span.textContent = m;
+        autocompleteEl.appendChild(span);
+      });
+      autocompleteEl.hidden = false;
+    }
+
+    function hide() {
+      autocompleteEl.hidden = true;
+      autocompleteEl.innerHTML = '';
+    }
+
+    function resetCycle() {
+      cycleMatches = [];
       cycleIndex   = -1;
+      cycleBase    = '';
+      cycleToken   = '';
+      hide();
     }
 
-    // Advance cycle
-    cycleIndex = (cycleIndex + 1) % cycleMatches.length;
-    inputEl.value = cycleBase + cycleMatches[cycleIndex];
-    ghostTextEl.textContent = '';
+    // ── Wire events ───────────────────────────────────────────
+    function onInput() {
+      updateGhost(inputEl.value);
+    }
 
-    // Show suggestion list
-    showList(cycleMatches, cycleIndex);
+    function onKeydown(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        trigger(inputEl.value);
+      }
+    }
+
+    inputEl.addEventListener('input',   onInput);
+    inputEl.addEventListener('keydown', onKeydown);
+
+    // Listen to terminal's internal signals
+    inputEl.addEventListener('terminal:hideAutocomplete', hide);
+    inputEl.addEventListener('terminal:resetCycle', resetCycle);
+
+    // ── destroy ───────────────────────────────────────────────
+    function destroy() {
+      inputEl.removeEventListener('input',   onInput);
+      inputEl.removeEventListener('keydown', onKeydown);
+      inputEl.removeEventListener('terminal:hideAutocomplete', hide);
+      inputEl.removeEventListener('terminal:resetCycle', resetCycle);
+    }
+
+    return { trigger, updateGhost, hide, resetCycle, destroy };
   }
 
-  // ── Show list below prompt ────────────────────────────────
-  function showList(matches, activeIndex) {
-    autocompleteEl.innerHTML = '';
-    matches.forEach((m, i) => {
-      const span = document.createElement('span');
-      span.className = 'autocomplete-item' + (i === activeIndex ? ' current' : '');
-      span.textContent = m;
-      autocompleteEl.appendChild(span);
-    });
-    autocompleteEl.hidden = false;
-  }
-
-  // ── Hide list ─────────────────────────────────────────────
-  function hide() {
-    autocompleteEl.hidden = true;
-    autocompleteEl.innerHTML = '';
-  }
-
-  // ── Reset cycle state ─────────────────────────────────────
-  function resetCycle() {
-    cycleMatches = [];
-    cycleIndex   = -1;
-    cycleBase    = '';
-    cycleToken   = '';
-    hide();
-  }
-
-  return { trigger, updateGhost, hide, resetCycle };
+  return { makeAutocomplete };
 
 })();

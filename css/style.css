@@ -1,5 +1,5 @@
 /* ============================================================
-   style.css — Layout, Terminal Window, Drag Chrome
+   style.css — Layout, Desktop, Terminal Windows, Multi-window
    ============================================================ */
 
 /* ── Reset & Base ─────────────────────────────────────────── */
@@ -50,9 +50,6 @@ body {
   font-family: var(--font-mono);
   font-size: var(--font-size);
   line-height: var(--line-height);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   /* Subtle grid dot pattern */
   background-image: radial-gradient(circle, #21262d 1px, transparent 1px);
   background-size: 32px 32px;
@@ -68,12 +65,16 @@ body {
   z-index: 0;
 }
 
+/* ── Desktop — window container ──────────────────────────── */
+#desktop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
 /* ── Terminal Window ──────────────────────────────────────── */
 .terminal-window {
-  position: relative;
-  z-index: 10;
-  width: min(90vw, 860px);
-  max-height: min(85vh, 680px);
+  position: absolute;
   background-color: var(--bg-window);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -81,13 +82,13 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-
-  /* Smooth repositioning during snap-to-center */
   transition: box-shadow 0.15s ease;
-
-  /* Allow JS to reposition via transform */
   will-change: transform;
-  user-select: none; /* prevent text selection while dragging */
+  user-select: none;
+}
+
+.terminal-window.is-focused {
+  box-shadow: var(--shadow), 0 0 0 1px rgba(88, 166, 255, 0.35);
 }
 
 .terminal-window:focus-within {
@@ -105,33 +106,43 @@ body {
   border-bottom: 1px solid var(--border-color);
   cursor: grab;
   border-radius: var(--radius) var(--radius) 0 0;
-  -webkit-app-region: drag; /* macOS feel */
 }
 
 .titlebar:active {
   cursor: grabbing;
 }
 
-/* Traffic-light dots */
+/* Traffic-light dot — only red (close) kept */
 .dot {
   display: inline-block;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  transition: filter 0.15s ease;
 }
 
-.dot-red    { background-color: var(--dot-red); }
-.dot-yellow { background-color: var(--dot-yellow); }
-.dot-green  { background-color: var(--dot-green); }
+.dot:hover {
+  filter: brightness(1.25);
+}
+
+.dot-red { background-color: var(--dot-red); }
 
 .titlebar-label {
-  margin-left: 8px;
+  margin-left: 4px;
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 400;
   letter-spacing: 0.02em;
   pointer-events: none;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Terminal Body ────────────────────────────────────────── */
@@ -150,7 +161,6 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 8px;
-  /* Allow text selection in output */
   user-select: text;
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
@@ -189,7 +199,6 @@ body {
   align-items: center;
   padding-top: 4px;
   flex-shrink: 0;
-  /* Allow text selection in input */
   user-select: text;
 }
 
@@ -204,7 +213,6 @@ body {
   color: var(--text-muted);
 }
 
-/* hidden attribute → native display:none; this reinforces it */
 .autocomplete-list[hidden] {
   display: none;
 }
@@ -223,24 +231,103 @@ body {
 /* ── Dragging state ───────────────────────────────────────── */
 .terminal-window.dragging {
   box-shadow: var(--shadow), 0 0 0 1px rgba(88, 166, 255, 0.4);
-  transition: none; /* no transition while dragging */
+  transition: none;
 }
 
-/* ── Mobile ───────────────────────────────────────────────── */
-@media (max-width: 600px) {
+/* ── Context Menu ─────────────────────────────────────────── */
+#context-menu {
+  position: fixed;
+  z-index: 9999;
+  background-color: var(--bg-titlebar);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  list-style: none;
+  padding: 4px 0;
+  min-width: 180px;
+  font-size: 13px;
+}
+
+#context-menu[hidden] {
+  display: none;
+}
+
+#context-menu li {
+  padding: 7px 16px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.1s ease;
+  border-radius: 3px;
+  margin: 0 4px;
+}
+
+#context-menu li:hover {
+  background-color: var(--color-blue);
+  color: #fff;
+}
+
+/* ── Mobile Tab Bar ───────────────────────────────────────── */
+#mobile-tab-bar {
+  display: none; /* shown via media query */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background-color: var(--bg-titlebar);
+  border-top: 1px solid var(--border-color);
+  padding: 6px 8px;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background-color: var(--bg-window);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.tab-btn.active {
+  background-color: var(--color-blue);
+  color: #fff;
+  border-color: var(--color-blue);
+}
+
+/* ── Adaptive Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* All windows become full-screen overlays */
   .terminal-window {
-    width: 100vw;
-    max-height: 100dvh;
+    position: fixed !important;
+    inset: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: calc(100dvh - 48px) !important; /* leave room for tab bar */
     border-radius: 0;
     border: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    transform: none !important; /* disable drag on mobile */
+    display: none; /* hidden until focused */
+  }
+
+  /* Only the focused window is visible */
+  .terminal-window.is-focused {
+    display: flex;
   }
 
   .titlebar {
     cursor: default;
     border-radius: 0;
+  }
+
+  #mobile-tab-bar {
+    display: flex;
   }
 }

@@ -1,27 +1,19 @@
 /* ============================================================
-   commands.js — Command Registry
+   commands.js — Factory: CommandsFactory.createCommandExecutor(terminal)
    ============================================================ */
 
 'use strict';
 
-const Commands = (() => {
+const CommandsFactory = (() => {
 
-  // ── External links for `open` ──────────────────────────────
+  // ── External links ─────────────────────────────────────────
   const LINKS = {
     github:   'https://github.com/hahahuy',
     linkedin: 'https://linkedin.com/in/hahahuy',
-    email:    'mailto:hahahuy@example.com',  // update to real email
+    email:    'mailto:hahahuy@example.com',
   };
 
-  // ── Helper: build an HTML line object ─────────────────────
-  function line(html, classes = []) {
-    return { html, classes: ['output-line', ...classes] };
-  }
-
-  function text(str, classes = []) {
-    return line(esc(str), classes);
-  }
-
+  // ── Shared helpers ─────────────────────────────────────────
   function esc(str) {
     return String(str)
       .replace(/&/g, '&amp;')
@@ -31,15 +23,21 @@ const Commands = (() => {
       .replace(/'/g, '&#39;');
   }
 
-  // ── Command implementations ────────────────────────────────
+  function line(html, classes = []) {
+    return { html, classes: ['output-line', ...classes] };
+  }
 
-  const registry = {
+  function text(str, classes = []) {
+    return line(esc(str), classes);
+  }
 
-    // ── help ──────────────────────────────────────────────────
+  // ── Command definitions (shared, stateless) ────────────────
+  // Each exec receives (term, args) — term is per-window instance
+  const commandDefs = {
+
     help: {
       desc: 'List all available commands',
-      usage: 'help',
-      exec(args, path) {
+      exec(term, args) {
         const cmds = [
           ['help',    'Show this help message'],
           ['ls',      'List files in current or specified directory'],
@@ -51,6 +49,7 @@ const Commands = (() => {
           ['open',    'Open external link  (github | linkedin | email)'],
           ['history', 'Show recent command history'],
           ['echo',    'Echo text back to the terminal'],
+          ['init',    'Spawn 4 terminal windows in 2×2 grid'],
         ];
         const lines = [
           line('<span class="hr">────────────────────────────────────</span>'),
@@ -69,13 +68,11 @@ const Commands = (() => {
       },
     },
 
-    // ── ls ────────────────────────────────────────────────────
     ls: {
       desc: 'List directory contents',
-      usage: 'ls [dir]',
-      exec(args, path) {
-        const target = args[0] || null;
-        const resolved = fsResolve(path, target);
+      exec(term, args) {
+        const target   = args[0] || null;
+        const resolved = fsResolve(term.currentPath, target);
 
         if (!resolved) {
           return { error: `ls: ${target}: No such file or directory` };
@@ -84,7 +81,6 @@ const Commands = (() => {
         const { node } = resolved;
 
         if (node.__type === 'file') {
-          // ls on a file just shows the filename
           return { lines: [text(args[0], ['ls-file'])] };
         }
 
@@ -93,10 +89,9 @@ const Commands = (() => {
           return { lines: [text('(empty directory)', ['muted'])] };
         }
 
-        // Build grid HTML
         let gridHtml = '<div class="ls-grid">';
         entries.forEach(e => {
-          const cls = e.type === 'dir' ? 'ls-dir' : 'ls-file';
+          const cls    = e.type === 'dir' ? 'ls-dir' : 'ls-file';
           const suffix = e.type === 'dir' ? '/' : '';
           gridHtml += `<span class="ls-item ${cls}">${esc(e.name)}${suffix}</span>`;
         });
@@ -105,13 +100,11 @@ const Commands = (() => {
       },
     },
 
-    // ── cd ────────────────────────────────────────────────────
     cd: {
       desc: 'Change directory',
-      usage: 'cd <dir>',
-      exec(args, path) {
-        const target = args[0] || '~';
-        const resolved = fsResolve(path, target);
+      exec(term, args) {
+        const target   = args[0] || '~';
+        const resolved = fsResolve(term.currentPath, target);
 
         if (!resolved) {
           return { error: `cd: ${target}: No such file or directory` };
@@ -124,16 +117,14 @@ const Commands = (() => {
       },
     },
 
-    // ── cat ───────────────────────────────────────────────────
     cat: {
       desc: 'Display file contents (Markdown rendered)',
-      usage: 'cat <file>',
-      exec(args, path) {
+      exec(term, args) {
         if (!args[0]) {
           return { error: 'cat: missing file argument' };
         }
 
-        const resolved = fsResolve(path, args[0]);
+        const resolved = fsResolve(term.currentPath, args[0]);
         if (!resolved) {
           return { error: `cat: ${args[0]}: No such file or directory` };
         }
@@ -141,28 +132,22 @@ const Commands = (() => {
           return { error: `cat: ${args[0]}: Is a directory` };
         }
 
-        // Async: fetch and render
         fsReadFile(resolved.node)
           .then(content => {
-            Terminal.appendMarkdown(content);
-            Terminal.scrollBottom();
+            term.appendMarkdown(content);
+            term.scrollBottom();
           })
           .catch(err => {
-            Terminal.appendLine(`cat: error reading file — ${err.message}`, ['error']);
+            term.appendLine(`cat: error reading file — ${err.message}`, ['error']);
           });
 
-        // Return loading indicator immediately
-        return {
-          lines: [text('Loading…', ['muted'])],
-        };
+        return { lines: [text('Loading…', ['muted'])] };
       },
     },
 
-    // ── whoami ────────────────────────────────────────────────
     whoami: {
       desc: 'Display name and intro',
-      usage: 'whoami',
-      exec(args, path) {
+      exec(term, args) {
         return {
           lines: [
             line('<span style="color:var(--color-blue);font-weight:700">hahahuy</span>'),
@@ -174,37 +159,29 @@ const Commands = (() => {
       },
     },
 
-    // ── pwd ───────────────────────────────────────────────────
     pwd: {
       desc: 'Print working directory',
-      usage: 'pwd',
-      exec(args, path) {
-        const fullPath = path.join('/');
-        return { lines: [text(fullPath, ['success'])] };
+      exec(term, args) {
+        return { lines: [text(term.currentPath.join('/'), ['success'])] };
       },
     },
 
-    // ── clear ─────────────────────────────────────────────────
     clear: {
       desc: 'Clear the terminal output',
-      usage: 'clear',
-      exec(args, path) {
+      exec(term, args) {
         return { clear: true };
       },
     },
 
-    // ── open ──────────────────────────────────────────────────
     open: {
       desc: 'Open external link (github | linkedin | email)',
-      usage: 'open <alias>',
-      exec(args, path) {
+      exec(term, args) {
         const alias = (args[0] || '').toLowerCase();
         if (!alias) {
-          const available = Object.keys(LINKS).join('  |  ');
           return {
             lines: [
               text('Usage: open <alias>', ['muted']),
-              text(`Available: ${available}`, ['muted']),
+              text(`Available: ${Object.keys(LINKS).join('  |  ')}`, ['muted']),
             ],
           };
         }
@@ -216,12 +193,10 @@ const Commands = (() => {
       },
     },
 
-    // ── history ───────────────────────────────────────────────
     history: {
       desc: 'Show recent command history',
-      usage: 'history',
-      exec(args, path) {
-        const hist = Terminal.commandHistory;
+      exec(term, args) {
+        const hist = term.commandHistory;
         if (hist.length === 0) {
           return { lines: [text('No commands in history yet.', ['muted'])] };
         }
@@ -235,13 +210,19 @@ const Commands = (() => {
       },
     },
 
-    // ── echo ──────────────────────────────────────────────────
     echo: {
       desc: 'Echo text to the terminal',
-      usage: 'echo <text>',
-      exec(args, path) {
-        const msg = args.join(' ');
-        return { lines: [text(msg || '')] };
+      exec(term, args) {
+        return { lines: [text(args.join(' ') || '')] };
+      },
+    },
+
+    init: {
+      desc: 'Spawn 4 terminal windows in 2×2 grid',
+      exec(term, args) {
+        // Defer so the current command output renders first
+        setTimeout(() => WindowManager.spawnQuad(), 50);
+        return { lines: [text('Spawning quad layout…', ['muted'])] };
       },
     },
 
@@ -257,19 +238,48 @@ const Commands = (() => {
     };
   }
 
-  // ── Public: execute ───────────────────────────────────────
-  function execute(cmd, args, path) {
-    if (!cmd) return null;
-    const entry = registry[cmd.toLowerCase()];
-    if (!entry) return unknown(cmd);
-    return entry.exec(args, path);
+  /**
+   * Create a command executor bound to a specific terminal instance.
+   * @param {object} terminal — TerminalFactory instance
+   * @returns {{ execute(rawInput): void, names: string[] }}
+   */
+  function createCommandExecutor(terminal) {
+
+    function execute(rawInput) {
+      const raw   = (rawInput || '').trim();
+      if (!raw) return;
+
+      // Easter egg
+      if (raw.toLowerCase() === 'sudo make me a coffee') {
+        terminal.appendLine("☕  Brewing... jk, I'm a website. But I appreciate the request.", ['success']);
+        terminal.appendLine('    Try `open github` to see real projects instead.', ['muted']);
+        return;
+      }
+
+      const parts = raw.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+      const cmd   = (parts[0] || '').toLowerCase();
+      const args  = parts.slice(1).map(a => a.replace(/^['"]|['"]$/g, ''));
+
+      const def = commandDefs[cmd];
+      const result = def ? def.exec(terminal, args) : unknown(cmd);
+
+      if (result) {
+        if (result.newPath)  terminal.currentPath = result.newPath;
+        if (result.clear)    terminal.clearOutput();
+        if (result.lines)    result.lines.forEach(l => terminal.appendHTML(l.html || '', l.classes || []));
+        if (result.markdown) terminal.appendMarkdown(result.markdown);
+        if (result.error)    terminal.appendLine(result.error, ['error']);
+      }
+
+      terminal.updatePrompt();
+      terminal.scrollBottom();
+    }
+
+    const names = Object.keys(commandDefs);
+
+    return { execute, names };
   }
 
-  // ── Public: list command names ────────────────────────────
-  function names() {
-    return Object.keys(registry);
-  }
-
-  return { execute, names };
+  return { createCommandExecutor };
 
 })();
