@@ -20,70 +20,56 @@
 </head>
 <body>
 
-  <!-- Page backdrop glow -->
+  <!-- Page backdrop -->
   <div class="backdrop"></div>
 
-  <!-- Desktop: floating windows live here -->
-  <div id="desktop"></div>
+  <!-- ─── Terminal Window ─────────────────────────────────── -->
+  <div class="terminal-window" id="terminalWindow">
 
-  <!-- Mobile tab bar (hidden on desktop) -->
-  <div id="mobile-tab-bar"></div>
-
-  <!-- ─── Terminal Window Template ──────────────────────────── -->
-  <template id="terminal-window-template">
-    <div class="terminal-window">
-
-      <!-- Titlebar (drag handle) -->
-      <div class="titlebar">
-        <button class="dot dot-red" aria-label="Close window" title="Close"></button>
-        <span class="titlebar-label">visitor@portfolio:~</span>
-      </div>
-
-      <!-- Terminal body -->
-      <div class="terminal-body">
-
-        <!-- Output area -->
-        <div class="output" aria-live="polite" aria-label="Terminal output"></div>
-
-        <!-- Input row -->
-        <div class="input-row">
-          <span class="prompt">visitor@portfolio:<span class="prompt-dir">~</span>$&nbsp;</span>
-          <div class="input-wrapper">
-            <input
-              class="terminal-input"
-              type="text"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              aria-label="Terminal input"
-            />
-            <span class="ghost-text"></span>
-          </div>
-        </div>
-
-        <!-- Autocomplete suggestions -->
-        <div class="autocomplete-list" hidden></div>
-
-      </div>
+    <!-- Titlebar (drag handle) -->
+    <div class="titlebar" id="titlebar">
+      <span class="dot dot-red"></span>
+      <span class="dot dot-yellow"></span>
+      <span class="dot dot-green"></span>
+      <span class="titlebar-label">visitor@portfolio:~</span>
     </div>
-  </template>
+
+    <!-- Terminal body -->
+    <div class="terminal-body" id="terminalBody">
+
+      <!-- Output area -->
+      <div class="output" id="output" aria-live="polite" aria-label="Terminal output"></div>
+
+      <!-- Input row -->
+      <div class="input-row" id="inputRow">
+        <span class="prompt" id="promptLabel">visitor@portfolio:<span class="prompt-dir" id="promptDir">~</span>$&nbsp;</span>
+        <div class="input-wrapper">
+          <input
+            class="terminal-input"
+            id="terminalInput"
+            type="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            aria-label="Terminal input"
+          />
+          <span class="ghost-text" id="ghostText"></span>
+        </div>
+      </div>
+
+      <!-- Autocomplete suggestions -->
+      <div class="autocomplete-list" id="autocompleteList" hidden></div>
+
+    </div>
+  </div>
 
   <!-- Scripts (order matters) -->
   <script src="js/filesystem.js"></script>
-  <script src="js/terminal.js"></script>
-  <script src="js/draggable.js"></script>
   <script src="js/autocomplete.js"></script>
   <script src="js/commands.js"></script>
-  <script src="js/window-manager.js"></script>
-  <script src="js/context-menu.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      WindowManager.createWindow();
-      ContextMenu.init();
-    });
-  </script>
+  <script src="js/terminal.js"></script>
+  <script src="js/draggable.js"></script>
 
 </body>
 </html>
