@@ -4,8 +4,10 @@
 
 'use strict';
 
-// Base path for fetching markdown content (GitHub Pages subpath)
-const BASE = '/4FF-HH';
+// Base path for fetching markdown content.
+// Empty string = custom domain at root (hahuy.site).
+// Change to '/4FF-HH' if reverting to github.io subpath.
+const BASE = '';
 
 /**
  * Virtual filesystem tree.

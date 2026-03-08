@@ -21,4 +21,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./
           publish_branch: gh-pages
-          exclude_assets: '.github,*.md,*.jsonl'
+          exclude_assets: '.github,*.jsonl'
+          cname: hahuy.site
