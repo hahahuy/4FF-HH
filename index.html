@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>visitor@portfolio:~</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/terminal.css" />
+  <link rel="stylesheet" href="css/markdown.css" />
+
+  <!-- marked.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+</head>
+<body>
+
+  <!-- Page backdrop -->
+  <div class="backdrop"></div>
+
+  <!-- ─── Terminal Window ─────────────────────────────────── -->
+  <div class="terminal-window" id="terminalWindow">
+
+    <!-- Titlebar (drag handle) -->
+    <div class="titlebar" id="titlebar">
+      <span class="dot dot-red"></span>
+      <span class="dot dot-yellow"></span>
+      <span class="dot dot-green"></span>
+      <span class="titlebar-label">visitor@portfolio:~</span>
+    </div>
+
+    <!-- Terminal body -->
+    <div class="terminal-body" id="terminalBody">
+
+      <!-- Output area -->
+      <div class="output" id="output" aria-live="polite" aria-label="Terminal output"></div>
+
+      <!-- Input row -->
+      <div class="input-row" id="inputRow">
+        <span class="prompt" id="promptLabel">visitor@portfolio:<span class="prompt-dir" id="promptDir">~</span>$&nbsp;</span>
+        <div class="input-wrapper">
+          <input
+            class="terminal-input"
+            id="terminalInput"
+            type="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            aria-label="Terminal input"
+          />
+          <span class="ghost-text" id="ghostText"></span>
+        </div>
+      </div>
+
+      <!-- Autocomplete suggestions -->
+      <div class="autocomplete-list" id="autocompleteList" hidden></div>
+
+    </div>
+  </div>
+
+  <!-- Scripts (order matters) -->
+  <script src="js/filesystem.js"></script>
+  <script src="js/autocomplete.js"></script>
+  <script src="js/commands.js"></script>
+  <script src="js/terminal.js"></script>
+  <script src="js/draggable.js"></script>
+
+</body>
+</html>
