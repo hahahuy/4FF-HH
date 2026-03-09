@@ -25,24 +25,30 @@ const Draggable = (() => {
    * Snapshot the window's current screen position and switch it to
    * position:fixed with explicit left/top/width/height.
    * After this, flexbox centering no longer affects it at all.
+   * Uses rAF to ensure layout is fully computed first.
    */
   function pinToScreen(win) {
-    const rect        = win.getBoundingClientRect();
-    win.style.position  = 'fixed';
-    win.style.left      = `${rect.left}px`;
-    win.style.top       = `${rect.top}px`;
-    win.style.width     = `${rect.width}px`;
-    win.style.height    = `${rect.height}px`;
-    win.style.transform = '';
-    win.style.margin    = '0';
+    requestAnimationFrame(() => {
+      const rect        = win.getBoundingClientRect();
+      win.style.position  = 'fixed';
+      win.style.left      = `${rect.left}px`;
+      win.style.top       = `${rect.top}px`;
+      win.style.width     = `${rect.width}px`;
+      win.style.height    = `${rect.height}px`;
+      win.style.transform = '';
+      win.style.margin    = '0';
+    });
   }
 
   function getPos(win) {
+    // Always read from the live bounding rect so we get the real rendered values
+    // even if inline styles haven't been flushed yet.
+    const rect = win.getBoundingClientRect();
     return {
-      left:   parseFloat(win.style.left)   || 0,
-      top:    parseFloat(win.style.top)    || 0,
-      width:  parseFloat(win.style.width)  || win.offsetWidth,
-      height: parseFloat(win.style.height) || win.offsetHeight,
+      left:   rect.left,
+      top:    rect.top,
+      width:  rect.width  || win.offsetWidth,
+      height: rect.height || win.offsetHeight,
     };
   }
 
@@ -54,6 +60,9 @@ const Draggable = (() => {
     handle.addEventListener('pointerdown', e => {
       if (window.innerWidth <= 600) return;
       if (e.target.classList.contains('dot')) return;
+      // Resize handles sit at top:0 and overlap the titlebar physically.
+      // If the click originated on a resize handle, let resize take it.
+      if (e.target.closest('.resize-handle')) return;
 
       dragging = true;
       handle.setPointerCapture(e.pointerId);
@@ -150,9 +159,10 @@ const Draggable = (() => {
       }
 
       // West: left edge moves → right edge stays fixed
-      // Clamp: can't shrink past MIN_W (dx must be < startW - MIN_W)
+      // Allow any expansion (dx negative = no lower bound).
+      // Cap shrink: dx cannot exceed startW - MIN_W (would push below MIN_W).
       if (edge.includes('w')) {
-        const clampedDx = Math.min(dx, startW - MIN_W);
+        const clampedDx = Math.min(dx, startW - MIN_W); // cap positive (shrink) only
         newW = startW - clampedDx;
         newL = startL + clampedDx;
       }
@@ -163,8 +173,10 @@ const Draggable = (() => {
       }
 
       // North: top edge moves → bottom edge stays fixed
+      // Allow any expansion (dy negative = no lower bound).
+      // Cap shrink: dy cannot exceed startH - MIN_H.
       if (edge.includes('n')) {
-        const clampedDy = Math.min(dy, startH - MIN_H);
+        const clampedDy = Math.min(dy, startH - MIN_H); // cap positive (shrink) only
         newH = startH - clampedDy;
         newT = startT + clampedDy;
       }
