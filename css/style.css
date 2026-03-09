@@ -70,9 +70,9 @@ body {
 
 /* ── Terminal Window ──────────────────────────────────────── */
 .terminal-window {
-  position: relative;
+  position: relative; /* JS overrides to fixed on init */
   z-index: 10;
-  /* Default size — JS takes over after first resize */
+  /* Default size — JS takes over after pinToScreen() */
   width: min(90vw, 860px);
   height: min(85vh, 680px);
   background-color: var(--bg-window);
@@ -82,13 +82,8 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-
-  /* Smooth repositioning during snap-to-center */
   transition: box-shadow 0.15s ease;
-
-  /* Allow JS to reposition / resize via transform + width/height */
-  will-change: transform;
-  user-select: none; /* prevent text selection while dragging */
+  user-select: none;
 }
 
 /* ── Resize handles ───────────────────────────────────────── */
@@ -243,7 +238,8 @@ body {
 .terminal-window.dragging,
 .terminal-window.resizing {
   box-shadow: var(--shadow), 0 0 0 1px rgba(88, 166, 255, 0.4);
-  transition: none; /* no transition while interacting */
+  transition: none;
+  user-select: none;
 }
 
 /* ── Mobile ───────────────────────────────────────────────── */
