@@ -6,7 +6,8 @@
 
 const ContextMenu = (() => {
 
-  let menuEl = null;
+  let menuEl   = null;
+  let template = null; // deep-clone of the original window, captured at init
 
   // ── Build DOM ─────────────────────────────────────────────
   function build() {
@@ -111,25 +112,24 @@ const ContextMenu = (() => {
   }
 
   function createNewWindow() {
-    const existing = document.querySelectorAll('.terminal-window');
-    if (existing.length === 0) return;
+    if (!template) return;
 
-    // Clone the first terminal window
-    const source  = existing[0];
-    const clone   = source.cloneNode(true);
+    // Clone from the stored template — works even when all windows are closed
+    const clone = template.cloneNode(true);
 
-    // Give clone a fresh ID to avoid duplicate IDs
+    // Give clone fresh IDs to avoid collisions
     clone.removeAttribute('id');
     clone.querySelectorAll('[id]').forEach(el => {
       el.id = el.id + '_' + Date.now();
     });
 
-    // Offset clone so it doesn't fully overlap
-    const offset = 32 * existing.length;
+    // Offset so it doesn't sit exactly on top of existing windows
+    const existing = document.querySelectorAll('.terminal-window');
+    const offset   = 32 * (existing.length + 1);
     clone.style.transform = `translate(${offset}px, ${offset}px)`;
 
-    // Clear output + re-show hint in clone
-    const cloneOutput = clone.querySelector('.output, #output, [id^="output"]');
+    // Clear output and show a fresh hint
+    const cloneOutput = clone.querySelector('.output');
     if (cloneOutput) {
       cloneOutput.innerHTML = '';
       const hint = document.createElement('div');
@@ -140,23 +140,29 @@ const ContextMenu = (() => {
 
     document.body.appendChild(clone);
 
-    // Re-init draggable on the new window's titlebar
+    // Wire up drag + resize on the new window
     if (typeof Draggable !== 'undefined' && Draggable.init) {
       Draggable.init(clone);
     }
 
     // Animate in
-    clone.style.opacity = '0';
+    clone.style.opacity    = '0';
     clone.style.transition = 'opacity 0.2s ease';
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        clone.style.opacity = '1';
-      });
-    });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      clone.style.opacity = '1';
+    }));
   }
 
   // ── Global event wiring ───────────────────────────────────
   function init() {
+    // Capture a clean template clone BEFORE anything can be closed
+    const original = document.querySelector('.terminal-window');
+    if (original) {
+      template = original.cloneNode(true);
+      // Strip live output from template so every new window starts fresh
+      const tmplOutput = template.querySelector('.output');
+      if (tmplOutput) tmplOutput.innerHTML = '';
+    }
     // Right-click on background (not on a terminal window)
     document.addEventListener('contextmenu', e => {
       // Only intercept clicks on the background, not inside terminal windows

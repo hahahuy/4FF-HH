@@ -234,26 +234,30 @@ const Terminal = (() => {
 
   // ── Idle hint ─────────────────────────────────────────────
   const IDLE_DELAY_MS = 20000; // show hint after 20 s of no interaction
-  let idleTimer = null;
+  let idleTimer  = null;
+  let hintFired  = false; // show only once per idle session
 
   function showHint() {
+    hintFired = true; // mark as shown — won't fire again until resetIdleTimer is called after user input
     const div = document.createElement('div');
     div.className = 'output-line muted hint-line';
     div.textContent = 'Type `help` for available commands.';
     output.appendChild(div);
     scrollBottom();
+    // Do NOT reschedule — hint appears once then stops
   }
 
   function resetIdleTimer() {
+    if (hintFired) hintFired = false; // user is active again, re-arm for next idle window
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(showHint, IDLE_DELAY_MS);
+    idleTimer = setTimeout(() => {
+      if (!hintFired) showHint();
+    }, IDLE_DELAY_MS);
   }
 
   function clearOutput() {
     output.innerHTML = '';
-    // Always show hint immediately after clear
-    showHint();
-    resetIdleTimer();
+    // Do NOT show hint here — just clear, nothing else
   }
 
   // ── Boot sequence ─────────────────────────────────────────
