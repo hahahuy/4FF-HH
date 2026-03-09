@@ -51,6 +51,7 @@ const Commands = (() => {
           ['open',    'Open external link  (github | linkedin | email)'],
           ['history', 'Show recent command history'],
           ['echo',    'Echo text back to the terminal'],
+          ['quit',    'Close this terminal window'],
         ];
         const lines = [
           line('<span class="hr">────────────────────────────────────</span>'),
@@ -144,7 +145,7 @@ const Commands = (() => {
     cat: {
       desc: 'Display file contents (Markdown rendered)',
       usage: 'cat <file>',
-      exec(args, path) {
+      exec(args, path, ctx) {
         if (!args[0]) {
           return { error: 'cat: missing file argument' };
         }
@@ -157,20 +158,17 @@ const Commands = (() => {
           return { error: `cat: ${args[0]}: Is a directory` };
         }
 
-        // Async: fetch and render
+        // Async: fetch and render into the calling terminal instance via ctx
         fsReadFile(resolved.node)
           .then(content => {
-            Terminal.appendMarkdown(content);
-            Terminal.scrollBottom();
+            ctx.appendMarkdown(content);
+            ctx.scrollBottom();
           })
           .catch(err => {
-            Terminal.appendLine(`cat: error reading file — ${err.message}`, ['error']);
+            ctx.appendLine(`cat: error reading file — ${err.message}`, ['error']);
           });
 
-        // Return loading indicator immediately
-        return {
-          lines: [text('Loading…', ['muted'])],
-        };
+        return { lines: [text('Loading…', ['muted'])] };
       },
     },
 
@@ -261,6 +259,15 @@ const Commands = (() => {
       },
     },
 
+    // ── quit ──────────────────────────────────────────────────
+    quit: {
+      desc: 'Close this terminal window',
+      usage: 'quit',
+      exec(args, path) {
+        return { quit: true };
+      },
+    },
+
   };
 
   // ── Unknown command handler ───────────────────────────────
@@ -274,11 +281,12 @@ const Commands = (() => {
   }
 
   // ── Public: execute ───────────────────────────────────────
-  function execute(cmd, args, path) {
+  // ctx = { appendMarkdown, appendLine, scrollBottom } from the calling terminal instance
+  function execute(cmd, args, path, ctx = {}) {
     if (!cmd) return null;
     const entry = registry[cmd.toLowerCase()];
     if (!entry) return unknown(cmd);
-    return entry.exec(args, path);
+    return entry.exec(args, path, ctx);
   }
 
   // ── Public: list command names ────────────────────────────

@@ -242,6 +242,15 @@ body {
   user-select: none;
 }
 
+/* ── Edge bounce animation ────────────────────────────────── */
+/* --bx / --by are set by JS to control bounce direction        */
+@keyframes terminal-bounce {
+  0%   { transform: translate(0, 0); }
+  35%  { transform: translate(var(--bx, 0px), var(--by, 0px)); }
+  65%  { transform: translate(calc(var(--bx, 0px) * -0.3), calc(var(--by, 0px) * -0.3)); }
+  100% { transform: translate(0, 0); }
+}
+
 /* ── Mobile ───────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .terminal-window {

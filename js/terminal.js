@@ -1,47 +1,44 @@
 /* ============================================================
-   terminal.js — Core Engine: I/O, History, Cursor, Boot
+   terminal.js — Terminal instance factory
+   Each call to createTerminal(winEl) creates a fully independent
+   terminal scoped to that window element.
    ============================================================ */
 
 'use strict';
 
-const Terminal = (() => {
+/**
+ * Create and wire a terminal instance inside `winEl`.
+ * All DOM queries are relative to winEl so multiple instances
+ * can coexist without ID collisions.
+ */
+function createTerminal(winEl) {
 
-  // ── DOM refs ───────────────────────────────────────────────
-  const output          = document.getElementById('output');
-  const inputEl         = document.getElementById('terminalInput');
-  const promptDirEl     = document.getElementById('promptDir');
-  const ghostTextEl     = document.getElementById('ghostText');
-  const autocompleteEl  = document.getElementById('autocompleteList');
-  const terminalBody    = document.getElementById('terminalBody');
+  // ── DOM refs (scoped to this window) ─────────────────────
+  const output         = winEl.querySelector('.output');
+  const inputEl        = winEl.querySelector('.terminal-input');
+  const promptDirEl    = winEl.querySelector('.prompt-dir');
+  const ghostTextEl    = winEl.querySelector('.ghost-text');
+  const autocompleteEl = winEl.querySelector('.autocomplete-list');
+  const terminalBody   = winEl.querySelector('.terminal-body');
 
-  // ── State ──────────────────────────────────────────────────
-  let commandHistory    = [];
-  let historyIndex      = -1;
-  let tempBuffer        = '';     // save partial input while browsing history
-  let currentPath       = ['~']; // virtual cwd stack
+  // ── Per-instance autocomplete ─────────────────────────────
+  const ac = createAutocomplete(inputEl, ghostTextEl, autocompleteEl);
 
-  // ── Helpers ───────────────────────────────────────────────
-  function getCwd() {
-    return currentPath.join('/');
-  }
+  // ── State ─────────────────────────────────────────────────
+  let commandHistory = [];
+  let historyIndex   = -1;
+  let tempBuffer     = '';
+  let currentPath    = ['~'];
 
-  function updatePrompt() {
-    promptDirEl.textContent = getCwd();
-  }
-
-  // Scroll to bottom
+  // ── Helpers ──────────────────────────────────────────────
+  function getCwd()       { return currentPath.join('/'); }
+  function updatePrompt() { promptDirEl.textContent = getCwd(); }
   function scrollBottom() {
-    output.scrollTop = output.scrollHeight;
+    output.scrollTop      = output.scrollHeight;
     terminalBody.scrollTop = terminalBody.scrollHeight;
   }
 
-  // ── Output Writers ────────────────────────────────────────
-
-  /**
-   * Append a raw HTML string as a new output block.
-   * @param {string} html
-   * @param {string[]} [extraClasses] — added to the wrapper div
-   */
+  // ── Output writers ────────────────────────────────────────
   function appendHTML(html, extraClasses = []) {
     const div = document.createElement('div');
     div.className = ['output-line', ...extraClasses].join(' ');
@@ -51,18 +48,10 @@ const Terminal = (() => {
     return div;
   }
 
-  /**
-   * Append a plain-text line. HTML-escapes the text.
-   * @param {string} text
-   * @param {string[]} [extraClasses]
-   */
   function appendLine(text, extraClasses = []) {
     return appendHTML(escapeHtml(text), extraClasses);
   }
 
-  /**
-   * Echo the command the user typed (with styled prompt).
-   */
   function echoCommand(cmd) {
     const div = document.createElement('div');
     div.className = 'cmd-echo output-line';
@@ -72,14 +61,10 @@ const Terminal = (() => {
     output.appendChild(div);
   }
 
-  /**
-   * Append a markdown-rendered block (no hover highlight).
-   */
   function appendMarkdown(mdText) {
     const div = document.createElement('div');
     div.className = 'md-render';
     div.innerHTML = marked.parse(mdText);
-    // Make all links open in new tab
     div.querySelectorAll('a').forEach(a => {
       a.target = '_blank';
       a.rel    = 'noopener noreferrer';
@@ -88,121 +73,46 @@ const Terminal = (() => {
     scrollBottom();
   }
 
-  /** Append a blank spacer line */
   function appendSpacer() {
     const div = document.createElement('div');
     div.className = 'spacer';
     output.appendChild(div);
   }
 
-  // ── HTML escaping ─────────────────────────────────────────
   function escapeHtml(str) {
     return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  // ── Input handling ────────────────────────────────────────
-  function handleKeydown(e) {
-    resetIdleTimer(); // any keypress resets the idle hint timer
-    switch (e.key) {
+  function clearOutput() { output.innerHTML = ''; }
 
-      case 'Enter': {
-        e.preventDefault();
-        const raw = inputEl.value.trim();
-        Autocomplete.hide();
-        ghostTextEl.textContent = '';
-
-        if (raw) {
-          echoCommand(raw);
-          commandHistory.unshift(raw);
-          if (commandHistory.length > 200) commandHistory.pop();
-          historyIndex = -1;
-          tempBuffer = '';
-          executeCommand(raw);
-        }
-        inputEl.value = '';
-        scrollBottom();
-        break;
-      }
-
-      case 'ArrowUp': {
-        e.preventDefault();
-        if (historyIndex === -1) tempBuffer = inputEl.value;
-        if (historyIndex < commandHistory.length - 1) {
-          historyIndex++;
-          inputEl.value = commandHistory[historyIndex];
-          // Move cursor to end
-          requestAnimationFrame(() => {
-            inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
-          });
-        }
-        Autocomplete.hide();
-        ghostTextEl.textContent = '';
-        break;
-      }
-
-      case 'ArrowDown': {
-        e.preventDefault();
-        if (historyIndex > 0) {
-          historyIndex--;
-          inputEl.value = commandHistory[historyIndex];
-        } else if (historyIndex === 0) {
-          historyIndex = -1;
-          inputEl.value = tempBuffer;
-        }
-        Autocomplete.hide();
-        ghostTextEl.textContent = '';
-        break;
-      }
-
-      case 'Tab': {
-        e.preventDefault();
-        Autocomplete.trigger(inputEl.value, currentPath);
-        break;
-      }
-
-      case 'c':
-      case 'C': {
-        if (e.ctrlKey) {
-          e.preventDefault();
-          if (inputEl.value) {
-            echoCommand(inputEl.value + '^C');
-          }
-          inputEl.value = '';
-          Autocomplete.hide();
-          ghostTextEl.textContent = '';
-          historyIndex = -1;
-        }
-        break;
-      }
-
-      case 'l':
-      case 'L': {
-        if (e.ctrlKey) {
-          e.preventDefault();
-          Commands.execute('clear', [], currentPath);
-          inputEl.value = '';
-          Autocomplete.hide();
-          ghostTextEl.textContent = '';
-        }
-        break;
-      }
-
-      default:
-        // Hide autocomplete list on any other key (except shift/alt/meta)
-        if (!['Shift', 'Alt', 'Meta', 'Control'].includes(e.key)) {
-          Autocomplete.resetCycle();
-        }
-    }
+  // ── Close this window (quit command) ──────────────────────
+  function closeWindow() {
+    winEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    winEl.style.opacity    = '0';
+    winEl.style.transform  = (winEl.style.transform || '') + ' scale(0.95)';
+    setTimeout(() => winEl.remove(), 210);
   }
 
-  function handleInput() {
-    const val = inputEl.value;
-    Autocomplete.updateGhost(val, currentPath);
+  // ── Idle hint ─────────────────────────────────────────────
+  const IDLE_DELAY_MS = 20000;
+  let idleTimer = null;
+  let hintFired = false;
+
+  function showHint() {
+    hintFired = true;
+    const div = document.createElement('div');
+    div.className   = 'output-line muted hint-line';
+    div.textContent = 'Type `help` for available commands.';
+    output.appendChild(div);
+    scrollBottom();
+  }
+
+  function resetIdleTimer() {
+    if (hintFired) hintFired = false;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { if (!hintFired) showHint(); }, IDLE_DELAY_MS);
   }
 
   // ── Command execution ─────────────────────────────────────
@@ -218,46 +128,100 @@ const Terminal = (() => {
       return;
     }
 
-    const result = Commands.execute(cmd, args, currentPath);
+    // Render context: async commands (cat) call back into this instance
+    const ctx = { appendMarkdown, appendLine, scrollBottom };
+
+    const result = Commands.execute(cmd, args, currentPath, ctx);
 
     if (result) {
-      if (result.newPath)   currentPath = result.newPath;
-      if (result.clear)     clearOutput();
-      if (result.lines)     result.lines.forEach(l => appendHTML(l.html || '', l.classes || []));
-      if (result.markdown)  appendMarkdown(result.markdown);
-      if (result.error)     appendLine(result.error, ['error']);
+      if (result.newPath) currentPath = result.newPath;
+      if (result.clear)   clearOutput();
+      if (result.quit)    { closeWindow(); return; }
+      if (result.lines)   result.lines.forEach(l => appendHTML(l.html || '', l.classes || []));
+      if (result.markdown) appendMarkdown(result.markdown);
+      if (result.error)   appendLine(result.error, ['error']);
     }
 
     updatePrompt();
     scrollBottom();
   }
 
-  // ── Idle hint ─────────────────────────────────────────────
-  const IDLE_DELAY_MS = 20000; // show hint after 20 s of no interaction
-  let idleTimer  = null;
-  let hintFired  = false; // show only once per idle session
-
-  function showHint() {
-    hintFired = true; // mark as shown — won't fire again until resetIdleTimer is called after user input
-    const div = document.createElement('div');
-    div.className = 'output-line muted hint-line';
-    div.textContent = 'Type `help` for available commands.';
-    output.appendChild(div);
-    scrollBottom();
-    // Do NOT reschedule — hint appears once then stops
+  // ── Keyboard handler ──────────────────────────────────────
+  function handleKeydown(e) {
+    resetIdleTimer();
+    switch (e.key) {
+      case 'Enter': {
+        e.preventDefault();
+        const raw = inputEl.value.trim();
+        ac.hide();
+        ghostTextEl.textContent = '';
+        if (raw) {
+          echoCommand(raw);
+          commandHistory.unshift(raw);
+          if (commandHistory.length > 200) commandHistory.pop();
+          historyIndex = -1; tempBuffer = '';
+          executeCommand(raw);
+        }
+        inputEl.value = '';
+        scrollBottom();
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        if (historyIndex === -1) tempBuffer = inputEl.value;
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          inputEl.value = commandHistory[historyIndex];
+          requestAnimationFrame(() => {
+            inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+          });
+        }
+        ac.hide(); ghostTextEl.textContent = '';
+        break;
+      }
+      case 'ArrowDown': {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          historyIndex--;
+          inputEl.value = commandHistory[historyIndex];
+        } else if (historyIndex === 0) {
+          historyIndex = -1;
+          inputEl.value = tempBuffer;
+        }
+        ac.hide(); ghostTextEl.textContent = '';
+        break;
+      }
+      case 'Tab': {
+        e.preventDefault();
+        ac.trigger(inputEl.value, currentPath);
+        break;
+      }
+      case 'c': case 'C': {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          if (inputEl.value) echoCommand(inputEl.value + '^C');
+          inputEl.value = '';
+          ac.hide(); ghostTextEl.textContent = '';
+          historyIndex = -1;
+        }
+        break;
+      }
+      case 'l': case 'L': {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          clearOutput();
+          inputEl.value = '';
+          ac.hide(); ghostTextEl.textContent = '';
+        }
+        break;
+      }
+      default:
+        if (!['Shift', 'Alt', 'Meta', 'Control'].includes(e.key)) ac.resetCycle();
+    }
   }
 
-  function resetIdleTimer() {
-    if (hintFired) hintFired = false; // user is active again, re-arm for next idle window
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      if (!hintFired) showHint();
-    }, IDLE_DELAY_MS);
-  }
-
-  function clearOutput() {
-    output.innerHTML = '';
-    // Do NOT show hint here — just clear, nothing else
+  function handleInput() {
+    ac.updateGhost(inputEl.value, currentPath);
   }
 
   // ── Boot sequence ─────────────────────────────────────────
@@ -267,33 +231,29 @@ const Terminal = (() => {
     { text: '────────────────────────────────────', cls: 'hr' },
   ];
 
-  const BOOT_DELAY_MS = 60; // ms between each boot line
-
   function boot() {
     return new Promise(resolve => {
       BOOT_LINES.forEach((line, i) => {
         setTimeout(() => {
           const div = document.createElement('div');
-          div.className = `output-line boot-line ${line.cls}`;
-          div.style.animationDelay = '0ms'; // already delayed by setTimeout
+          div.className   = `output-line boot-line ${line.cls}`;
           div.textContent = line.text;
           output.appendChild(div);
           scrollBottom();
-
-          if (i === BOOT_LINES.length - 1) {
-            setTimeout(resolve, 200);
-          }
-        }, i * BOOT_DELAY_MS);
+          if (i === BOOT_LINES.length - 1) setTimeout(resolve, 200);
+        }, i * 60);
       });
     });
   }
 
   // ── Init ──────────────────────────────────────────────────
   async function init() {
+    output.innerHTML = ''; // clear any cloned content
+
     inputEl.addEventListener('keydown', handleKeydown);
     inputEl.addEventListener('input',   handleInput);
 
-    // Delegated click handler for clickable ls items
+    // Clickable ls items
     output.addEventListener('click', e => {
       const item = e.target.closest('.ls-item[data-cmd]');
       if (!item) return;
@@ -302,25 +262,24 @@ const Terminal = (() => {
       echoCommand(cmd);
       commandHistory.unshift(cmd);
       if (commandHistory.length > 200) commandHistory.pop();
-      historyIndex = -1;
-      tempBuffer   = '';
+      historyIndex = -1; tempBuffer = '';
       executeCommand(cmd);
       resetIdleTimer();
     });
 
-    // Focus on click anywhere in terminal body
-    document.getElementById('terminalBody').addEventListener('click', () => {
-      inputEl.focus();
-    });
+    // Click anywhere in body focuses input
+    terminalBody.addEventListener('click', () => inputEl.focus());
 
-    // Load blog manifest before boot so `ls blog` works immediately
-    await loadBlogManifest();
+    // Blog manifest only needs loading once (FS is shared)
+    if (typeof loadBlogManifest === 'function' && !loadBlogManifest._loaded) {
+      await loadBlogManifest();
+      loadBlogManifest._loaded = true;
+    }
 
-    // Run boot sequence then focus
     await boot();
     updatePrompt();
     inputEl.focus();
-    resetIdleTimer(); // start idle timer after boot
+    resetIdleTimer();
   }
 
   // ── Public API ────────────────────────────────────────────
@@ -335,12 +294,12 @@ const Terminal = (() => {
     clearOutput,
     updatePrompt,
     scrollBottom,
-    get currentPath()  { return currentPath; },
-    set currentPath(p) { currentPath = p; updatePrompt(); },
+    get currentPath()     { return currentPath; },
+    set currentPath(p)    { currentPath = p; updatePrompt(); },
     get commandHistory()  { return commandHistory; },
   };
+}
 
-})();
-
-// Kick off when DOM is ready
+// ── Main terminal (original window) ───────────────────────────
+const Terminal = createTerminal(document.getElementById('terminalWindow'));
 document.addEventListener('DOMContentLoaded', () => Terminal.init());

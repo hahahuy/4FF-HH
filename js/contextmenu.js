@@ -114,40 +114,33 @@ const ContextMenu = (() => {
   function createNewWindow() {
     if (!template) return;
 
-    // Clone from the stored template — works even when all windows are closed
     const clone = template.cloneNode(true);
 
-    // Give clone fresh IDs to avoid collisions
+    // Remove IDs to avoid collisions — createTerminal uses class selectors
     clone.removeAttribute('id');
-    clone.querySelectorAll('[id]').forEach(el => {
-      el.id = el.id + '_' + Date.now();
-    });
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
     // Offset so it doesn't sit exactly on top of existing windows
     const existing = document.querySelectorAll('.terminal-window');
     const offset   = 32 * (existing.length + 1);
     clone.style.transform = `translate(${offset}px, ${offset}px)`;
 
-    // Clear output and show a fresh hint
-    const cloneOutput = clone.querySelector('.output');
-    if (cloneOutput) {
-      cloneOutput.innerHTML = '';
-      const hint = document.createElement('div');
-      hint.className = 'output-line muted';
-      hint.textContent = 'Type `help` for available commands.';
-      cloneOutput.appendChild(hint);
-    }
+    // Animate in
+    clone.style.opacity    = '0';
+    clone.style.transition = 'opacity 0.2s ease';
 
     document.body.appendChild(clone);
 
-    // Wire up drag + resize on the new window
+    // Wire drag + resize (pinToScreen runs inside rAF, so this is safe)
     if (typeof Draggable !== 'undefined' && Draggable.init) {
       Draggable.init(clone);
     }
 
-    // Animate in
-    clone.style.opacity    = '0';
-    clone.style.transition = 'opacity 0.2s ease';
+    // Boot a fresh independent terminal inside the clone
+    if (typeof createTerminal === 'function') {
+      createTerminal(clone).init();
+    }
+
     requestAnimationFrame(() => requestAnimationFrame(() => {
       clone.style.opacity = '1';
     }));

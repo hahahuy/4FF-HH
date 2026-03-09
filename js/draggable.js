@@ -54,8 +54,27 @@ const Draggable = (() => {
 
   // ── Drag ──────────────────────────────────────────────────
   function initDrag(win, handle) {
-    let dragging = false;
+    let dragging  = false;
     let startPX, startPY, startL, startT;
+
+    // Edge bounce state — track which edges were hit last frame
+    let prevHit   = { l: false, r: false, t: false, b: false };
+    let bouncing  = false;
+
+    function triggerBounce(bx, by) {
+      if (bouncing) return;
+      bouncing = true;
+      // --bx / --by are the "push" direction (away from the wall)
+      win.style.setProperty('--bx', `${bx}px`);
+      win.style.setProperty('--by', `${by}px`);
+      win.style.animation = 'terminal-bounce 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      win.addEventListener('animationend', () => {
+        win.style.animation = '';
+        win.style.removeProperty('--bx');
+        win.style.removeProperty('--by');
+        bouncing = false;
+      }, { once: true });
+    }
 
     handle.addEventListener('pointerdown', e => {
       if (window.innerWidth <= 600) return;
@@ -79,18 +98,40 @@ const Draggable = (() => {
 
     handle.addEventListener('pointermove', e => {
       if (!dragging) return;
-      const p   = getPos(win);
-      const vw  = window.innerWidth;
-      const vh  = window.innerHeight;
-      const newL = clamp(startL + e.clientX - startPX, 0, vw - p.width);
-      const newT = clamp(startT + e.clientY - startPY, 0, vh - p.height);
+      const p    = getPos(win);
+      const vw   = window.innerWidth;
+      const vh   = window.innerHeight;
+      const rawL = startL + e.clientX - startPX;
+      const rawT = startT + e.clientY - startPY;
+      const newL = clamp(rawL, 0, vw - p.width);
+      const newT = clamp(rawT, 0, vh - p.height);
+
       win.style.left = `${newL}px`;
       win.style.top  = `${newT}px`;
+
+      // ── Bounce on edge contact ─────────────────────────────
+      const hitL = rawL < 0;
+      const hitR = rawL > vw - p.width;
+      const hitT = rawT < 0;
+      const hitB = rawT > vh - p.height;
+
+      // Only fire when NEWLY hitting (not while already pressing against edge)
+      const newlyHit = (hitL && !prevHit.l) || (hitR && !prevHit.r)
+                    || (hitT && !prevHit.t) || (hitB && !prevHit.b);
+
+      if (newlyHit) {
+        const bx = hitR ? -8 : hitL ?  8 : 0;
+        const by = hitB ? -8 : hitT ?  8 : 0;
+        triggerBounce(bx, by);
+      }
+
+      prevHit = { l: hitL, r: hitR, t: hitT, b: hitB };
     });
 
     const stopDrag = () => {
       if (!dragging) return;
-      dragging = false;
+      dragging  = false;
+      prevHit   = { l: false, r: false, t: false, b: false };
       win.classList.remove('dragging');
     };
     handle.addEventListener('pointerup',     stopDrag);
