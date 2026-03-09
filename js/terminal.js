@@ -6,12 +6,20 @@
 
 'use strict';
 
+// Tracks whether the very first terminal has already been created.
+// Used to show a different hint line in subsequent windows.
+let _isFirstTerminal = true;
+
 /**
  * Create and wire a terminal instance inside `winEl`.
  * All DOM queries are relative to winEl so multiple instances
  * can coexist without ID collisions.
  */
 function createTerminal(winEl) {
+
+  // Claim "first terminal" slot before anything else runs
+  const isFirst    = _isFirstTerminal;
+  _isFirstTerminal = false;
 
   // ── DOM refs (scoped to this window) ─────────────────────
   const output         = winEl.querySelector('.output');
@@ -227,7 +235,14 @@ function createTerminal(winEl) {
   // ── Boot sequence ─────────────────────────────────────────
   const BOOT_LINES = [
     { text: 'Welcome to hahahuy\'s portfolio  v1.0.0', cls: 'success' },
-    { text: 'Type `help` for available commands.', cls: '' },
+    {
+      // First-ever terminal shows the original help hint.
+      // All subsequent windows show the "init" teaser instead.
+      text: isFirst
+        ? 'Type `help` for available commands.'
+        : 'Type `init` to start or `help` for available commands.',
+      cls: '',
+    },
     { text: '────────────────────────────────────', cls: 'hr' },
   ];
 
