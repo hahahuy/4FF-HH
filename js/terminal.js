@@ -105,8 +105,11 @@ function createTerminal(winEl) {
 
   // ── Idle hint ─────────────────────────────────────────────
   const IDLE_DELAY_MS = 20000;
-  let idleTimer = null;
-  let hintFired = false;
+  let idleTimer     = null;
+  let hintFired     = false;
+  // Idle hint only arms after the user has typed at least one command
+  // in the original window. For subsequent windows it never arms.
+  let commandEverRun = !isFirst; // subsequent windows: permanently disabled
 
   function showHint() {
     hintFired = true;
@@ -118,9 +121,19 @@ function createTerminal(winEl) {
   }
 
   function resetIdleTimer() {
+    // Only the original window ever shows the idle hint,
+    // and only after the user has run at least one command.
+    if (!isFirst)          return;  // subsequent windows: never
+    if (!commandEverRun)   return;  // original window: not yet armed
     if (hintFired) hintFired = false;
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => { if (!hintFired) showHint(); }, IDLE_DELAY_MS);
+  }
+
+  function armIdleAfterFirstCommand() {
+    if (commandEverRun) return;    // already armed
+    commandEverRun = true;
+    resetIdleTimer();              // start the clock from right now
   }
 
   // ── Command execution ─────────────────────────────────────
@@ -152,11 +165,12 @@ function createTerminal(winEl) {
 
     updatePrompt();
     scrollBottom();
+    // Arm idle hint the first time a command is run in the original window
+    armIdleAfterFirstCommand();
   }
 
   // ── Keyboard handler ──────────────────────────────────────
   function handleKeydown(e) {
-    resetIdleTimer();
     switch (e.key) {
       case 'Enter': {
         e.preventDefault();
@@ -233,16 +247,14 @@ function createTerminal(winEl) {
   }
 
   // ── Boot sequence ─────────────────────────────────────────
+  // Original window: show the "init" teaser line.
+  // Subsequent windows: only the welcome + divider — no hint line.
   const BOOT_LINES = [
     { text: 'Welcome to hahahuy\'s portfolio  v1.0.0', cls: 'success' },
-    {
-      // First-ever terminal shows the original help hint.
-      // All subsequent windows show the "init" teaser instead.
-      text: isFirst
-        ? 'Type `help` for available commands.'
-        : 'Type `init` to start or `help` for available commands.',
-      cls: '',
-    },
+    ...( isFirst
+      ? [{ text: 'Type `init` to start or `help` for available commands.', cls: '' }]
+      : []
+    ),
     { text: '────────────────────────────────────', cls: 'hr' },
   ];
 
@@ -294,7 +306,7 @@ function createTerminal(winEl) {
     await boot();
     updatePrompt();
     inputEl.focus();
-    resetIdleTimer();
+    // Idle timer arms only after the first command — not at boot.
   }
 
   // ── Public API ────────────────────────────────────────────
