@@ -107,6 +107,7 @@ const Terminal = (() => {
 
   // ── Input handling ────────────────────────────────────────
   function handleKeydown(e) {
+    resetIdleTimer(); // any keypress resets the idle hint timer
     switch (e.key) {
 
       case 'Enter': {
@@ -231,8 +232,28 @@ const Terminal = (() => {
     scrollBottom();
   }
 
+  // ── Idle hint ─────────────────────────────────────────────
+  const IDLE_DELAY_MS = 8000; // show hint after 8 s of no interaction
+  let idleTimer = null;
+
+  function showHint() {
+    const div = document.createElement('div');
+    div.className = 'output-line muted hint-line';
+    div.textContent = 'Type `help` for available commands.';
+    output.appendChild(div);
+    scrollBottom();
+  }
+
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(showHint, IDLE_DELAY_MS);
+  }
+
   function clearOutput() {
     output.innerHTML = '';
+    // Always show hint immediately after clear
+    showHint();
+    resetIdleTimer();
   }
 
   // ── Boot sequence ─────────────────────────────────────────
@@ -277,6 +298,7 @@ const Terminal = (() => {
     await boot();
     updatePrompt();
     inputEl.focus();
+    resetIdleTimer(); // start idle timer after boot
   }
 
   // ── Public API ────────────────────────────────────────────

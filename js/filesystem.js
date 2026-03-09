@@ -41,11 +41,27 @@ const FS = {
     },
     'blog': {
       __type: 'dir',
-      // Future posts will be added here dynamically
-      // For now, hint file to guide the user
       'index.txt': {
         __type: 'file',
-        content: '# Blog\n\nComing soon. Future posts will appear here.\n\nCheck back later — or `open github` for updates.',
+        content: [
+          '# Blog',
+          '',
+          'Posts available:',
+          '',
+          '  hello-world.txt             — Hello World  (2026-03-09)',
+          '  building-a-cli-portfolio.txt — Building a CLI Portfolio in Vanilla JS  (2026-02-15)',
+          '',
+          'Read a post:  cat blog/hello-world.txt',
+          'Or:           cd blog  →  ls  →  cat hello-world.txt',
+        ].join('\n'),
+      },
+      'hello-world.txt': {
+        __type: 'file',
+        src: '/content/blog/hello-world.md',
+      },
+      'building-a-cli-portfolio.txt': {
+        __type: 'file',
+        src: '/content/blog/building-a-cli-portfolio.md',
       },
     },
   },

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tests — 4FF-HH Terminal</title>
+
+  <!-- Reuse portfolio fonts + colors -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- marked.js needed by terminal.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --green:   #7ee787;
+      --red:     #ff7b72;
+      --blue:    #58a6ff;
+      --muted:   #6e7681;
+      --text:    #c9d1d9;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 32px;
+      min-height: 100vh;
+    }
+    h1 { color: var(--blue); font-size: 18px; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 12px; }
+    #summary {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .sum-pass { color: var(--green); }
+    .sum-fail { color: var(--red); }
+    .sum-total { color: var(--muted); }
+    #results { display: flex; flex-direction: column; gap: 3px; }
+    .result {
+      display: flex;
+      gap: 10px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border-left: 3px solid transparent;
+      line-height: 1.5;
+    }
+    .result.pass { border-left-color: var(--green); }
+    .result.fail {
+      border-left-color: var(--red);
+      background: rgba(255,123,114,0.06);
+    }
+    .result .badge {
+      flex-shrink: 0;
+      font-weight: 700;
+      font-size: 11px;
+      width: 36px;
+      padding-top: 1px;
+    }
+    .result.pass .badge { color: var(--green); }
+    .result.fail .badge { color: var(--red); }
+    .result .desc { flex: 1; }
+    .result .errmsg { color: var(--red); font-size: 11px; margin-top: 2px; }
+    #loading { color: var(--muted); margin-top: 16px; }
+
+    /* Tiny hidden terminal needed for Terminal module to init */
+    #test-terminal-host { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>▸ Terminal Test Suite</h1>
+  <p class="subtitle">4FF-HH · in-browser · no build step required</p>
+
+  <div id="summary">
+    <span class="sum-total" id="sum-total">Running…</span>
+  </div>
+
+  <div id="results"></div>
+  <div id="loading">Loading modules…</div>
+
+  <!-- Hidden minimal DOM that terminal.js needs -->
+  <div id="test-terminal-host">
+    <div id="output"></div>
+    <div id="terminalBody">
+      <input id="terminalInput" type="text" />
+      <span id="ghostText"></span>
+      <span id="promptDir">~</span>
+      <div id="autocompleteList"></div>
+    </div>
+  </div>
+
+  <!-- Load all production modules -->
+  <script src="../js/filesystem.js"></script>
+  <script src="../js/autocomplete.js"></script>
+  <script src="../js/commands.js"></script>
+  <script src="../js/terminal.js"></script>
+
+  <!-- Test suite -->
+  <script src="suite.js"></script>
+
+  <!-- Runner -->
+  <script>
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const loadingEl  = document.getElementById('loading');
+      const resultsEl  = document.getElementById('results');
+      const summaryEl  = document.getElementById('summary');
+
+      try {
+        // Terminal.init() sets up event listeners — call it so the module is
+        // fully ready (boot lines go into the hidden #output div)
+        await Terminal.init();
+      } catch (e) {
+        // ignore init errors in test context
+      }
+
+      loadingEl.remove();
+
+      const { pass, fail, results } = await runAllSuites();
+
+      // Summary
+      summaryEl.innerHTML =
+        `<span class="sum-pass">✓ ${pass} passed</span>` +
+        (fail ? `<span class="sum-fail">✗ ${fail} failed</span>` : '') +
+        `<span class="sum-total">${pass + fail} total</span>`;
+
+      // Results
+      results.forEach(r => {
+        const div = document.createElement('div');
+        div.className = `result ${r.ok ? 'pass' : 'fail'}`;
+        div.innerHTML =
+          `<span class="badge">${r.ok ? 'PASS' : 'FAIL'}</span>` +
+          `<span class="desc">${r.desc}` +
+          (r.err ? `<div class="errmsg">↳ ${r.err}</div>` : '') +
+          `</span>`;
+        resultsEl.appendChild(div);
+      });
+
+      // Update tab title
+      document.title = `${fail ? '✗' : '✓'} Tests (${pass}/${pass+fail}) — 4FF-HH`;
+    });
+  </script>
+
+</body>
+</html>
