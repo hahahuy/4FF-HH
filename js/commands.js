@@ -74,18 +74,21 @@ const Commands = (() => {
       desc: 'List directory contents',
       usage: 'ls [dir]',
       exec(args, path) {
-        const target = args[0] || null;
+        const target   = args[0] || null;
         const resolved = fsResolve(path, target);
 
         if (!resolved) {
           return { error: `ls: ${target}: No such file or directory` };
         }
 
-        const { node } = resolved;
+        const { node, path: resolvedPath } = resolved;
 
         if (node.__type === 'file') {
-          // ls on a file just shows the filename
-          return { lines: [text(args[0], ['ls-file'])] };
+          // ls on a file just shows the filename — clicking cats it
+          const cmd = `cat ${args[0]}`;
+          return { lines: [line(
+            `<span class="ls-item ls-file" data-cmd="${esc(cmd)}" title="click to run: ${esc(cmd)}">${esc(args[0])}</span>`
+          )] };
         }
 
         const entries = fsListDir(node);
@@ -93,12 +96,25 @@ const Commands = (() => {
           return { lines: [text('(empty directory)', ['muted'])] };
         }
 
-        // Build grid HTML
+        // Build grid HTML — each item carries a data-cmd for click-to-run
         let gridHtml = '<div class="ls-grid">';
         entries.forEach(e => {
-          const cls = e.type === 'dir' ? 'ls-dir' : 'ls-file';
-          const suffix = e.type === 'dir' ? '/' : '';
-          gridHtml += `<span class="ls-item ${cls}">${esc(e.name)}${suffix}</span>`;
+          const isDir   = e.type === 'dir';
+          const cls     = isDir ? 'ls-dir' : 'ls-file';
+          const suffix  = isDir ? '/' : '';
+          // Determine what command clicking should run
+          const dirStr  = resolvedPath.join('/'); // e.g. "~/blog"
+          let cmd;
+          if (isDir) {
+            // cd into the dir using path relative to resolvedPath
+            const relBase = target ? `${target}/${e.name}` : e.name;
+            cmd = `cd ${relBase}`;
+          } else {
+            const relBase = target ? `${target}/${e.name}` : e.name;
+            cmd = `cat ${relBase}`;
+          }
+          gridHtml +=
+            `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" title="click to run: ${esc(cmd)}">${esc(e.name)}${suffix}</span>`;
         });
         gridHtml += '</div>';
         return { lines: [{ html: gridHtml, classes: [] }] };

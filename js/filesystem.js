@@ -41,28 +41,7 @@ const FS = {
     },
     'blog': {
       __type: 'dir',
-      'index.txt': {
-        __type: 'file',
-        content: [
-          '# Blog',
-          '',
-          'Posts available:',
-          '',
-          '  hello-world.txt             — Hello World  (2026-03-09)',
-          '  building-a-cli-portfolio.txt — Building a CLI Portfolio in Vanilla JS  (2026-02-15)',
-          '',
-          'Read a post:  cat blog/hello-world.txt',
-          'Or:           cd blog  →  ls  →  cat hello-world.txt',
-        ].join('\n'),
-      },
-      'hello-world.txt': {
-        __type: 'file',
-        src: '/content/blog/hello-world.md',
-      },
-      'building-a-cli-portfolio.txt': {
-        __type: 'file',
-        src: '/content/blog/building-a-cli-portfolio.md',
-      },
+      // Populated at runtime by loadBlogManifest()
     },
   },
 };
@@ -149,4 +128,52 @@ function fsEntriesAt(pathArr) {
   const result = fsResolve(pathArr);
   if (!result || result.node.__type !== 'dir') return [];
   return fsListDir(result.node).map(e => e.name);
+}
+
+/**
+ * Fetch content/blog/manifest.json and populate the virtual ~/blog/ dir.
+ * Called once at boot. Adding a new .md file + manifest entry is all
+ * that's needed to make it appear — no changes to filesystem.js required.
+ *
+ * Manifest format: [{ "file": "post.md", "title": "...", "date": "YYYY-MM-DD" }]
+ */
+async function loadBlogManifest() {
+  const blogNode = FS['~']['blog'];
+
+  try {
+    const res = await fetch(BASE + '/content/blog/manifest.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const posts = await res.json();
+
+    // Build index content dynamically from manifest
+    const maxLen = posts.reduce((m, p) => Math.max(m, p.file.replace(/\.md$/, '.txt').length), 0);
+    const indexLines = ['# Blog', '', 'Posts available:', ''];
+    posts.forEach(p => {
+      const name = p.file.replace(/\.md$/, '.txt');
+      const pad  = ' '.repeat(Math.max(1, maxLen - name.length + 2));
+      indexLines.push(`  ${name}${pad}— ${p.title}  (${p.date})`);
+    });
+    indexLines.push('', 'Read a post:  cat blog/<filename>.txt');
+
+    blogNode['index.txt'] = {
+      __type: 'file',
+      content: indexLines.join('\n'),
+    };
+
+    // Register each post as a .txt file
+    posts.forEach(p => {
+      const name = p.file.replace(/\.md$/, '.txt');
+      blogNode[name] = {
+        __type: 'file',
+        src: `/content/blog/${p.file}`,
+      };
+    });
+
+  } catch (err) {
+    // Fallback: leave blog dir empty with an error note
+    blogNode['index.txt'] = {
+      __type: 'file',
+      content: `# Blog\n\nCould not load post list: ${err.message}`,
+    };
+  }
 }

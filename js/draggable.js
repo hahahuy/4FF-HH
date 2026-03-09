@@ -157,33 +157,34 @@ const Draggable = (() => {
       let newTX = startTX;
       let newTY = startTY;
 
-      // East edges grow/shrink width from the right
+      // East: stretch/shrink right edge, left edge stays put (translate unchanged)
       if (edge.includes('e')) {
-        newW = clamp(startW + dx, MIN_W, window.innerWidth - startL);
+        newW = Math.max(MIN_W, startW + dx);
       }
-      // West edges grow/shrink width from the left
+
+      // West: stretch/shrink left edge, right edge stays put (translate moves with it)
       if (edge.includes('w')) {
-        const delta = clamp(dx, -(window.innerWidth), startW - MIN_W);
-        newW  = startW - delta;
-        newTX = startTX + delta;
+        const delta = clamp(dx, startW - MIN_W, Infinity);  // how far left edge moved right (+shrink)
+        newW  = startW - delta;                              // shrink when delta > 0
+        newTX = startTX + delta;                             // shift window right by same amount
       }
-      // South edges grow/shrink height from the bottom
+
+      // South: stretch/shrink bottom edge, top edge stays put (translate unchanged)
       if (edge.includes('s')) {
-        newH = clamp(startH + dy, MIN_H, window.innerHeight - startT);
+        newH = Math.max(MIN_H, startH + dy);
       }
-      // North edges grow/shrink height from the top
+
+      // North: stretch/shrink top edge, bottom edge stays put (translate moves with it)
       if (edge.includes('n')) {
-        const delta = clamp(dy, -(window.innerHeight), startH - MIN_H);
+        const delta = clamp(dy, startH - MIN_H, Infinity);  // how far top edge moved down (+shrink)
         newH  = startH - delta;
         newTY = startTY + delta;
       }
 
-      win.style.width  = `${newW}px`;
-      win.style.height = `${newH}px`;
-
-      // Clamp translate so window can't escape viewport
-      const clamped = clampTranslate(win, newTX, newTY);
-      win.style.transform = `translate(${clamped.x}px, ${clamped.y}px)`;
+      win.style.width     = `${newW}px`;
+      win.style.height    = `${newH}px`;
+      // No viewport clamping here — drag handles that; clamping resize caused opposite-edge jump
+      win.style.transform = `translate(${newTX}px, ${newTY}px)`;
     });
 
     const stopResize = () => {

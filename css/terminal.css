@@ -121,6 +121,26 @@
   color: var(--text-primary);
 }
 
+/* Clickable ls items */
+.ls-item[data-cmd] {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 3px;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.ls-item[data-cmd]:hover {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--color-blue);
+  text-decoration: underline;
+}
+
+.ls-dir[data-cmd]:hover {
+  color: var(--color-green);
+  background: rgba(126, 231, 135, 0.12);
+  text-decoration: underline;
+}
+
 /* Horizontal rule in help */
 .hr {
   color: var(--text-dim);

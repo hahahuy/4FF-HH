@@ -1,0 +1,4 @@
+[
+  { "file": "hello-world.md",                  "title": "Hello World",                              "date": "2026-03-09" },
+  { "file": "building-a-cli-portfolio.md",      "title": "Building a CLI Portfolio in Vanilla JS",   "date": "2026-02-15" }
+]

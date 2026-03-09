@@ -293,10 +293,28 @@ const Terminal = (() => {
     inputEl.addEventListener('keydown', handleKeydown);
     inputEl.addEventListener('input',   handleInput);
 
+    // Delegated click handler for clickable ls items
+    output.addEventListener('click', e => {
+      const item = e.target.closest('.ls-item[data-cmd]');
+      if (!item) return;
+      const cmd = item.dataset.cmd;
+      inputEl.value = '';
+      echoCommand(cmd);
+      commandHistory.unshift(cmd);
+      if (commandHistory.length > 200) commandHistory.pop();
+      historyIndex = -1;
+      tempBuffer   = '';
+      executeCommand(cmd);
+      resetIdleTimer();
+    });
+
     // Focus on click anywhere in terminal body
     document.getElementById('terminalBody').addEventListener('click', () => {
       inputEl.focus();
     });
+
+    // Load blog manifest before boot so `ls blog` works immediately
+    await loadBlogManifest();
 
     // Run boot sequence then focus
     await boot();
