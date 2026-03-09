@@ -1,105 +1,221 @@
 /* ============================================================
-   draggable.js — Pointer Events drag for terminal window
+   draggable.js — Drag + Resize for all .terminal-window elements
    ============================================================ */
 
-(function () {
-  'use strict';
+'use strict';
 
-  const win    = document.getElementById('terminalWindow');
-  const handle = document.getElementById('titlebar');
+const Draggable = (() => {
 
-  let isDragging = false;
-  let startX, startY;   // pointer position at drag start
-  let startTX, startTY; // translateX/Y at drag start
+  const MIN_W = 340;
+  const MIN_H = 220;
 
-  // Parse current transform translate values
-  function getTranslate() {
-    const style = window.getComputedStyle(win);
-    const matrix = new DOMMatrixReadOnly(style.transform);
+  // Edge names that get resize handles
+  const EDGES = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
+
+  // ── Utility ───────────────────────────────────────────────
+  function clamp(val, lo, hi) {
+    return Math.max(lo, Math.min(hi, val));
+  }
+
+  /** Read the current CSS translate of an element */
+  function getTranslate(el) {
+    const matrix = new DOMMatrixReadOnly(window.getComputedStyle(el).transform);
     return { x: matrix.m41, y: matrix.m42 };
   }
 
-  // Clamp window inside viewport
-  function clamp(val, min, max) {
-    return Math.max(min, Math.min(max, val));
-  }
-
-  function clampToViewport(tx, ty) {
-    const rect = win.getBoundingClientRect();
+  /**
+   * Clamp a translate so the window stays inside the viewport.
+   * el must already have its desired width/height set.
+   */
+  function clampTranslate(el, tx, ty) {
+    const rect = el.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // How far the window extends from its translated center
-    const left   = rect.left   - tx;   // natural left edge (without translate)
-    const top    = rect.top    - ty;
-    const right  = left + rect.width;
-    const bottom = top  + rect.height;
-
-    const minTX = -left;                 // can't go further left than viewport edge
-    const maxTX = vw - right;            // can't go further right than viewport edge
-    const minTY = -top;
-    const maxTY = vh - bottom;
+    // Natural (un-translated) edges
+    const naturalLeft   = rect.left   - tx;
+    const naturalTop    = rect.top    - ty;
+    const naturalRight  = naturalLeft + rect.width;
+    const naturalBottom = naturalTop  + rect.height;
 
     return {
-      x: clamp(tx, minTX, maxTX),
-      y: clamp(ty, minTY, maxTY),
+      x: clamp(tx, -naturalLeft, vw - naturalRight),
+      y: clamp(ty, -naturalTop,  vh - naturalBottom),
     };
   }
 
-  // ── Pointer Down ────────────────────────────────────────────
-  handle.addEventListener('pointerdown', (e) => {
-    // Ignore on mobile (CSS disables transform)
-    if (window.innerWidth <= 600) return;
+  // ── Bring-to-front ────────────────────────────────────────
+  let zCounter = 20;
 
-    isDragging = true;
-    handle.setPointerCapture(e.pointerId);
-    win.classList.add('dragging');
+  function bringToFront(el) {
+    el.style.zIndex = ++zCounter;
+  }
 
-    startX = e.clientX;
-    startY = e.clientY;
+  // ── Drag logic ────────────────────────────────────────────
+  function initDrag(win, handle) {
+    let dragging = false;
+    let startX, startY, startTX, startTY;
 
-    const t = getTranslate();
-    startTX = t.x;
-    startTY = t.y;
+    handle.addEventListener('pointerdown', e => {
+      if (window.innerWidth <= 600) return;
+      // Ignore clicks on the traffic-light dots
+      if (e.target.classList.contains('dot')) return;
 
-    e.preventDefault();
-  });
+      dragging = true;
+      handle.setPointerCapture(e.pointerId);
+      win.classList.add('dragging');
+      bringToFront(win);
 
-  // ── Pointer Move ────────────────────────────────────────────
-  handle.addEventListener('pointermove', (e) => {
-    if (!isDragging) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      const t = getTranslate(win);
+      startTX = t.x;
+      startTY = t.y;
+      e.preventDefault();
+    });
 
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    handle.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const { x, y } = clampTranslate(win, startTX + dx, startTY + dy);
+      win.style.transform = `translate(${x}px, ${y}px)`;
+    });
 
-    const rawTX = startTX + dx;
-    const rawTY = startTY + dy;
+    const stopDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      win.classList.remove('dragging');
+    };
+    handle.addEventListener('pointerup',     stopDrag);
+    handle.addEventListener('pointercancel', stopDrag);
 
-    const { x, y } = clampToViewport(rawTX, rawTY);
-    win.style.transform = `translate(${x}px, ${y}px)`;
-  });
+    // Double-click titlebar → snap to center
+    handle.addEventListener('dblclick', () => {
+      win.style.transition = 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      win.style.transform  = 'translate(0, 0)';
+      win.addEventListener('transitionend', () => {
+        win.style.transition = '';
+      }, { once: true });
+    });
+  }
 
-  // ── Pointer Up ──────────────────────────────────────────────
-  handle.addEventListener('pointerup', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    win.classList.remove('dragging');
-  });
+  // ── Resize logic ──────────────────────────────────────────
+  function initResize(win) {
 
-  handle.addEventListener('pointercancel', (e) => {
-    isDragging = false;
-    win.classList.remove('dragging');
-  });
+    // Inject edge handles into the window element
+    EDGES.forEach(edge => {
+      const div = document.createElement('div');
+      div.className = `resize-handle resize-${edge}`;
+      div.dataset.edge = edge;
+      win.appendChild(div);
+    });
 
-  // ── Double-click → Snap to center ───────────────────────────
-  handle.addEventListener('dblclick', () => {
-    win.style.transition = 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    win.style.transform  = 'translate(0, 0)';
+    let resizing   = false;
+    let edge       = '';
+    let startX, startY;
+    let startW, startH;    // px dimensions at drag start
+    let startTX, startTY;  // translate at drag start
+    let startL, startT;    // getBoundingClientRect left/top at drag start
 
-    // Re-enable CSS transition removal after snap
-    win.addEventListener('transitionend', () => {
-      win.style.transition = '';
-    }, { once: true });
-  });
+    win.addEventListener('pointerdown', e => {
+      const handle = e.target.closest('.resize-handle');
+      if (!handle) return;
+      if (window.innerWidth <= 600) return;
 
-}());
+      edge = handle.dataset.edge;
+      resizing = true;
+      win.setPointerCapture(e.pointerId);
+      win.classList.add('resizing');
+      bringToFront(win);
+
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const rect = win.getBoundingClientRect();
+      startW = rect.width;
+      startH = rect.height;
+      startL = rect.left;
+      startT = rect.top;
+
+      const t = getTranslate(win);
+      startTX = t.x;
+      startTY = t.y;
+
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    win.addEventListener('pointermove', e => {
+      if (!resizing) return;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      let newW  = startW;
+      let newH  = startH;
+      let newTX = startTX;
+      let newTY = startTY;
+
+      // East edges grow/shrink width from the right
+      if (edge.includes('e')) {
+        newW = clamp(startW + dx, MIN_W, window.innerWidth - startL);
+      }
+      // West edges grow/shrink width from the left
+      if (edge.includes('w')) {
+        const delta = clamp(dx, -(window.innerWidth), startW - MIN_W);
+        newW  = startW - delta;
+        newTX = startTX + delta;
+      }
+      // South edges grow/shrink height from the bottom
+      if (edge.includes('s')) {
+        newH = clamp(startH + dy, MIN_H, window.innerHeight - startT);
+      }
+      // North edges grow/shrink height from the top
+      if (edge.includes('n')) {
+        const delta = clamp(dy, -(window.innerHeight), startH - MIN_H);
+        newH  = startH - delta;
+        newTY = startTY + delta;
+      }
+
+      win.style.width  = `${newW}px`;
+      win.style.height = `${newH}px`;
+
+      // Clamp translate so window can't escape viewport
+      const clamped = clampTranslate(win, newTX, newTY);
+      win.style.transform = `translate(${clamped.x}px, ${clamped.y}px)`;
+    });
+
+    const stopResize = () => {
+      if (!resizing) return;
+      resizing = false;
+      win.classList.remove('resizing');
+    };
+    win.addEventListener('pointerup',     stopResize);
+    win.addEventListener('pointercancel', stopResize);
+  }
+
+  // ── Public: attach drag + resize to one window element ────
+  function init(winEl) {
+    const titlebar = winEl.querySelector('.titlebar');
+    if (!titlebar) return;
+
+    // Remove fixed sizing so the window can be freely resized
+    // (initial dimensions stay from CSS; after that JS owns them)
+    initDrag(winEl, titlebar);
+    initResize(winEl);
+
+    // Bring to front on any click inside
+    winEl.addEventListener('pointerdown', () => bringToFront(winEl), { capture: true });
+  }
+
+  // ── Boot: attach to every window present at load ──────────
+  function initAll() {
+    document.querySelectorAll('.terminal-window').forEach(init);
+  }
+
+  return { init, initAll };
+
+})();
+
+document.addEventListener('DOMContentLoaded', () => Draggable.initAll());

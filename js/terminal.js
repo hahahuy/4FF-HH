@@ -233,7 +233,7 @@ const Terminal = (() => {
   }
 
   // ── Idle hint ─────────────────────────────────────────────
-  const IDLE_DELAY_MS = 15000; // show hint after 15 s of no interaction
+  const IDLE_DELAY_MS = 20000; // show hint after 20 s of no interaction
   let idleTimer = null;
 
   function showHint() {
@@ -250,7 +250,10 @@ const Terminal = (() => {
   }
 
   function clearOutput() {
-    output.innerHTML = ''
+    output.innerHTML = '';
+    // Always show hint immediately after clear
+    showHint();
+    resetIdleTimer();
   }
 
   // ── Boot sequence ─────────────────────────────────────────

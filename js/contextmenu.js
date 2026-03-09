@@ -19,7 +19,7 @@ const ContextMenu = (() => {
       {
         icon: '⬡',
         label: 'Normal Portfolio',
-        action: () => window.location.href('https://hahahuy.github.io/porfoliosite/', '_blank', 'noopener,noreferrer'),
+        action: () => window.open('https://hahahuy.github.io/porfoliosite/', '_blank', 'noopener,noreferrer'),
       },
       { separator: true },
       {
