@@ -7,8 +7,9 @@
 
 const Draggable = (() => {
 
-  const MIN_W = 340;
-  const MIN_H = 220;
+  const MIN_W      = 340;
+  const MIN_H      = 220;
+  const MOBILE_BP  = 600;   // must match CSS breakpoint
 
   const EDGES = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
@@ -22,27 +23,33 @@ const Draggable = (() => {
 
   // ── Pin to fixed coords ───────────────────────────────────
   /**
-   * Snapshot the window's current screen position and switch it to
-   * position:fixed with explicit left/top/width/height.
-   * After this, flexbox centering no longer affects it at all.
-   * Uses rAF to ensure layout is fully computed first.
+   * Snapshot current screen position → position:fixed.
+   * On mobile the window is always fullscreen instead.
    */
   function pinToScreen(win) {
     requestAnimationFrame(() => {
-      const rect        = win.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
       win.style.position  = 'fixed';
-      win.style.left      = `${rect.left}px`;
-      win.style.top       = `${rect.top}px`;
-      win.style.width     = `${rect.width}px`;
-      win.style.height    = `${rect.height}px`;
       win.style.transform = '';
       win.style.margin    = '0';
+
+      if (vw <= MOBILE_BP) {
+        win.style.left   = '0px';
+        win.style.top    = '0px';
+        win.style.width  = `${vw}px`;
+        win.style.height = `${vh}px`;
+      } else {
+        const rect = win.getBoundingClientRect();
+        win.style.left   = `${rect.left}px`;
+        win.style.top    = `${rect.top}px`;
+        win.style.width  = `${rect.width}px`;
+        win.style.height = `${rect.height}px`;
+      }
     });
   }
 
   function getPos(win) {
-    // Always read from the live bounding rect so we get the real rendered values
-    // even if inline styles haven't been flushed yet.
     const rect = win.getBoundingClientRect();
     return {
       left:   rect.left,
@@ -51,6 +58,43 @@ const Draggable = (() => {
       height: rect.height || win.offsetHeight,
     };
   }
+
+  // ── Viewport resize → clamp all windows ──────────────────
+  let _rafPending = false;
+
+  function handleViewportResize() {
+    if (_rafPending) return;
+    _rafPending = true;
+    requestAnimationFrame(() => {
+      _rafPending = false;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      document.querySelectorAll('.terminal-window').forEach(win => {
+        if (vw <= MOBILE_BP) {
+          // Fullscreen on mobile — remove any manual sizing
+          win.style.left   = '0px';
+          win.style.top    = '0px';
+          win.style.width  = `${vw}px`;
+          win.style.height = `${vh}px`;
+        } else {
+          // Desktop / tablet: clamp size then position
+          const p    = getPos(win);
+          const newW = Math.min(p.width,  vw - 16);
+          const newH = Math.min(p.height, vh - 16);
+          const newL = clamp(p.left, 0, vw - newW);
+          const newT = clamp(p.top,  0, vh - newH);
+
+          win.style.width  = `${newW}px`;
+          win.style.height = `${newH}px`;
+          win.style.left   = `${newL}px`;
+          win.style.top    = `${newT}px`;
+        }
+      });
+    });
+  }
+
+  window.addEventListener('resize', handleViewportResize);
 
   // ── Drag ──────────────────────────────────────────────────
   function initDrag(win, handle) {
@@ -77,7 +121,7 @@ const Draggable = (() => {
     }
 
     handle.addEventListener('pointerdown', e => {
-      if (window.innerWidth <= 600) return;
+      if (window.innerWidth <= MOBILE_BP) return;
       if (e.target.classList.contains('dot')) return;
       // Resize handles sit at top:0 and overlap the titlebar physically.
       // If the click originated on a resize handle, let resize take it.
@@ -166,7 +210,7 @@ const Draggable = (() => {
 
     win.addEventListener('pointerdown', e => {
       const handle = e.target.closest('.resize-handle');
-      if (!handle || window.innerWidth <= 600) return;
+      if (!handle || window.innerWidth <= MOBILE_BP) return;
 
       edge     = handle.dataset.edge;
       resizing = true;

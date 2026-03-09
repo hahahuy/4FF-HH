@@ -251,21 +251,81 @@ body {
   100% { transform: translate(0, 0); }
 }
 
-/* ── Mobile ───────────────────────────────────────────────── */
+/* ── Tablet (601–900 px) ──────────────────────────────────── */
+@media (min-width: 601px) and (max-width: 900px) {
+  :root {
+    --font-size:   13px;
+    --line-height: 1.55;
+  }
+
+  .terminal-body {
+    padding: 12px 14px 10px;
+  }
+
+  .titlebar {
+    padding: 8px 14px;
+  }
+
+  /* Hide resize handles — too fiddly at this size */
+  .resize-handle {
+    display: none;
+  }
+}
+
+/* ── Mobile (≤ 600 px) ────────────────────────────────────── */
 @media (max-width: 600px) {
+  :root {
+    --font-size:   13px;
+    --line-height: 1.5;
+  }
+
   .terminal-window {
     width: 100vw;
-    max-height: 100dvh;
+    height: 100dvh;
     border-radius: 0;
     border: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    transform: none !important; /* disable drag on mobile */
+    position: fixed !important;
+    top: 0   !important;
+    left: 0  !important;
+    transform: none !important;
   }
 
   .titlebar {
     cursor: default;
     border-radius: 0;
+    padding: 8px 14px;
+  }
+
+  .terminal-body {
+    padding: 10px 12px 8px;
+  }
+
+  .resize-handle {
+    display: none;
+  }
+}
+
+/* ── Small mobile (≤ 480 px) ──────────────────────────────── */
+@media (max-width: 480px) {
+  :root {
+    --font-size:   12px;
+    --line-height: 1.5;
+  }
+
+  .titlebar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .titlebar-label {
+    display: none; /* reclaim space on tiny screens */
+  }
+
+  .terminal-body {
+    padding: 8px 10px;
+  }
+
+  .ls-grid .ls-item {
+    min-width: 100px; /* tighter grid columns */
   }
 }

@@ -207,6 +207,11 @@
   min-width: 120px;
 }
 
+@media (max-width: 600px) {
+  .ls-grid { gap: 2px 12px; }
+  .ls-grid .ls-item { min-width: 90px; }
+}
+
 /* ── Scrollback spacer ────────────────────────────────────── */
 .spacer {
   height: 8px;
