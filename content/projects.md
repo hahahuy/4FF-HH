@@ -1,6 +1,6 @@
 # Projects
 
-A selection of things I've built. More on [GitHub](https://github.com/hahahuy).
+A selection of things I've built. More on [GitHub](https://github.com/hahahuy?tab=repositories).
 
 ---
 

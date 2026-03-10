@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ha Huy's Portfolio</title>
 
+  <!-- Theme restore (runs before CSS paints to prevent flash) -->
+  <script>
+    (function () {
+      var THEMES = ['dracula', 'solarized', 'light'];
+      // ?theme= query param takes priority, then localStorage
+      var params = new URLSearchParams(location.search);
+      var theme  = params.get('theme') || localStorage.getItem('term_theme') || 'default';
+      if (THEMES.indexOf(theme) !== -1) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('term_theme', theme);
+      }
+    })();
+  </script>
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

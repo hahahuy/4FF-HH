@@ -101,6 +101,94 @@
   <!-- Load all production modules -->
   <script src="../js/filesystem.js"></script>
   <script src="../js/autocomplete.js"></script>
+  <!-- MessagePanel stub: avoids real Firebase SDK in tests.
+       Exposes only the methods the test suite calls. -->
+  <script>
+    'use strict';
+    const MessagePanel = (() => {
+      let _pendingCaptcha  = false;
+      let _captchaContent  = '';
+      let _captchaAnswer   = null;
+      let _pendingConfirm  = false;
+      let _pendingContent  = '';
+
+      function confirmSend(content, ctx) {
+        // Mirror validateContent / validateName logic for test coverage
+        if (!content || !content.trim())
+          return { error: 'Message cannot be empty.' };
+        if (content.length > 500)
+          return { error: `Message too long. Max 500 characters (got ${content.length}).` };
+        // Rate limit check (reads localStorage directly)
+        const RATE_KEY = 'mp_send_times';
+        const WINDOW_MS = 60_000;
+        const MAX_SENDS = 3;
+        const times = JSON.parse(localStorage.getItem(RATE_KEY) || '[]')
+          .filter(t => Date.now() - t < WINDOW_MS);
+        localStorage.setItem(RATE_KEY, JSON.stringify(times));
+        if (times.length >= MAX_SENDS)
+          return { error: 'Too many messages. Please wait a minute.' };
+        // Show captcha
+        const a = 7, b = 4;
+        _captchaAnswer  = a + b;
+        _captchaContent = content;
+        _pendingCaptcha = true;
+        ctx.appendHTML(
+          `<span>Solve to send:</span> ${a} + ${b} = ?`, []
+        );
+        ctx.scrollBottom();
+        return null;
+      }
+
+      function hasPendingCaptcha() { return _pendingCaptcha; }
+
+      function resolvePendingCaptcha(raw, ctx) {
+        const answer = parseInt(raw.trim(), 10);
+        if (isNaN(answer) || answer !== _captchaAnswer) {
+          ctx.appendLine('Incorrect, try again.', ['error']);
+          ctx.appendHTML('New question…', []);
+          ctx.scrollBottom();
+          return; // stays pending
+        }
+        const content   = _captchaContent;
+        _pendingCaptcha = false;
+        _captchaAnswer  = null;
+        _captchaContent = '';
+        _pendingConfirm = true;
+        _pendingContent = content;
+        ctx.appendHTML('Send? y/n', []);
+        ctx.scrollBottom();
+      }
+
+      function hasPendingConfirm()  { return _pendingConfirm; }
+
+      function resolvePendingConfirm(raw, ctx) {
+        const a = raw.trim().toLowerCase();
+        if (a === 'y' || a === 'yes') {
+          _pendingConfirm = false; _pendingContent = '';
+          ctx.appendLine('Message sent!', ['success']);
+        } else if (a === 'n' || a === 'no') {
+          _pendingConfirm = false; _pendingContent = '';
+          ctx.appendLine('Cancelled.', ['muted']);
+        } else {
+          ctx.appendLine('Type y or n.', ['muted']);
+        }
+      }
+
+      function isActive()    { return false; }
+      function stop()        { return { lines: [] }; }
+      function getLastName() {
+        try { return localStorage.getItem('mp_last_name') || null; }
+        catch (e) { return null; }
+      }
+      function startChat(name, ctx) { return Promise.resolve(null); }
+
+      return {
+        confirmSend, hasPendingCaptcha, resolvePendingCaptcha,
+        hasPendingConfirm, resolvePendingConfirm,
+        isActive, stop, getLastName, startChat,
+      };
+    })();
+  </script>
   <script src="../js/commands.js"></script>
   <script src="../js/terminal.js"></script>
 

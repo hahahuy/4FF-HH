@@ -38,6 +38,84 @@
   --line-height:   1.6;
 }
 
+/* ── Theme: Dracula ───────────────────────────────────────── */
+[data-theme="dracula"] {
+  --bg-page:       #282a36;
+  --bg-window:     #1e1f29;
+  --bg-titlebar:   #21222c;
+  --bg-hover:      #44475a;
+
+  --text-primary:  #f8f8f2;
+  --text-muted:    #6272a4;
+  --text-dim:      #44475a;
+
+  --color-blue:    #8be9fd;
+  --color-green:   #50fa7b;
+  --color-orange:  #ffb86c;
+  --color-red:     #ff5555;
+  --color-purple:  #bd93f9;
+
+  --dot-red:       #ff5555;
+  --dot-yellow:    #f1fa8c;
+  --dot-green:     #50fa7b;
+
+  --border-color:  #44475a;
+}
+
+/* ── Theme: Solarized Dark ────────────────────────────────── */
+[data-theme="solarized"] {
+  --bg-page:       #002b36;
+  --bg-window:     #073642;
+  --bg-titlebar:   #073642;
+  --bg-hover:      #094453;
+
+  --text-primary:  #839496;
+  --text-muted:    #586e75;
+  --text-dim:      #657b83;
+
+  --color-blue:    #268bd2;
+  --color-green:   #859900;
+  --color-orange:  #cb4b16;
+  --color-red:     #dc322f;
+  --color-purple:  #6c71c4;
+
+  --dot-red:       #dc322f;
+  --dot-yellow:    #b58900;
+  --dot-green:     #859900;
+
+  --border-color:  #094453;
+}
+
+/* ── Theme: Light ─────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-page:       #f6f8fa;
+  --bg-window:     #ffffff;
+  --bg-titlebar:   #f0f2f5;
+  --bg-hover:      #eaeef2;
+
+  --text-primary:  #24292f;
+  --text-muted:    #6e7781;
+  --text-dim:      #8c959f;
+
+  --color-blue:    #0969da;
+  --color-green:   #1a7f37;
+  --color-orange:  #bc4c00;
+  --color-red:     #cf222e;
+  --color-purple:  #8250df;
+
+  --dot-red:       #ff5f56;
+  --dot-yellow:    #ffbd2e;
+  --dot-green:     #27c93f;
+
+  --border-color:  #d0d7de;
+  --shadow:        0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Light theme: dot pattern adjustment */
+[data-theme="light"] body {
+  background-image: radial-gradient(circle, #d0d7de 1px, transparent 1px);
+}
+
 html, body {
   height: 100%;
   width: 100%;

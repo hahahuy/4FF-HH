@@ -32,11 +32,28 @@ function createTerminal(winEl) {
   // ── Per-instance autocomplete ─────────────────────────────
   const ac = createAutocomplete(inputEl, ghostTextEl, autocompleteEl);
 
+  // ── localStorage keys (only used by the first/main terminal) ─
+  const HIST_KEY = 'term_history';
+  const CWD_KEY  = 'term_cwd';
+
   // ── State ─────────────────────────────────────────────────
+  // Restore command history and cwd from localStorage (first terminal only)
   let commandHistory = [];
   let historyIndex   = -1;
   let tempBuffer     = '';
   let currentPath    = ['~'];
+
+  if (isFirst) {
+    try {
+      const savedHist = localStorage.getItem(HIST_KEY);
+      if (savedHist) commandHistory = JSON.parse(savedHist);
+    } catch (e) { commandHistory = []; }
+
+    try {
+      const savedCwd = localStorage.getItem(CWD_KEY);
+      if (savedCwd) currentPath = JSON.parse(savedCwd);
+    } catch (e) { currentPath = ['~']; }
+  }
 
   // ── Helpers ──────────────────────────────────────────────
   function getCwd()       { return currentPath.join('/'); }
@@ -95,6 +112,13 @@ function createTerminal(winEl) {
 
   function clearOutput() { output.innerHTML = ''; }
 
+  // ── Output memory guard (2d) ──────────────────────────────
+  function trimOutput() {
+    while (output.children.length > 500) {
+      output.removeChild(output.firstChild);
+    }
+  }
+
   // ── Close this window (quit command) ──────────────────────
   function closeWindow() {
     winEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
@@ -150,18 +174,32 @@ function createTerminal(winEl) {
     }
 
     // Render context: async commands (cat) call back into this instance
-    const ctx = { appendMarkdown, appendLine, scrollBottom, winEl };
+    const ctx = { appendMarkdown, appendLine, appendHTML, scrollBottom, winEl };
+
+    // ── Intercept captcha answer (1c) ─────────────────────────
+    if (typeof MessagePanel !== 'undefined' && MessagePanel.hasPendingCaptcha()) {
+      MessagePanel.resolvePendingCaptcha(raw, ctx);
+      trimOutput();
+      return;
+    }
 
     // ── Intercept Y/N confirmation (e.g. for `message` one-shot) ──
     if (typeof MessagePanel !== 'undefined' && MessagePanel.hasPendingConfirm()) {
       MessagePanel.resolvePendingConfirm(raw, ctx);
+      trimOutput();
       return;
     }
 
     const result = Commands.execute(cmd, args, currentPath, ctx);
 
     if (result) {
-      if (result.newPath) currentPath = result.newPath;
+      if (result.newPath) {
+        currentPath = result.newPath;
+        // Persist cwd (2b)
+        if (isFirst) {
+          try { localStorage.setItem(CWD_KEY, JSON.stringify(currentPath)); } catch (e) {}
+        }
+      }
       if (result.clear)   clearOutput();
       if (result.quit)    { closeWindow(); return; }
       if (result.lines)   result.lines.forEach(l => appendHTML(l.html || '', l.classes || []));
@@ -169,6 +207,7 @@ function createTerminal(winEl) {
       if (result.error)   appendLine(result.error, ['error']);
     }
 
+    trimOutput(); // memory guard (2d)
     updatePrompt();
     scrollBottom();
     // Arm idle hint the first time a command is run in the original window
@@ -187,6 +226,10 @@ function createTerminal(winEl) {
           echoCommand(raw);
           commandHistory.unshift(raw);
           if (commandHistory.length > 200) commandHistory.pop();
+          // Persist history (2a) — first terminal only
+          if (isFirst) {
+            try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+          }
           historyIndex = -1; tempBuffer = '';
           executeCommand(raw);
         }
@@ -293,6 +336,10 @@ function createTerminal(winEl) {
       echoCommand(cmd);
       commandHistory.unshift(cmd);
       if (commandHistory.length > 200) commandHistory.pop();
+      // Persist history (2a)
+      if (isFirst) {
+        try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+      }
       historyIndex = -1; tempBuffer = '';
       executeCommand(cmd);
       resetIdleTimer();
@@ -310,6 +357,27 @@ function createTerminal(winEl) {
     await boot();
     updatePrompt();
     inputEl.focus();
+
+    // URL deep-linking (3a) — auto-execute #cmd=<encoded> after boot
+    if (isFirst) {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#cmd=')) {
+        try {
+          const autoCmd = decodeURIComponent(hash.slice(5));
+          if (autoCmd && !autoCmd.includes('\n') && !autoCmd.includes('\r')) {
+            // Small delay so boot output renders first
+            setTimeout(() => {
+              echoCommand(autoCmd);
+              commandHistory.unshift(autoCmd);
+              if (commandHistory.length > 200) commandHistory.pop();
+              try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+              executeCommand(autoCmd);
+            }, 350);
+          }
+        } catch (e) { /* ignore malformed hash */ }
+      }
+    }
+
     // Idle timer arms only after the first command — not at boot.
   }
 
@@ -326,7 +394,13 @@ function createTerminal(winEl) {
     updatePrompt,
     scrollBottom,
     get currentPath()     { return currentPath; },
-    set currentPath(p)    { currentPath = p; updatePrompt(); },
+    set currentPath(p)    {
+      currentPath = p;
+      updatePrompt();
+      if (isFirst) {
+        try { localStorage.setItem(CWD_KEY, JSON.stringify(p)); } catch (e) {}
+      }
+    },
     get commandHistory()  { return commandHistory; },
   };
 }

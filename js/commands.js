@@ -41,19 +41,23 @@ const Commands = (() => {
       usage: 'help',
       exec(args, path) {
         const cmds = [
-          ['help',    'Show this help message'],
-          ['ls',      'List files in current or specified directory'],
-          ['cd',      'Change directory  (cd .., cd ~, cd projects)'],
-          ['cat',     'Read and display a file  (supports Markdown)'],
-          ['pwd',     'Print current working directory'],
-          ['whoami',  'Display name and intro'],
-          ['clear',   'Clear the terminal'],
-          ['open',    'Open external link  (github | linkedin | email)'],
-          ['history', 'Show recent command history'],
-          ['echo',    'Echo text back to the terminal'],
-          ['quit',    'Close this terminal window'],
-          ['init',    'Open portfolio overview panels  (init --stop to close)'],
-          ['message', 'Send a message  (--name <you> for live chat, --stop to close)'],
+          ['help',     'Show this help message'],
+          ['ls',       'List files in current or specified directory'],
+          ['cd',       'Change directory  (cd .., cd ~, cd projects)'],
+          ['cat',      'Read and display a file  (supports Markdown)'],
+          ['pwd',      'Print current working directory'],
+          ['whoami',   'Display name and intro'],
+          ['clear',    'Clear the terminal'],
+          ['open',     'Open external link  (github | linkedin | email)'],
+          ['history',  'Show recent command history'],
+          ['echo',     'Echo text back to the terminal'],
+          ['grep',     'Search file contents  (grep <term>)'],
+          ['neofetch', 'Display system/portfolio info'],
+          ['theme',    'Switch color theme  (theme <name> | theme list)'],
+          ['download', 'Download resume  (download resume)'],
+          ['quit',     'Close this terminal window'],
+          ['init',     'Open portfolio overview panels  (init --stop to close)'],
+          ['message',  'Send a message  (--name <you> for live chat, --stop to close)'],
         ];
         const lines = [
           line('<span class="hr">────────────────────────────────────</span>'),
@@ -106,18 +110,19 @@ const Commands = (() => {
           const cls     = isDir ? 'ls-dir' : 'ls-file';
           const suffix  = isDir ? '/' : '';
           // Determine what command clicking should run
-          const dirStr  = resolvedPath.join('/'); // e.g. "~/blog"
           let cmd;
           if (isDir) {
-            // cd into the dir using path relative to resolvedPath
             const relBase = target ? `${target}/${e.name}` : e.name;
             cmd = `cd ${relBase}`;
           } else {
             const relBase = target ? `${target}/${e.name}` : e.name;
             cmd = `cat ${relBase}`;
           }
+          // Generate a shareable deep-link (3a)
+          const shareUrl = `${location.origin}${location.pathname}#cmd=${encodeURIComponent(cmd)}`;
           gridHtml +=
-            `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" title="click to run: ${esc(cmd)}">${esc(e.name)}${suffix}</span>`;
+            `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" ` +
+            `title="click to run: ${esc(cmd)} | link: ${esc(shareUrl)}">${esc(e.name)}${suffix}</span>`;
         });
         gridHtml += '</div>';
         return { lines: [{ html: gridHtml, classes: [] }] };
@@ -242,9 +247,12 @@ const Commands = (() => {
           return { lines: [text('No commands in history yet.', ['muted'])] };
         }
         const limit = 20;
-        const shown = hist.slice(0, limit).reverse();
+        // hist is stored newest-first; take up to `limit`, then reverse to show oldest→newest
+        const slice = hist.slice(0, limit);
+        const shown = slice.slice().reverse(); // oldest first in display
+        const startNum = hist.length - slice.length + 1;
         const lines = shown.map((cmd, i) => {
-          const num = String(hist.length - shown.length + i + 1).padStart(4, ' ');
+          const num = String(startNum + i).padStart(4, ' ');
           return line(`<span style="color:var(--text-muted)">${esc(num)}</span>  ${esc(cmd)}`);
         });
         return { lines };
@@ -280,6 +288,214 @@ const Commands = (() => {
       },
     },
 
+    // ── grep ──────────────────────────────────────────────────
+    grep: {
+      desc: 'Search file contents  (grep <term>)',
+      usage: 'grep <term>',
+      exec(args, path, ctx) {
+        if (!args[0]) {
+          return { error: 'grep: missing search term. Usage: grep <term>' };
+        }
+
+        const term = args.join(' ');
+        const termLower = term.toLowerCase();
+
+        // Recursively collect all file nodes from the FS tree
+        function collectFiles(node, currentPath) {
+          const results = [];
+          if (!node || typeof node !== 'object') return results;
+          for (const [key, child] of Object.entries(node)) {
+            if (key === '__type') continue;
+            if (!child || typeof child !== 'object') continue;
+            if (child.__type === 'file') {
+              results.push({ name: [...currentPath, key].join('/'), node: child });
+            } else if (child.__type === 'dir') {
+              results.push(...collectFiles(child, [...currentPath, key]));
+            }
+          }
+          return results;
+        }
+
+        const files = collectFiles(FS['~'], ['~']);
+
+        ctx.appendLine(`Searching for "${term}"…`, ['muted']);
+        ctx.scrollBottom();
+
+        let found = 0;
+        let pending = files.length;
+
+        if (files.length === 0) {
+          ctx.appendLine('No files to search.', ['muted']);
+          return null;
+        }
+
+        files.forEach(({ name, node: fileNode }) => {
+          fsReadFile(fileNode)
+            .then(content => {
+              const lines = content.split('\n');
+              lines.forEach((fileLine, idx) => {
+                if (fileLine.toLowerCase().includes(termLower)) {
+                  found++;
+                  const lineNum = idx + 1;
+                  const preview = fileLine.trim().slice(0, 100);
+                  ctx.appendHTML(
+                    `<span style="color:var(--color-blue)">${esc(name)}</span>` +
+                    `<span style="color:var(--text-muted)">:${lineNum}:</span> ` +
+                    `${esc(preview)}`,
+                    ['output-line']
+                  );
+                }
+              });
+            })
+            .catch(() => { /* skip unreadable files */ })
+            .finally(() => {
+              pending--;
+              if (pending === 0) {
+                if (found === 0) {
+                  ctx.appendLine(`No matches found for "${term}".`, ['muted']);
+                } else {
+                  ctx.appendLine(`— ${found} match${found === 1 ? '' : 'es'} found.`, ['muted']);
+                }
+                ctx.scrollBottom();
+              }
+            });
+        });
+
+        return null;
+      },
+    },
+
+    // ── neofetch ──────────────────────────────────────────────
+    neofetch: {
+      desc: 'Display portfolio system info',
+      usage: 'neofetch',
+      exec(args, path) {
+        const cmdCount = Object.keys(registry).length;
+        // Count blog posts via FS if available
+        let blogCount = 0;
+        try {
+          const blogDir = FS['~'] && FS['~'].blog;
+          if (blogDir) {
+            blogCount = Object.keys(blogDir).filter(k => k !== '__type').length;
+          }
+        } catch (e) {}
+
+        const asciiArt = [
+          '        ██████████        ',
+          '       ██░░░░░░░░██       ',
+          '      ██░░░░░░░░░░██      ',
+          '     ██░░░░░░░░░░░░██     ',
+          '    ██░░░░██░░░░░░░░██    ',
+          '   ██░░░░████░░░░░░░░██   ',
+          '   ██░░░░░░░░░░░░░░░░██   ',
+          '   ████████████████████   ',
+        ];
+
+        const info = [
+          `<span style="color:var(--color-green);font-weight:700">visitor</span><span style="color:var(--text-muted)">@</span><span style="color:var(--color-blue);font-weight:700">portfolio</span>`,
+          `<span style="color:var(--text-muted)">─────────────────</span>`,
+          `<span style="color:var(--color-green)">OS:</span>       hahuy.site v1.0.0`,
+          `<span style="color:var(--color-green)">Shell:</span>    4FF-HH terminal`,
+          `<span style="color:var(--color-green)">Commands:</span> ${cmdCount}`,
+          `<span style="color:var(--color-green)">Blog:</span>     ${blogCount} post${blogCount === 1 ? '' : 's'}`,
+          `<span style="color:var(--color-green)">Stack:</span>    JS · Firebase · Telegram`,
+          `<span style="color:var(--color-green)">Theme:</span>    ${document.documentElement.dataset.theme || 'default'}`,
+        ];
+
+        const lines = [];
+        const maxRows = Math.max(asciiArt.length, info.length);
+        for (let i = 0; i < maxRows; i++) {
+          const art  = asciiArt[i]  || '                          ';
+          const inf  = info[i]      || '';
+          lines.push(line(
+            `<span style="color:var(--color-blue)">${art}</span>  ${inf}`
+          ));
+        }
+        return { lines };
+      },
+    },
+
+    // ── theme ─────────────────────────────────────────────────
+    theme: {
+      desc: 'Switch color theme  (theme <name> | theme list)',
+      usage: 'theme <name>',
+      exec(args, path) {
+        const THEMES = ['default', 'dracula', 'solarized', 'light'];
+        const name = (args[0] || '').toLowerCase();
+
+        if (!name || name === 'list') {
+          const current = document.documentElement.dataset.theme || 'default';
+          return {
+            lines: [
+              text('Available themes:', []),
+              ...THEMES.map(t =>
+                line(
+                  `  <span class="${t === current ? 'cmd-name' : ''}" ` +
+                  `style="color:${t === current ? 'var(--color-green)' : 'var(--text-primary)'}">${esc(t)}</span>` +
+                  (t === current ? ' <span style="color:var(--text-muted)">(active)</span>' : '')
+                )
+              ),
+              text('Usage: theme <name>', ['muted']),
+            ],
+          };
+        }
+
+        if (!THEMES.includes(name)) {
+          return { error: `theme: unknown theme '${name}'. Run 'theme list' to see options.` };
+        }
+
+        if (name === 'default') {
+          delete document.documentElement.dataset.theme;
+        } else {
+          document.documentElement.dataset.theme = name;
+        }
+
+        // Persist theme selection
+        try { localStorage.setItem('term_theme', name); } catch (e) {}
+
+        return {
+          lines: [
+            line(`<span style="color:var(--color-green)">✓</span> Theme set to <span style="color:var(--color-blue)">${esc(name)}</span>`),
+          ],
+        };
+      },
+    },
+
+    // ── download ──────────────────────────────────────────────
+    download: {
+      desc: 'Download a file  (download resume)',
+      usage: 'download <file>',
+      exec(args, path) {
+        const target = (args[0] || '').toLowerCase();
+
+        if (!target) {
+          return {
+            lines: [
+              text('Usage: download <file>', ['muted']),
+              text('Available: resume', ['muted']),
+            ],
+          };
+        }
+
+        if (target === 'resume' || target === 'resume.pdf' || target === 'cv') {
+          const a = document.createElement('a');
+          a.href     = 'content/resume.pdf';
+          a.download = 'resume.pdf';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => document.body.removeChild(a), 1000);
+          return {
+            lines: [
+              line('<span style="color:var(--color-green)">↓</span> Downloading <span style="color:var(--color-blue)">resume.pdf</span>…'),
+            ],
+          };
+        }
+
+        return { error: `download: '${target}' not available. Try: resume` };
+      },
+    },
+
     // ── message ───────────────────────────────────────────────
     message: {
       desc: 'Send me a message  (message --name <you> for live chat)',
@@ -289,16 +505,19 @@ const Commands = (() => {
           return { error: 'message: MessagePanel module not loaded' };
         }
 
-        // No arguments — show usage
+        // No arguments — show usage + last used name hint
         if (!args.length) {
-          return {
-            lines: [
-              text('Usage:'),
-              text('  message <content>          Send a one-shot message'),
-              text('  message --name <you>       Open a live chat session'),
-              text('  message --stop             Close the live chat'),
-            ],
-          };
+          const lastName = MessagePanel.getLastName ? MessagePanel.getLastName() : null;
+          const lines = [
+            text('Usage:'),
+            text('  message <content>          Send a one-shot message'),
+            text('  message --name <you>       Open a live chat session'),
+            text('  message --stop             Close the live chat'),
+          ];
+          if (lastName) {
+            lines.push(text(`  Tip: last used name was "${lastName}"`, ['muted']));
+          }
+          return { lines };
         }
 
         // --stop: close live chat
@@ -313,8 +532,6 @@ const Commands = (() => {
           // startChat is async — use ctx for deferred output
           MessagePanel.startChat(name, ctx).then(result => {
             if (result) {
-              if (result.lines) result.lines.forEach(l => ctx.appendLine ? null : null);
-              // Route result back through terminal output
               if (result.error) {
                 ctx.appendLine(result.error, ['error']);
               } else if (result.lines) {
@@ -336,7 +553,7 @@ const Commands = (() => {
           return { error: 'Close the current chat first: message --stop' };
         }
 
-        // One-shot: ask for confirmation
+        // One-shot: validate then show captcha → confirm
         const content = args.join(' ');
         return MessagePanel.confirmSend(content, ctx);
       },

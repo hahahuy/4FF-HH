@@ -18,4 +18,3 @@ I craft things for the web and beyond — fast, elegant, and purposeful.
 
 ---
 
-*Type `help` to explore.*

@@ -18,6 +18,17 @@ const MessagePanel = (() => {
     appId:             '1:2541955312:web:56d5da9b4c6e912aed3a35',
   };
 
+  // ── Rate-limit constants ──────────────────────────────────
+  const RATE_KEY   = 'mp_send_times';
+  const MAX_SENDS  = 3;       // max messages
+  const WINDOW_MS  = 60_000;  // per 60 seconds
+
+  // ── Input validation constants ─────────────────────────────
+  const MAX_CONTENT_LEN = 500;
+  const MAX_NAME_LEN    = 32;
+  const NAME_PATTERN    = /^[a-zA-Z0-9_-]+$/;
+  const RESERVED_NAMES  = new Set(['admin', 'test', 'null', 'undefined']);
+
   // ── State ─────────────────────────────────────────────────
   let _db            = null;    // Firebase database reference
   let _active        = false;   // Is live chat open?
@@ -29,6 +40,11 @@ const MessagePanel = (() => {
 
   let _pendingConfirm  = false; // Waiting for Y/N input?
   let _pendingContent  = '';    // Content of the one-shot message
+
+  // ── Captcha state ─────────────────────────────────────────
+  let _pendingCaptcha  = false; // Waiting for captcha answer?
+  let _captchaAnswer   = null;  // Expected numeric answer
+  let _captchaContent  = '';    // Held content pending captcha
 
   // ── Firebase init (lazy, called once) ────────────────────
   function getDb() {
@@ -63,6 +79,112 @@ const MessagePanel = (() => {
   function fmtTime(ms) {
     const d = new Date(ms || Date.now());
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── Rate limiting ─────────────────────────────────────────
+  function isRateLimited() {
+    const times = JSON.parse(localStorage.getItem(RATE_KEY) || '[]')
+      .filter(t => Date.now() - t < WINDOW_MS);
+    localStorage.setItem(RATE_KEY, JSON.stringify(times));
+    return times.length >= MAX_SENDS;
+  }
+
+  function recordSend() {
+    const times = JSON.parse(localStorage.getItem(RATE_KEY) || '[]');
+    times.push(Date.now());
+    localStorage.setItem(RATE_KEY, JSON.stringify(times));
+  }
+
+  // ── Input validation ──────────────────────────────────────
+  function validateContent(content) {
+    if (!content || !content.trim()) {
+      return 'Message cannot be empty.';
+    }
+    if (content.length > MAX_CONTENT_LEN) {
+      return `Message too long. Max ${MAX_CONTENT_LEN} characters (got ${content.length}).`;
+    }
+    return null; // valid
+  }
+
+  function validateName(name) {
+    if (!name || !name.trim()) {
+      return 'Name cannot be empty.';
+    }
+    if (name.length > MAX_NAME_LEN) {
+      return `Name too long. Max ${MAX_NAME_LEN} characters.`;
+    }
+    if (!NAME_PATTERN.test(name)) {
+      return 'Name may only contain letters, numbers, hyphens, and underscores.';
+    }
+    if (RESERVED_NAMES.has(name.toLowerCase())) {
+      return `"${name}" is a reserved name. Please choose another.`;
+    }
+    return null; // valid
+  }
+
+  // ── Captcha helpers ───────────────────────────────────────
+  function generateCaptcha(content, ctx) {
+    const a = Math.floor(Math.random() * 9) + 1;
+    const b = Math.floor(Math.random() * 9) + 1;
+    _captchaAnswer  = a + b;
+    _captchaContent = content;
+    _pendingCaptcha = true;
+
+    ctx.appendHTML(
+      `<span style="color:var(--color-orange)">Solve to send:</span> ` +
+      `<span style="color:var(--text-primary)">${a} + ${b} = ?</span> ` +
+      `<span style="color:var(--text-muted)">(type your answer and press Enter)</span>`,
+      ['output-line']
+    );
+    ctx.scrollBottom();
+  }
+
+  function hasPendingCaptcha() {
+    return _pendingCaptcha;
+  }
+
+  function resolvePendingCaptcha(raw, ctx) {
+    const answer = parseInt(raw.trim(), 10);
+
+    if (isNaN(answer) || answer !== _captchaAnswer) {
+      // Wrong — re-generate
+      const a = Math.floor(Math.random() * 9) + 1;
+      const b = Math.floor(Math.random() * 9) + 1;
+      _captchaAnswer = a + b;
+      ctx.appendLine('Incorrect, try again.', ['error']);
+      ctx.appendHTML(
+        `<span style="color:var(--color-orange)">Solve to send:</span> ` +
+        `<span style="color:var(--text-primary)">${a} + ${b} = ?</span>`,
+        ['output-line']
+      );
+      ctx.scrollBottom();
+      return;
+    }
+
+    // Correct — proceed to Y/N confirmation
+    const content       = _captchaContent;
+    _pendingCaptcha     = false;
+    _captchaAnswer      = null;
+    _captchaContent     = '';
+
+    // Inline confirmation prompt
+    _pendingConfirm = true;
+    _pendingContent = content;
+
+    ctx.appendHTML(
+      `Send this message? <span style="color:var(--text-muted)">${
+        esc(content.length > 60 ? content.slice(0, 60) + '…' : content)
+      }</span>`,
+      ['output-line']
+    );
+    ctx.appendHTML(
+      `<span style="color:var(--color-green)">y</span>` +
+      `<span style="color:var(--text-muted)"> / </span>` +
+      `<span style="color:var(--color-red)">n</span>` +
+      `<span style="color:var(--text-muted)">  (press Enter to confirm)</span>`,
+      ['output-line']
+    );
+    ctx.scrollBottom();
   }
 
   // ── Build the chat-box DOM and append to body ─────────────
@@ -112,6 +234,7 @@ const MessagePanel = (() => {
     if (placeholder) placeholder.remove();
 
     const isVisitor = data.sender === 'visitor';
+    const isAuto    = data.sender === 'auto';
     const bubbleCls = isVisitor ? 'msg-visitor' : 'msg-owner';
 
     const bubble = document.createElement('div');
@@ -120,7 +243,8 @@ const MessagePanel = (() => {
 
     const meta = document.createElement('div');
     meta.className = 'msg-meta';
-    meta.textContent = `${isVisitor ? 'you' : 'owner'} · ${fmtTime(data.timestamp)}`;
+    const senderLabel = isAuto ? 'auto' : (isVisitor ? 'you' : 'owner');
+    meta.textContent = `${senderLabel} · ${fmtTime(data.timestamp)}`;
 
     _logEl.appendChild(bubble);
     _logEl.appendChild(meta);
@@ -131,6 +255,35 @@ const MessagePanel = (() => {
   function pushMessage(content) {
     const db = getDb();
     if (!db || !_sessionName) return;
+
+    // Rate limit live chat sends too
+    if (isRateLimited()) {
+      if (_logEl) {
+        const errEl = document.createElement('div');
+        errEl.className = 'mp-status';
+        errEl.style.color = 'var(--color-red)';
+        errEl.textContent = 'Too many messages. Please wait a minute.';
+        _logEl.appendChild(errEl);
+        _logEl.scrollTop = _logEl.scrollHeight;
+      }
+      return;
+    }
+
+    // Validate content
+    const contentErr = validateContent(content);
+    if (contentErr) {
+      if (_logEl) {
+        const errEl = document.createElement('div');
+        errEl.className = 'mp-status';
+        errEl.style.color = 'var(--color-red)';
+        errEl.textContent = contentErr;
+        _logEl.appendChild(errEl);
+        _logEl.scrollTop = _logEl.scrollHeight;
+      }
+      return;
+    }
+
+    recordSend();
 
     db.ref(`sessions/${_sessionName}/messages`).push({
       content:   content,
@@ -193,29 +346,22 @@ const MessagePanel = (() => {
   // Public API
   // ══════════════════════════════════════════════════════════
 
-  // ── One-shot: show confirmation prompt ───────────────────
+  // ── One-shot: show captcha then confirmation ──────────────
   function confirmSend(content, ctx) {
-    _pendingConfirm = true;
-    _pendingContent = content;
+    // Rate limit check
+    if (isRateLimited()) {
+      return { error: 'Too many messages. Please wait a minute.' };
+    }
 
-    return {
-      lines: [
-        {
-          html: `Send this message? <span style="color:var(--text-muted)">${
-            // truncate long content for display
-            esc(content.length > 60 ? content.slice(0, 60) + '…' : content)
-          }</span>`,
-          classes: ['output-line'],
-        },
-        {
-          html: `<span style="color:var(--color-green)">y</span>` +
-                `<span style="color:var(--text-muted)"> / </span>` +
-                `<span style="color:var(--color-red)">n</span>` +
-                `<span style="color:var(--text-muted)">  (press Enter to confirm)</span>`,
-          classes: ['output-line'],
-        },
-      ],
-    };
+    // Validate content
+    const contentErr = validateContent(content);
+    if (contentErr) {
+      return { error: contentErr };
+    }
+
+    // Show captcha first — captcha resolver will set _pendingConfirm
+    generateCaptcha(content, ctx);
+    return null; // output already written via ctx
   }
 
   function hasPendingConfirm() {
@@ -235,6 +381,8 @@ const MessagePanel = (() => {
         ctx.appendLine('Error: Firebase not configured. Message not sent.', ['error']);
         return;
       }
+
+      recordSend();
 
       db.ref('single_messages').push({
         content:   content,
@@ -266,6 +414,12 @@ const MessagePanel = (() => {
 
   // ── Live chat: start ──────────────────────────────────────
   async function startChat(name, ctx) {
+    // Validate name
+    const nameErr = validateName(name);
+    if (nameErr) {
+      return { error: nameErr };
+    }
+
     const db = getDb();
     if (!db) {
       return { error: 'Firebase not configured. See js/message-panel.js to add your project config.' };
@@ -304,6 +458,13 @@ const MessagePanel = (() => {
     wireInput(_chatPanel);
     attachListener(name);
 
+    // Save name for next time (2c)
+    try { localStorage.setItem('mp_last_name', name); } catch (e) {}
+
+    // Stuck session cleanup: close session if tab/window closes (1e)
+    window._mpUnloadHandler = () => stop();
+    window.addEventListener('beforeunload', window._mpUnloadHandler);
+
     return {
       lines: [{
         html: `<span style="color:var(--color-green)">✓</span> Chat session <span style="color:var(--color-blue)">${esc(name)}</span> opened. Type <span style="color:var(--text-muted)">message --stop</span> to close.`,
@@ -319,6 +480,12 @@ const MessagePanel = (() => {
     }
 
     const name = _sessionName;
+
+    // Remove beforeunload handler (1e)
+    if (window._mpUnloadHandler) {
+      window.removeEventListener('beforeunload', window._mpUnloadHandler);
+      window._mpUnloadHandler = null;
+    }
 
     // Update Firebase status
     const db = getDb();
@@ -354,14 +521,20 @@ const MessagePanel = (() => {
 
   // ── Query ─────────────────────────────────────────────────
   function isActive() { return _active; }
+  function getLastName() {
+    try { return localStorage.getItem('mp_last_name') || null; } catch (e) { return null; }
+  }
 
   return {
     confirmSend,
     hasPendingConfirm,
     resolvePendingConfirm,
+    hasPendingCaptcha,
+    resolvePendingCaptcha,
     startChat,
     stop,
     isActive,
+    getLastName,
   };
 
 })();

@@ -105,6 +105,9 @@ exports.onNewSessionMessage = functions
 //     Finds the matching session via telegramMsgId and
 //     pushes the owner reply into Firebase so the live
 //     chat panel receives it in real-time.
+//
+//     Security: verifies the X-Telegram-Bot-Api-Secret-Token
+//     header set during webhook registration (1d).
 // ══════════════════════════════════════════════════════════
 exports.telegramWebhook = functions
   .region(REGION)
@@ -112,6 +115,15 @@ exports.telegramWebhook = functions
 
     if (req.method !== 'POST') {
       return res.status(405).send('Method Not Allowed');
+    }
+
+    // ── Webhook signature verification (1d) ────────────────
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const incomingToken = req.headers['x-telegram-bot-api-secret-token'];
+      if (incomingToken !== webhookSecret) {
+        return res.status(403).send('Forbidden');
+      }
     }
 
     const update = req.body;
@@ -152,4 +164,36 @@ exports.telegramWebhook = functions
     });
 
     return res.status(200).send('ok');
+  });
+
+// ══════════════════════════════════════════════════════════
+// 4.  cleanupStaleSessions
+//     Scheduled function that runs every hour and closes
+//     any session older than 2 hours that is still active.
+//     Belt-and-suspenders for the frontend beforeunload (1e).
+// ══════════════════════════════════════════════════════════
+exports.cleanupStaleSessions = functions
+  .region(REGION)
+  .pubsub.schedule('every 60 minutes')
+  .onRun(async () => {
+    const cutoff = Date.now() - 2 * 60 * 60 * 1000; // 2 hours ago
+
+    const snap = await db.ref('sessions')
+      .orderByChild('createdAt')
+      .endAt(cutoff)
+      .once('value');
+
+    const updates = {};
+    snap.forEach(s => {
+      if (s.val().status === 'active') {
+        updates[`${s.key}/status`] = 'closed';
+      }
+    });
+
+    if (Object.keys(updates).length) {
+      await db.ref('sessions').update(updates);
+      console.log(`cleanupStaleSessions: closed ${Object.keys(updates).length} stale session(s)`);
+    }
+
+    return null;
   });

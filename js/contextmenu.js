@@ -111,6 +111,23 @@ const ContextMenu = (() => {
     });
   }
 
+  // ── Z-index management (cap at 9999 to avoid runaway growth) ─
+  const Z_BASE = 10;
+  const Z_MAX  = 9999;
+  let   _zTop  = Z_BASE;
+
+  function bringToFront(winEl) {
+    if (_zTop >= Z_MAX) {
+      // Reset all windows back to base + their stacking order
+      const windows = [...document.querySelectorAll('.terminal-window')];
+      windows.forEach((w, i) => { w.style.zIndex = Z_BASE + i; });
+      _zTop = Z_BASE + windows.length;
+    } else {
+      _zTop++;
+    }
+    winEl.style.zIndex = _zTop;
+  }
+
   function createNewWindow() {
     if (!template) return;
 
@@ -124,6 +141,7 @@ const ContextMenu = (() => {
     const existing = document.querySelectorAll('.terminal-window');
     const offset   = 32 * (existing.length + 1);
     clone.style.transform = `translate(${offset}px, ${offset}px)`;
+    bringToFront(clone);
 
     // Animate in
     clone.style.opacity    = '0';
