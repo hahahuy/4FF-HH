@@ -19,10 +19,12 @@ or a better way to organize a codebase — I'm always exploring.
 ## Currently
 
 - Building projects you can find at `cat projects/README.txt`
-- Learning Rust (slowly but surely)
+- Learning Assembly & Rust (slowly but surely)
+- Thinking about jumping to Drone engineering
 - Drinking too much coffee ☕
 
 ---
 
-*This portfolio is itself a side project — a terminal UI built with zero dependencies.*
+*This portfolio is itself a side project — a terminal UI built with zero dependencies.* 
+*Only in HTML - CSS - JS*
 *Type `help` to explore.*

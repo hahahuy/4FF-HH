@@ -9,8 +9,8 @@ const Commands = (() => {
   // ── External links for `open` ──────────────────────────────
   const LINKS = {
     github:   'https://github.com/hahahuy',
-    linkedin: 'https://linkedin.com/in/hahahuy',
-    email:    'mailto:hahahuy@example.com',  // update to real email
+    linkedin: 'https://www.linkedin.com/in/haqhuy',
+    email:    'mailto:quanghuyha098@gmail.com',
   };
 
   // ── Helper: build an HTML line object ─────────────────────
