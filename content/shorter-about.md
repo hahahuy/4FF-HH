@@ -1,19 +1,18 @@
 # hahahuy
 
-**Developer · Builder · Tinkerer**
+**Developer · Engineer · Hobbyist**
 
-I craft things for the web and beyond — fast, elegant, and purposeful.
+I craft things for the fun of it and beyond — Mostly Fast, Elegant, and Purposeful.
 
 ## Stack
 
-- Full-stack JS / TypeScript
-- Python · Rust *(learning)*
-- React · Node.js · CSS
-
+- Full-stack JS / CSS
+- Python / C++ / Rust *(learning)*
+- Assembly *(learning)*
 ## Currently
 
 - Building this CLI portfolio
-- Exploring systems programming
+- Exploring systems programming, robotic and quantum algorithm
 - Drinking too much coffee ☕
 
 ---

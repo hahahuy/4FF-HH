@@ -5,10 +5,22 @@
 | Language   | Level        |
 |------------|--------------|
 | JavaScript | Proficient   |
-| Python     | Proficient   |
-| TypeScript | Comfortable  |
-| Rust       | Learning     |
 | HTML / CSS | Daily driver |
+| Python     | Proficient   |
+| C++        | Improving    |
+| Assembly   | Improving    |
+
+## Machine Learning / AI Engineer
+
+- Python, C++
+- Neural Network architect designer
+- LLM optimizing
+- Deployment
+
+## Quantum Engineer
+- Quantum SDK (qiskit, Cirq, Braket)
+- Quantum Machine Learning (Qiskit-machine-learning)
+- Optimizing circuit + Error handling
 
 ## Frontend
 
@@ -20,7 +32,7 @@
 ## Backend
 
 - Node.js / Express
-- REST API design
+- REST API/ fastAPI design
 - SQL (PostgreSQL, SQLite)
 - Basic DevOps (Docker, CI/CD)
 
