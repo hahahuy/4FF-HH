@@ -86,10 +86,29 @@ function createTerminal(winEl) {
     output.appendChild(div);
   }
 
+  // SEC-6: Strip dangerous elements/attributes from parsed Markdown before insertion.
+  function sanitiseHtml(el) {
+    // Remove script, iframe, object, embed, form, base tags
+    el.querySelectorAll('script,iframe,object,embed,form,base').forEach(n => n.remove());
+    // Walk all elements and strip on* event attributes and javascript: hrefs
+    el.querySelectorAll('*').forEach(node => {
+      [...node.attributes].forEach(attr => {
+        if (/^on/i.test(attr.name)) {
+          node.removeAttribute(attr.name);
+        }
+        if ((attr.name === 'href' || attr.name === 'src' || attr.name === 'action') &&
+            /^\s*javascript:/i.test(attr.value)) {
+          node.removeAttribute(attr.name);
+        }
+      });
+    });
+  }
+
   function appendMarkdown(mdText) {
     const div = document.createElement('div');
     div.className = 'md-render';
     div.innerHTML = marked.parse(mdText);
+    sanitiseHtml(div); // SEC-6: sanitise before any links are processed
     div.querySelectorAll('a').forEach(a => {
       a.target = '_blank';
       a.rel    = 'noopener noreferrer';
@@ -304,20 +323,35 @@ function createTerminal(winEl) {
     { text: '────────────────────────────────────', cls: 'hr' },
   ] : [];
 
-  function boot() {
+  // VIS-1: Typewriter effect — types text char-by-char at ~28ms/char
+  function typewriterLine(text, cls) {
     return new Promise(resolve => {
-      if (BOOT_LINES.length === 0) { resolve(); return; }
-      BOOT_LINES.forEach((line, i) => {
-        setTimeout(() => {
-          const div = document.createElement('div');
-          div.className   = `output-line boot-line ${line.cls}`;
-          div.textContent = line.text;
-          output.appendChild(div);
+      const div = document.createElement('div');
+      div.className = `output-line boot-line ${cls} typing`;
+      output.appendChild(div);
+      scrollBottom();
+
+      let i = 0;
+      function tick() {
+        if (i < text.length) {
+          div.textContent = text.slice(0, ++i);
           scrollBottom();
-          if (i === BOOT_LINES.length - 1) setTimeout(resolve, 200);
-        }, i * 60);
-      });
+          setTimeout(tick, 28);
+        } else {
+          div.classList.remove('typing');
+          resolve();
+        }
+      }
+      tick();
     });
+  }
+
+  function boot() {
+    if (BOOT_LINES.length === 0) return Promise.resolve();
+    // Run typewriter lines sequentially
+    return BOOT_LINES.reduce((chain, bootLine) => {
+      return chain.then(() => typewriterLine(bootLine.text, bootLine.cls));
+    }, Promise.resolve()).then(() => new Promise(r => setTimeout(r, 120)));
   }
 
   // ── Init ──────────────────────────────────────────────────
@@ -326,6 +360,18 @@ function createTerminal(winEl) {
 
     inputEl.addEventListener('keydown', handleKeydown);
     inputEl.addEventListener('input',   handleInput);
+
+    // UX-5: Shift+Click on any output line copies its text to clipboard
+    output.addEventListener('click', e => {
+      if (!e.shiftKey) return;
+      const line = e.target.closest('.output-line');
+      if (!line) return;
+      const txt = line.textContent || '';
+      navigator.clipboard.writeText(txt).then(() => {
+        line.classList.add('copy-flash');
+        line.addEventListener('animationend', () => line.classList.remove('copy-flash'), { once: true });
+      }).catch(() => {});
+    });
 
     // Clickable ls items
     output.addEventListener('click', e => {
@@ -359,20 +405,33 @@ function createTerminal(winEl) {
     inputEl.focus();
 
     // URL deep-linking (3a) — auto-execute #cmd=<encoded> after boot
+    // SEC-1: Only whitelisted read-only commands may be deep-linked.
+    const DEEPLINK_WHITELIST = /^(cat|ls|cd|whoami|neofetch|theme|help|pwd|echo|fortune|cowsay|banner|weather)\b/i;
     if (isFirst) {
       const hash = window.location.hash;
       if (hash && hash.startsWith('#cmd=')) {
         try {
           const autoCmd = decodeURIComponent(hash.slice(5));
           if (autoCmd && !autoCmd.includes('\n') && !autoCmd.includes('\r')) {
-            // Small delay so boot output renders first
-            setTimeout(() => {
-              echoCommand(autoCmd);
-              commandHistory.unshift(autoCmd);
-              if (commandHistory.length > 200) commandHistory.pop();
-              try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
-              executeCommand(autoCmd);
-            }, 350);
+            if (!DEEPLINK_WHITELIST.test(autoCmd.trim())) {
+              // Blocked — show a red warning after boot
+              setTimeout(() => {
+                appendHTML(
+                  `<span style="color:var(--color-red)">⚠ Deep-link blocked: command not permitted via URL.</span>`,
+                  ['output-line']
+                );
+                scrollBottom();
+              }, 400);
+            } else {
+              // Safe — execute after a small delay so boot output renders first
+              setTimeout(() => {
+                echoCommand(autoCmd);
+                commandHistory.unshift(autoCmd);
+                if (commandHistory.length > 200) commandHistory.pop();
+                try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+                executeCommand(autoCmd);
+              }, 350);
+            }
           }
         } catch (e) { /* ignore malformed hash */ }
       }

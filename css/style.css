@@ -329,6 +329,13 @@ body {
   100% { transform: translate(0, 0); }
 }
 
+/* VIS-2: New terminal window spring open animation */
+@keyframes window-open {
+  0%   { opacity: 0; transform: scale(0.88) translateY(8px); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 /* ── Tablet (601–900 px) ──────────────────────────────────── */
 @media (min-width: 601px) and (max-width: 900px) {
   :root {

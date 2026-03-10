@@ -88,19 +88,40 @@
   <div id="loading">Loading modules…</div>
 
   <!-- Hidden minimal DOM that terminal.js needs -->
+  <!-- Must mirror the real .terminal-window structure so class-based selectors work -->
   <div id="test-terminal-host">
-    <div id="output"></div>
-    <div id="terminalBody">
-      <input id="terminalInput" type="text" />
-      <span id="ghostText"></span>
-      <span id="promptDir">~</span>
-      <div id="autocompleteList"></div>
+    <div class="terminal-window" id="terminalWindow">
+      <div class="titlebar">
+        <span class="titlebar-label">test</span>
+      </div>
+      <div class="terminal-body" id="terminalBody">
+        <div class="output" id="output" aria-live="polite"></div>
+        <div class="input-row">
+          <span class="prompt"><span class="prompt-dir" id="promptDir">~</span></span>
+          <div class="input-wrapper">
+            <input class="terminal-input" id="terminalInput" type="text" />
+            <span class="ghost-text" id="ghostText"></span>
+          </div>
+        </div>
+        <div class="autocomplete-list" id="autocompleteList" hidden></div>
+      </div>
     </div>
   </div>
 
   <!-- Load all production modules -->
   <script src="../js/filesystem.js"></script>
   <script src="../js/autocomplete.js"></script>
+  <!-- InitPanels stub: avoids DOM manipulation in test context -->
+  <script>
+    'use strict';
+    const InitPanels = (() => {
+      let _active = false;
+      function start() { _active = true; }
+      function stop()  { _active = false; }
+      function isActive() { return _active; }
+      return { start, stop, isActive };
+    })();
+  </script>
   <!-- MessagePanel stub: avoids real Firebase SDK in tests.
        Exposes only the methods the test suite calls. -->
   <script>

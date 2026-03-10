@@ -94,6 +94,17 @@
   animation: panelFadeIn 0.25s ease forwards;
 }
 
+/* VIS-5: Staggered section fade-in inside panels */
+@keyframes section-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.panel-section-in {
+  opacity: 0;
+  animation: section-in 0.3s ease forwards;
+}
+
 /* ── Tablet (601–900px): stack layout ────────────────────── */
 @media (min-width: 601px) and (max-width: 900px) {
   .info-panel .titlebar {

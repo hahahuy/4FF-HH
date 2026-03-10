@@ -2,10 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- MOB-4: maximum-scale=1.0 prevents iOS auto-zoom; user-scalable=no for terminal UX -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+
+  <!-- SEC-2: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net www.gstatic.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://wttr.in https://asia-southeast1-hahuy-portfolio.cloudfunctions.net; frame-src 'none'; object-src 'none';" />
+
   <title>Ha Huy's Portfolio</title>
 
-  <!-- Theme restore (runs before CSS paints to prevent flash) -->
+  <!-- PWA / MOB-5 -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1f2428" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HH Terminal" />
+  <link rel="apple-touch-icon" href="content/images/icon-192.png" />
+
+  <!-- Theme + scanlines restore (runs before CSS paints to prevent flash) -->
   <script>
     (function () {
       var THEMES = ['dracula', 'solarized', 'light'];
@@ -15,6 +28,12 @@
       if (THEMES.indexOf(theme) !== -1) {
         document.documentElement.dataset.theme = theme;
         localStorage.setItem('term_theme', theme);
+      }
+      // VIS-3: restore scanlines preference
+      if (localStorage.getItem('term_scanlines') === '1') {
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.classList.add('scanlines');
+        });
       }
     })();
   </script>
@@ -32,12 +51,19 @@
   <link rel="stylesheet" href="css/init-panels.css" />
   <link rel="stylesheet" href="css/message-panel.css" />
 
-  <!-- marked.js (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <!-- marked.js (CDN) — SEC-3: SRI hash pinned to marked@9 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"
+          integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7"
+          crossorigin="anonymous"></script>
 
   <!-- Firebase (CDN — compat build for simple firebase.initializeApp() usage) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <!-- SEC-3: SRI hashes pinned to firebasejs/10.12.2 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"
+          integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9"
+          crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"
+          integrity="sha384-1/m+A1jVWbD3yiK3/vtFvm1+LjK1WLpSoDY+Kaxppwn/yP9BVSgdHTNQVOjrzUO5"
+          crossorigin="anonymous"></script>
 </head>
 <body>
 

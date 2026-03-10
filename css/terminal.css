@@ -167,6 +167,47 @@
   opacity: 0;
 }
 
+/* VIS-1: Typewriter blinking cursor on the active boot line */
+.boot-line.typing::after {
+  content: '▋';
+  color: var(--color-blue);
+  animation: blink 0.8s step-end infinite;
+  margin-left: 1px;
+}
+
+/* ── UX-5: Copy-flash on Shift+Click ─────────────────────── */
+@keyframes copy-flash {
+  0%   { background-color: rgba(126, 231, 135, 0.35); }
+  70%  { background-color: rgba(126, 231, 135, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.output-line.copy-flash {
+  animation: copy-flash 0.55s ease forwards;
+}
+
+/* ── VIS-3: CRT Scanlines ─────────────────────────────────── */
+body.scanlines .terminal-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  z-index: 999;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* Terminal body needs relative positioning for the pseudo-element */
+.terminal-body {
+  position: relative;
+}
+
 /* ── Blink cursor (custom) ────────────────────────────────── */
 @keyframes blink {
   0%, 100% { opacity: 1; }
@@ -210,6 +251,11 @@
 @media (max-width: 600px) {
   .ls-grid { gap: 2px 12px; }
   .ls-grid .ls-item { min-width: 90px; }
+
+  /* MOB-4: Prevent iOS auto-zoom on input focus (requires font-size ≥ 16px) */
+  .terminal-input {
+    font-size: 16px;
+  }
 }
 
 /* ── Scrollback spacer ────────────────────────────────────── */

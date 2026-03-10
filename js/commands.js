@@ -7,6 +7,9 @@
 const Commands = (() => {
 
   // ── External links for `open` ──────────────────────────────
+  // SECURITY BOUNDARY: Only add https:// or mailto: URLs to this object.
+  // The open command enforces this allowlist at runtime — never add passthrough
+  // URL support or user-supplied URLs here.
   const LINKS = {
     github:   'https://github.com/hahahuy',
     linkedin: 'https://www.linkedin.com/in/haqhuy',
@@ -41,23 +44,28 @@ const Commands = (() => {
       usage: 'help',
       exec(args, path) {
         const cmds = [
-          ['help',     'Show this help message'],
-          ['ls',       'List files in current or specified directory'],
-          ['cd',       'Change directory  (cd .., cd ~, cd projects)'],
-          ['cat',      'Read and display a file  (supports Markdown)'],
-          ['pwd',      'Print current working directory'],
-          ['whoami',   'Display name and intro'],
-          ['clear',    'Clear the terminal'],
-          ['open',     'Open external link  (github | linkedin | email)'],
-          ['history',  'Show recent command history'],
-          ['echo',     'Echo text back to the terminal'],
-          ['grep',     'Search file contents  (grep <term>)'],
-          ['neofetch', 'Display system/portfolio info'],
-          ['theme',    'Switch color theme  (theme <name> | theme list)'],
-          ['download', 'Download resume  (download resume)'],
-          ['quit',     'Close this terminal window'],
-          ['init',     'Open portfolio overview panels  (init --stop to close)'],
-          ['message',  'Send a message  (--name <you> for live chat, --stop to close)'],
+          ['help',      'Show this help message'],
+          ['ls',        'List files in current or specified directory'],
+          ['cd',        'Change directory  (cd .., cd ~, cd projects)'],
+          ['cat',       'Read and display a file  (supports Markdown)'],
+          ['pwd',       'Print current working directory'],
+          ['whoami',    'Display name and intro'],
+          ['clear',     'Clear the terminal'],
+          ['open',      'Open external link  (github | linkedin | email)'],
+          ['history',   'Show recent command history'],
+          ['echo',      'Echo text back to the terminal'],
+          ['grep',      'Search file contents  (grep <term>)'],
+          ['neofetch',  'Display system/portfolio info'],
+          ['theme',     'Switch color theme  (theme <name> | theme list)'],
+          ['scanlines', 'Toggle CRT scanlines  (scanlines on | off)'],
+          ['download',  'Download resume  (download resume)'],
+          ['export',    'Download this session as a .txt file'],
+          ['cowsay',    'ASCII cow says something wise'],
+          ['fortune',   'Random developer quote  (fortune -s for short)'],
+          ['weather',   'Live weather  (weather [city])'],
+          ['quit',      'Close this terminal window'],
+          ['init',      'Open portfolio overview panels  (init --stop to close)'],
+          ['message',   'Send a message  (--name <you> for live chat, --stop to close)'],
         ];
         const lines = [
           line('<span class="hr">────────────────────────────────────</span>'),
@@ -232,7 +240,12 @@ const Commands = (() => {
         if (!LINKS[alias]) {
           return { error: `open: unknown alias '${alias}'. Try: ${Object.keys(LINKS).join(', ')}` };
         }
-        window.open(LINKS[alias], '_blank', 'noopener,noreferrer');
+        // SEC-7: Runtime URL guard — block non-https/mailto URLs even if LINKS is modified
+        const url = LINKS[alias];
+        if (!url.startsWith('https://') && !url.startsWith('mailto:')) {
+          return { error: `open: blocked — only https:// and mailto: links are allowed` };
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
         return { lines: [text(`Opening ${alias}…`, ['success'])] };
       },
     },
@@ -579,6 +592,158 @@ const Commands = (() => {
         }
         InitPanels.start(ctx.winEl);
         return null;
+      },
+    },
+
+    // ── EGG-2: cowsay ─────────────────────────────────────────
+    cowsay: {
+      desc: 'ASCII cow says something wise',
+      usage: 'cowsay [message]',
+      exec(args, path) {
+        const quips = [
+          'moo. hire me.',
+          '404: grass not found.',
+          'git commit -m "moo"',
+          'have you tried turning it off and on again?',
+          'undefined is not a function. neither am i.',
+        ];
+        const msg   = args.length ? args.join(' ') : quips[Math.floor(Math.random() * quips.length)];
+        const msgEsc = esc(msg);
+        const border = '-'.repeat(msg.length + 2);
+        const cow = [
+          line(` ${border}`),
+          line(`&lt; ${msgEsc} &gt;`),
+          line(` ${border}`),
+          line('        \\   ^__^'),
+          line('         \\  (oo)\\_______'),
+          line('            (__)\\       )\\/\\'),
+          line('                ||----w |'),
+          line('                ||     ||'),
+        ];
+        return { lines: cow };
+      },
+    },
+
+    // ── EGG-4: fortune ────────────────────────────────────────
+    fortune: {
+      desc: 'Random developer/philosophy quote',
+      usage: 'fortune [-s]',
+      exec(args, path) {
+        const all = [
+          { q: 'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.', a: 'Martin Fowler', short: false },
+          { q: 'First, solve the problem. Then, write the code.', a: 'John Johnson', short: true },
+          { q: 'Experience is the name everyone gives to their mistakes.', a: 'Oscar Wilde', short: true },
+          { q: 'In order to be irreplaceable, one must always be different.', a: 'Coco Chanel', short: false },
+          { q: 'Java is to JavaScript what car is to carpet.', a: 'Chris Heilmann', short: true },
+          { q: 'Knowledge is power.', a: 'Francis Bacon', short: true },
+          { q: 'Sometimes it pays to stay in bed on Monday rather than spending the rest of the week debugging Sunday\'s code.', a: 'Dan Salomon', short: false },
+          { q: 'Simplicity is the soul of efficiency.', a: 'Austin Freeman', short: true },
+          { q: 'Before software can be reusable it first has to be usable.', a: 'Ralph Johnson', short: false },
+          { q: 'Make it work, make it right, make it fast.', a: 'Kent Beck', short: true },
+          { q: 'The best error message is the one that never shows up.', a: 'Thomas Fuchs', short: false },
+          { q: 'Code is like humor. When you have to explain it, it\'s bad.', a: 'Cory House', short: false },
+          { q: 'Fix the cause, not the symptom.', a: 'Steve Maguire', short: true },
+          { q: 'Optimism is an occupational hazard of programming.', a: 'Kent Beck', short: false },
+          { q: 'When in doubt, use brute force.', a: 'Ken Thompson', short: true },
+          { q: 'Talk is cheap. Show me the code.', a: 'Linus Torvalds', short: true },
+          { q: 'Always code as if the person who ends up maintaining your code is a violent psychopath who knows where you live.', a: 'John Woods', short: false },
+          { q: 'The most disastrous thing that you can ever learn is your first programming language.', a: 'Alan Kay', short: false },
+          { q: 'One man\'s crappy software is another man\'s full-time job.', a: 'Jessica Gaston', short: false },
+          { q: 'It works on my machine.', a: 'Every Developer', short: true },
+        ];
+        const shortOnly = args[0] === '-s';
+        const pool = shortOnly ? all.filter(f => f.short) : all;
+        const f    = pool[Math.floor(Math.random() * pool.length)];
+        const qEsc = esc(f.q);
+        const aEsc = esc(f.a);
+        const width = Math.min(f.q.length, 56);
+        const border = '─'.repeat(width + 2);
+        return {
+          lines: [
+            line(`<span style="color:var(--text-dim)">╭${border}╮</span>`),
+            line(`<span style="color:var(--text-dim)">│</span> <em>${qEsc}</em> <span style="color:var(--text-dim)">│</span>`),
+            line(`<span style="color:var(--text-dim)">╰${border}╯</span>`),
+            line(`<span style="color:var(--text-muted)">    — ${aEsc}</span>`),
+          ],
+        };
+      },
+    },
+
+    // ── EGG-6: weather ────────────────────────────────────────
+    weather: {
+      desc: 'Live weather via wttr.in  (weather [city])',
+      usage: 'weather [city]',
+      exec(args, path, ctx) {
+        // Sanitise input: allow only safe city name characters
+        const raw  = args.join(' ').trim() || 'Ho Chi Minh City';
+        const city = raw.replace(/[^a-zA-Z0-9 +\-,.]/g, '').slice(0, 60) || 'Ho Chi Minh City';
+        const url  = `https://wttr.in/${encodeURIComponent(city)}?format=3`;
+
+        fetch(url)
+          .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.text();
+          })
+          .then(txt => {
+            ctx.appendLine(txt.trim(), ['success']);
+            ctx.scrollBottom();
+          })
+          .catch(() => {
+            ctx.appendLine('weather: could not fetch weather data. Try again later.', ['error']);
+            ctx.scrollBottom();
+          });
+
+        return { lines: [text(`Fetching weather for ${city}…`, ['muted'])] };
+      },
+    },
+
+    // ── UX-7: export ──────────────────────────────────────────
+    export: {
+      desc: 'Download this session as a .txt file',
+      usage: 'export',
+      exec(args, path, ctx) {
+        const outputEl = ctx.winEl.querySelector('.output');
+        if (!outputEl) return { error: 'export: could not find output element' };
+        const content = outputEl.innerText || '';
+        const date    = new Date().toISOString().slice(0, 10);
+        const blob    = new Blob([content], { type: 'text/plain' });
+        const url     = URL.createObjectURL(blob);
+        const a       = document.createElement('a');
+        a.href        = url;
+        a.download    = `session-${date}.txt`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+        return {
+          lines: [line('<span style="color:var(--color-green)">↓</span> Session exported as <span style="color:var(--color-blue)">session-' + date + '.txt</span>')],
+        };
+      },
+    },
+
+    // ── VIS-3: scanlines ──────────────────────────────────────
+    scanlines: {
+      desc: 'Toggle CRT scanlines overlay  (scanlines on | off)',
+      usage: 'scanlines [on|off]',
+      exec(args, path) {
+        const arg     = (args[0] || '').toLowerCase();
+        const body    = document.body;
+        const current = body.classList.contains('scanlines');
+
+        let enable;
+        if (arg === 'on')  { enable = true; }
+        else if (arg === 'off') { enable = false; }
+        else { enable = !current; }
+
+        if (enable) {
+          body.classList.add('scanlines');
+          try { localStorage.setItem('term_scanlines', '1'); } catch (e) {}
+          return { lines: [line('<span style="color:var(--color-green)">✓</span> Scanlines <span style="color:var(--color-blue)">enabled</span>. Run <code>scanlines off</code> to disable.')] };
+        } else {
+          body.classList.remove('scanlines');
+          try { localStorage.removeItem('term_scanlines'); } catch (e) {}
+          return { lines: [line('<span style="color:var(--color-green)">✓</span> Scanlines <span style="color:var(--color-blue)">disabled</span>.')] };
+        }
       },
     },
 

@@ -43,11 +43,28 @@ const InitPanels = (() => {
     return win;
   }
 
+  // SEC-6: Strip dangerous elements/attributes from parsed Markdown before insertion.
+  function sanitiseHtml(el) {
+    el.querySelectorAll('script,iframe,object,embed,form,base').forEach(n => n.remove());
+    el.querySelectorAll('*').forEach(node => {
+      [...node.attributes].forEach(attr => {
+        if (/^on/i.test(attr.name)) {
+          node.removeAttribute(attr.name);
+        }
+        if ((attr.name === 'href' || attr.name === 'src' || attr.name === 'action') &&
+            /^\s*javascript:/i.test(attr.value)) {
+          node.removeAttribute(attr.name);
+        }
+      });
+    });
+  }
+
   // ── Content helpers ──────────────────────────────────────
   function appendMarkdown(outputEl, mdText) {
     const div = document.createElement('div');
     div.className = 'md-render';
     div.innerHTML = marked.parse(mdText);
+    sanitiseHtml(div); // SEC-6: sanitise before link processing
     div.querySelectorAll('a').forEach(a => {
       a.target = '_blank';
       a.rel    = 'noopener noreferrer';
@@ -94,9 +111,13 @@ const InitPanels = (() => {
     const introMd  = about ? (splitAt !== -1 ? about.slice(0, splitAt) : about) : '';
     const restMd   = about && splitAt !== -1 ? about.slice(splitAt) : '';
 
+    // VIS-5: Collect sections to add stagger delays
+    const sections = [];
+
     // 1. Two-column profile card: image left, intro text right
     const card = document.createElement('div');
-    card.className = 'profile-card';
+    card.className = 'profile-card panel-section';
+    sections.push(card);
 
     const imgCol = document.createElement('div');
     imgCol.className = 'profile-card-img';
@@ -108,15 +129,33 @@ const InitPanels = (() => {
     if (introMd) appendMarkdown(bioCol, introMd);
     card.appendChild(bioCol);
 
-    out.appendChild(card);
-
     // 2. Remaining sections (## Stack, ## Currently, …)
-    if (restMd) appendMarkdown(out, restMd);
+    if (restMd) {
+      const restDiv = document.createElement('div');
+      restDiv.className = 'panel-section';
+      appendMarkdown(restDiv, restMd);
+      sections.push(restDiv);
+    }
 
-    appendHR(out);
+    const hrEl = document.createElement('div');
+    hrEl.className   = 'info-section-hr panel-section';
+    hrEl.textContent = '────────────────────────────────────';
+    sections.push(hrEl);
 
     // 3. Contact
-    if (contact) appendMarkdown(out, contact);
+    if (contact) {
+      const contactDiv = document.createElement('div');
+      contactDiv.className = 'panel-section';
+      appendMarkdown(contactDiv, contact);
+      sections.push(contactDiv);
+    }
+
+    // Apply stagger delays and append
+    sections.forEach((sec, i) => {
+      sec.style.animationDelay = `${i * 80}ms`;
+      sec.classList.add('panel-section-in');
+      out.appendChild(sec);
+    });
   }
 
   // ── Populate right panel ─────────────────────────────────
@@ -125,13 +164,29 @@ const InitPanels = (() => {
 
     // 1. Skills
     const skills = await safeFetch('content/skills.md');
-    if (skills) appendMarkdown(out, skills);
+    if (skills) {
+      const skillsDiv = document.createElement('div');
+      skillsDiv.className = 'panel-section panel-section-in';
+      skillsDiv.style.animationDelay = '0ms';
+      appendMarkdown(skillsDiv, skills);
+      out.appendChild(skillsDiv);
+    }
 
-    appendHR(out);
+    const hrEl = document.createElement('div');
+    hrEl.className   = 'info-section-hr panel-section panel-section-in';
+    hrEl.style.animationDelay = '80ms';
+    hrEl.textContent = '────────────────────────────────────';
+    out.appendChild(hrEl);
 
     // 2. Projects
     const projects = await safeFetch('content/projects.md');
-    if (projects) appendMarkdown(out, projects);
+    if (projects) {
+      const projDiv = document.createElement('div');
+      projDiv.className = 'panel-section panel-section-in';
+      projDiv.style.animationDelay = '160ms';
+      appendMarkdown(projDiv, projects);
+      out.appendChild(projDiv);
+    }
   }
 
   // ── Tiled layout ─────────────────────────────────────────

@@ -143,9 +143,8 @@ const ContextMenu = (() => {
     clone.style.transform = `translate(${offset}px, ${offset}px)`;
     bringToFront(clone);
 
-    // Animate in
-    clone.style.opacity    = '0';
-    clone.style.transition = 'opacity 0.2s ease';
+    // VIS-2: Spring scale-in animation
+    clone.style.animation = 'window-open 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
 
     document.body.appendChild(clone);
 
@@ -158,10 +157,6 @@ const ContextMenu = (() => {
     if (typeof createTerminal === 'function') {
       createTerminal(clone).init();
     }
-
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      clone.style.opacity = '1';
-    }));
   }
 
   // ── Global event wiring ───────────────────────────────────
