@@ -386,7 +386,7 @@ const MessagePanel = (() => {
 
       db.ref('single_messages').push({
         content:   content,
-        timestamp: Date.now(),
+        timestamp: Date.now(), // required by RTDB .validate rule
       }).then(() => {
         ctx.appendLine('✓ Message sent!', ['success']);
         ctx.scrollBottom();
@@ -487,11 +487,9 @@ const MessagePanel = (() => {
       window._mpUnloadHandler = null;
     }
 
-    // Update Firebase status
-    const db = getDb();
-    if (db && name) {
-      db.ref(`sessions/${name}/status`).set('closed').catch(() => {});
-    }
+    // Firebase session status is managed server-side by the Cloud Function
+    // (admin SDK bypasses rules). Client write removed — it would be rejected
+    // by the write-once RTDB rule that only allows the initial 'active' value.
 
     // Detach listener
     detachListener();
