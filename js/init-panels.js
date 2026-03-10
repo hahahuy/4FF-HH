@@ -84,17 +84,38 @@ const InitPanels = (() => {
   async function populateLeft(panel) {
     const out = panel.querySelector('.info-output');
 
-    // 1. Profile image
-    appendProfileImg(out);
+    const [about, contact] = await Promise.all([
+      safeFetch('content/shorter-about.md'),
+      safeFetch('content/contact.md'),
+    ]);
 
-    // 2. Shorter about
-    const about = await safeFetch('content/shorter-about.md');
-    if (about) appendMarkdown(out, about);
+    // Split shorter-about.md: intro (before first ##) vs rest (## Stack onward)
+    const splitAt  = about ? about.indexOf('\n## ') : -1;
+    const introMd  = about ? (splitAt !== -1 ? about.slice(0, splitAt) : about) : '';
+    const restMd   = about && splitAt !== -1 ? about.slice(splitAt) : '';
+
+    // 1. Two-column profile card: image left, intro text right
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+
+    const imgCol = document.createElement('div');
+    imgCol.className = 'profile-card-img';
+    appendProfileImg(imgCol);
+    card.appendChild(imgCol);
+
+    const bioCol = document.createElement('div');
+    bioCol.className = 'profile-card-bio';
+    if (introMd) appendMarkdown(bioCol, introMd);
+    card.appendChild(bioCol);
+
+    out.appendChild(card);
+
+    // 2. Remaining sections (## Stack, ## Currently, …)
+    if (restMd) appendMarkdown(out, restMd);
 
     appendHR(out);
 
     // 3. Contact
-    const contact = await safeFetch('content/contact.md');
     if (contact) appendMarkdown(out, contact);
   }
 

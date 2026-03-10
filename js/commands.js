@@ -260,6 +260,16 @@ const Commands = (() => {
       },
     },
 
+    // ── reload ────────────────────────────────────────────────
+    reload: {
+      desc: 'Reload the page',
+      usage: 'reload',
+      exec(args, path) {
+        setTimeout(() => window.location.reload(), 300);
+        return { lines: [text('Reloading…', ['muted'])] };
+      },
+    },
+
     // ── quit ──────────────────────────────────────────────────
     quit: {
       desc: 'Close this terminal window',

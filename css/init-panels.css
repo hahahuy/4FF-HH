@@ -40,6 +40,31 @@
   border-radius: 4px;
 }
 
+/* ── Two-column profile card ──────────────────────────── */
+.profile-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.profile-card-img {
+  flex-shrink: 0;
+}
+
+.profile-card-img .info-profile-pic {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  object-position: center top;
+  margin-bottom: 0;
+}
+
+.profile-card-bio {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ── Profile image ────────────────────────────────────────── */
 .info-profile-pic {
   display: block;
