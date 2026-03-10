@@ -44,9 +44,7 @@
 .info-profile-pic {
   display: block;
   width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  object-position: center top;
+  height: auto;
   border-radius: 6px;
   margin-bottom: 12px;
   border: 1px solid var(--border-color);
