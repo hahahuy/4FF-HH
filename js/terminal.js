@@ -150,7 +150,7 @@ function createTerminal(winEl) {
     }
 
     // Render context: async commands (cat) call back into this instance
-    const ctx = { appendMarkdown, appendLine, scrollBottom };
+    const ctx = { appendMarkdown, appendLine, scrollBottom, winEl };
 
     const result = Commands.execute(cmd, args, currentPath, ctx);
 
@@ -247,19 +247,17 @@ function createTerminal(winEl) {
   }
 
   // ── Boot sequence ─────────────────────────────────────────
-  // Original window: show the "init" teaser line.
-  // Subsequent windows: only the welcome + divider — no hint line.
-  const BOOT_LINES = [
+  // Original window only: welcome + hint + divider.
+  // Subsequent windows: silent boot, no lines at all.
+  const BOOT_LINES = isFirst ? [
     { text: 'Welcome to hahahuy\'s portfolio  v1.0.0', cls: 'success' },
-    ...( isFirst
-      ? [{ text: 'Type `init` to start or `help` for available commands.', cls: '' }]
-      : []
-    ),
+    { text: 'Type `init` to start or `help` for available commands.', cls: '' },
     { text: '────────────────────────────────────', cls: 'hr' },
-  ];
+  ] : [];
 
   function boot() {
     return new Promise(resolve => {
+      if (BOOT_LINES.length === 0) { resolve(); return; }
       BOOT_LINES.forEach((line, i) => {
         setTimeout(() => {
           const div = document.createElement('div');

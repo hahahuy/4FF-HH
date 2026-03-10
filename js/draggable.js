@@ -70,7 +70,7 @@ const Draggable = (() => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      document.querySelectorAll('.terminal-window').forEach(win => {
+      document.querySelectorAll('.terminal-window:not(.info-panel)').forEach(win => {
         if (vw <= MOBILE_BP) {
           // Fullscreen on mobile — remove any manual sizing
           win.style.left   = '0px';

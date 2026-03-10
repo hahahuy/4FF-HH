@@ -52,6 +52,7 @@ const Commands = (() => {
           ['history', 'Show recent command history'],
           ['echo',    'Echo text back to the terminal'],
           ['quit',    'Close this terminal window'],
+          ['init',    'Open portfolio overview panels  (init --stop to close)'],
         ];
         const lines = [
           line('<span class="hr">────────────────────────────────────</span>'),
@@ -265,6 +266,29 @@ const Commands = (() => {
       usage: 'quit',
       exec(args, path) {
         return { quit: true };
+      },
+    },
+
+    // ── init ──────────────────────────────────────────────────
+    init: {
+      desc: 'Launch portfolio overview panels  (init --stop to close)',
+      usage: 'init [--stop]',
+      exec(args, path, ctx) {
+        if (typeof InitPanels === 'undefined') {
+          return { error: 'init: InitPanels module not loaded' };
+        }
+        if (args[0] === '--stop') {
+          if (!InitPanels.isActive()) {
+            return { lines: [text('init: no panels are currently open.', ['muted'])] };
+          }
+          InitPanels.stop(ctx.winEl);
+          return null;
+        }
+        if (InitPanels.isActive()) {
+          return { lines: [text('init: panels already open. Type `init --stop` to close.', ['muted'])] };
+        }
+        InitPanels.start(ctx.winEl);
+        return null;
       },
     },
 
