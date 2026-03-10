@@ -53,6 +53,7 @@ const Commands = (() => {
           ['echo',    'Echo text back to the terminal'],
           ['quit',    'Close this terminal window'],
           ['init',    'Open portfolio overview panels  (init --stop to close)'],
+          ['message', 'Send a message  (--name <you> for live chat, --stop to close)'],
         ];
         const lines = [
           line('<span class="hr">────────────────────────────────────</span>'),
@@ -276,6 +277,68 @@ const Commands = (() => {
       usage: 'quit',
       exec(args, path) {
         return { quit: true };
+      },
+    },
+
+    // ── message ───────────────────────────────────────────────
+    message: {
+      desc: 'Send me a message  (message --name <you> for live chat)',
+      usage: 'message [--name <name> | --stop | <content>]',
+      exec(args, path, ctx) {
+        if (typeof MessagePanel === 'undefined') {
+          return { error: 'message: MessagePanel module not loaded' };
+        }
+
+        // No arguments — show usage
+        if (!args.length) {
+          return {
+            lines: [
+              text('Usage:'),
+              text('  message <content>          Send a one-shot message'),
+              text('  message --name <you>       Open a live chat session'),
+              text('  message --stop             Close the live chat'),
+            ],
+          };
+        }
+
+        // --stop: close live chat
+        if (args[0] === '--stop') {
+          return MessagePanel.stop(ctx);
+        }
+
+        // --name <name>: open live chat
+        if (args[0] === '--name') {
+          const name = args[1];
+          if (!name) return { error: 'message --name requires a name argument' };
+          // startChat is async — use ctx for deferred output
+          MessagePanel.startChat(name, ctx).then(result => {
+            if (result) {
+              if (result.lines) result.lines.forEach(l => ctx.appendLine ? null : null);
+              // Route result back through terminal output
+              if (result.error) {
+                ctx.appendLine(result.error, ['error']);
+              } else if (result.lines) {
+                result.lines.forEach(l => {
+                  const div = document.createElement('div');
+                  div.className = (l.classes || ['output-line']).join(' ');
+                  div.innerHTML = l.html || '';
+                  ctx.winEl.querySelector('.output').appendChild(div);
+                });
+              }
+              ctx.scrollBottom();
+            }
+          });
+          return { lines: [text('Opening chat session…', ['muted'])] };
+        }
+
+        // Guard: can't send one-shot while chat is open
+        if (MessagePanel.isActive()) {
+          return { error: 'Close the current chat first: message --stop' };
+        }
+
+        // One-shot: ask for confirmation
+        const content = args.join(' ');
+        return MessagePanel.confirmSend(content, ctx);
       },
     },
 

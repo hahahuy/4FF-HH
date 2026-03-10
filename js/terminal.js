@@ -152,6 +152,12 @@ function createTerminal(winEl) {
     // Render context: async commands (cat) call back into this instance
     const ctx = { appendMarkdown, appendLine, scrollBottom, winEl };
 
+    // ── Intercept Y/N confirmation (e.g. for `message` one-shot) ──
+    if (typeof MessagePanel !== 'undefined' && MessagePanel.hasPendingConfirm()) {
+      MessagePanel.resolvePendingConfirm(raw, ctx);
+      return;
+    }
+
     const result = Commands.execute(cmd, args, currentPath, ctx);
 
     if (result) {

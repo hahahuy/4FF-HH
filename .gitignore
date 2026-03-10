@@ -1,6 +1,10 @@
 # Claude Code local config
 .claude/
 
+# Firebase secrets
+functions/.env
+functions/.env.*
+
 # OS
 .DS_Store
 Thumbs.db
