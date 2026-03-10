@@ -1,0 +1,155 @@
+/* ============================================================
+   tips.css — Floating command-tip widget (desktop only)
+   ============================================================ */
+
+/* Hidden on mobile and tablet — only show on desktop (≥901px) */
+@media (max-width: 900px) {
+  #tips-widget { display: none !important; }
+}
+
+/* ── Widget shell ─────────────────────────────────────────── */
+#tips-widget {
+  position: fixed;
+  bottom: 28px;
+  left: 28px;
+  z-index: 800;          /* below terminal windows (z:1000) but above backdrop */
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;  /* clicks fall through by default */
+  user-select: none;
+}
+
+/* ── Bob animation — gentle vertical bounce ──────────────── */
+@keyframes tips-bob {
+  0%,  100% { transform: translateY(0); }
+  30%        { transform: translateY(-6px); }
+  60%        { transform: translateY(-3px); }
+}
+
+/* ── Flip animation — bob away before tip change ─────────── */
+@keyframes tips-flip-out {
+  0%   { opacity: 1;   transform: translateY(0)   scaleY(1); }
+  40%  { opacity: 0;   transform: translateY(-12px) scaleY(0.6); }
+  100% { opacity: 0;   transform: translateY(-12px) scaleY(0.6); }
+}
+
+@keyframes tips-flip-in {
+  0%   { opacity: 0;   transform: translateY(8px)  scaleY(0.7); }
+  100% { opacity: 1;   transform: translateY(0)    scaleY(1); }
+}
+
+/* ── Avatar / icon bubble ────────────────────────────────── */
+#tips-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--color-green, #7ee787);
+  background: var(--bg-window, #161b22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(126, 231, 135, 0.12);
+  animation: tips-bob 3.2s ease-in-out infinite;
+  animation-play-state: running;
+}
+
+/* ── Speech bubble ───────────────────────────────────────── */
+#tips-bubble {
+  position: relative;
+  background: var(--bg-window, #161b22);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 10px;
+  padding: 8px 13px;
+  max-width: 310px;
+  min-width: 180px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;   /* allow hovering / clicking the bubble */
+  cursor: default;
+}
+
+/* Tail pointing left toward the avatar */
+#tips-bubble::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  bottom: 14px;
+  border-width: 6px 8px 6px 0;
+  border-style: solid;
+  border-color: transparent var(--border-color, #30363d) transparent transparent;
+}
+#tips-bubble::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  bottom: 15px;
+  border-width: 5px 7px 5px 0;
+  border-style: solid;
+  border-color: transparent var(--bg-window, #161b22) transparent transparent;
+}
+
+/* ── Tip label ───────────────────────────────────────────── */
+#tips-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  color: var(--text-dim, #8b949e);
+  margin-bottom: 3px;
+  letter-spacing: 0.02em;
+}
+
+/* ── Tip text ────────────────────────────────────────────── */
+#tips-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-primary, #c9d1d9);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+#tips-text code,
+#tips-text .tip-cmd {
+  color: var(--color-green, #7ee787);
+  background: rgba(126, 231, 135, 0.08);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-size: 11.5px;
+}
+
+#tips-text .tip-value {
+  color: var(--color-blue, #58a6ff);
+}
+
+/* ── Transition classes applied by JS ────────────────────── */
+#tips-bubble.flip-out {
+  animation: tips-flip-out 0.32s ease forwards;
+}
+#tips-bubble.flip-in {
+  animation: tips-flip-in 0.28s ease forwards;
+}
+
+/* ── Pause bob on hover ───────────────────────────────────── */
+#tips-widget:hover #tips-avatar {
+  animation-play-state: paused;
+}
+
+/* ── Dismiss button ──────────────────────────────────────── */
+#tips-dismiss {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  font-size: 10px;
+  color: var(--text-dim, #8b949e);
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: auto;
+}
+#tips-bubble:hover #tips-dismiss {
+  opacity: 1;
+}
+#tips-dismiss:hover {
+  color: var(--text-primary, #c9d1d9);
+}

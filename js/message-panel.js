@@ -20,8 +20,8 @@ const MessagePanel = (() => {
 
   // ── Rate-limit constants ──────────────────────────────────
   const RATE_KEY   = 'mp_send_times';
-  const MAX_SENDS  = 3;       // max messages
-  const WINDOW_MS  = 60_000;  // per 60 seconds
+  const MAX_SENDS  = 5;       // max messages
+  const WINDOW_MS  = 40_000;  // per 40 seconds
 
   // ── Input validation constants ─────────────────────────────
   const MAX_CONTENT_LEN = 500;

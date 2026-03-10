@@ -27,8 +27,52 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
     };
   }
 
+  // ── Context-aware flag suggestions ──────────────────────
+  // Returns an array of flag candidates when the current input
+  // matches a known "stateful" command pattern, otherwise null
+  // (meaning: fall through to normal FS / command-name completion).
+  function getFlagCandidates(input) {
+    const trimmed = input.trimStart();
+
+    // "init" followed by exactly one space (and nothing else yet, or a dash prefix)
+    // → suggest --stop
+    const initMatch = trimmed.match(/^init\s+(--?s\S*)?\s*$/);
+    if (initMatch) {
+      const token = (initMatch[1] || '');
+      if ('--stop'.startsWith(token)) {
+        return { base: 'init ', token, matches: ['--stop'] };
+      }
+    }
+    // "init " with nothing after the space
+    if (/^init\s+$/.test(trimmed)) {
+      return { base: 'init ', token: '', matches: ['--stop'] };
+    }
+
+    // "message --name <anything>" followed by a space (and optional partial --stop)
+    // → suggest --stop
+    const msgMatch = trimmed.match(/^message\s+--name\s+\S+\s+(--?s\S*)?\s*$/);
+    if (msgMatch) {
+      const token = (msgMatch[1] || '');
+      if ('--stop'.startsWith(token)) {
+        const base = trimmed.replace(/(--?s\S*)?\s*$/, '');
+        return { base: base + (base.endsWith(' ') ? '' : ' '), token, matches: ['--stop'] };
+      }
+    }
+    // "message --name <anything> " with nothing after
+    const msgSpaceMatch = trimmed.match(/^(message\s+--name\s+\S+)\s+$/);
+    if (msgSpaceMatch) {
+      return { base: msgSpaceMatch[1] + ' ', token: '', matches: ['--stop'] };
+    }
+
+    return null;
+  }
+
   // ── Candidates ──────────────────────────────────────────
   function getCandidates(input, currentPath) {
+    // Check context-aware flags first
+    const flagResult = getFlagCandidates(input);
+    if (flagResult) return flagResult;
+
     const { base, token } = tokenise(input);
     const parts       = input.trimStart().split(/\s+/);
     const isFirstWord = parts.length === 1 && !input.endsWith(' ');
@@ -41,9 +85,9 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
   // ── Ghost text ──────────────────────────────────────────
   function updateGhost(input, currentPath) {
     if (!input) { ghostTextEl.textContent = ''; return; }
-    const { token, matches } = getCandidates(input, currentPath);
-    if (matches.length === 1 && token.length > 0) {
-      ghostTextEl.textContent = input + matches[0].slice(token.length);
+    const { base, token, matches } = getCandidates(input, currentPath);
+    if (matches.length === 1 && (token.length > 0 || getFlagCandidates(input))) {
+      ghostTextEl.textContent = base + matches[0];
     } else {
       ghostTextEl.textContent = '';
     }
