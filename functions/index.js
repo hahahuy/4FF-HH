@@ -10,7 +10,9 @@ const admin     = require('firebase-admin');
 const https     = require('https');
 const crypto    = require('crypto');   // built-in Node module — no new deps
 
-admin.initializeApp();
+admin.initializeApp({
+  databaseURL: 'https://hahuy-portfolio-f7f16-default-rtdb.asia-southeast1.firebasedatabase.app',
+});
 const db = admin.database();
 
 // ── Crypto helpers ──────────────────────────────────────────
