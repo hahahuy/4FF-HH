@@ -8,14 +8,14 @@
 const MessagePanel = (() => {
 
   // ── Firebase configuration ────────────────────────────────
-  const FIREBASE_CONFIG = {
-    apiKey:            'AIzaSyDi7nehCuOIwfOiL6I5FqPb9i5P4w9f1Xw',
-    authDomain:        'hahuy-portfolio.firebaseapp.com',
-    databaseURL:       'https://hahuy-portfolio-default-rtdb.asia-southeast1.firebasedatabase.app',
-    projectId:         'hahuy-portfolio',
-    storageBucket:     'hahuy-portfolio.firebasestorage.app',
-    messagingSenderId: '2541955312',
-    appId:             '1:2541955312:web:56d5da9b4c6e912aed3a35',
+  const firebaseConfig = {
+    apiKey: "AIzaSyAAphGUjTSTv-BiI62MajsVtSs1pV_VQWk",
+    authDomain: "hahuy-portfolio-f7f16.firebaseapp.com",
+    databaseURL: "https://hahuy-portfolio-f7f16-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "hahuy-portfolio-f7f16",
+    storageBucket: "hahuy-portfolio-f7f16.firebasestorage.app",
+    messagingSenderId: "696599126208",
+    appId: "1:696599126208:web:716a11feb24714ac2d0d25"
   };
 
   // ── Rate-limit constants ──────────────────────────────────
@@ -58,7 +58,7 @@ const MessagePanel = (() => {
 
     // Initialise the app only once (guard against hot-reload)
     if (!firebase.apps.length) {
-      firebase.initializeApp(FIREBASE_CONFIG);
+      firebase.initializeApp(firebaseConfig);
     }
 
     _db = firebase.database();

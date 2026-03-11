@@ -6,6 +6,9 @@
 
 const Commands = (() => {
 
+  // ── Cloud Functions base URL (shared by auth/note/deploy) ────
+  const CF_BASE = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
+
   // ── External links for `open` ──────────────────────────────
   // SECURITY BOUNDARY: Only add https:// or mailto: URLs to this object.
   // The open command enforces this allowlist at runtime — never add passthrough
@@ -743,7 +746,210 @@ const Commands = (() => {
       },
     },
 
-  };
+    // ── auth ──────────────────────────────────────────────────
+    // Hidden from `help` — owner-only command.
+    // Two-factor: passphrase → Telegram OTP → 4-hour session.
+    auth: {
+      desc: 'Authenticate as owner  (hidden from help)',
+      exec(args, path, ctx) {
+        if (typeof Auth === 'undefined') {
+          return { error: 'auth: Auth module not loaded' };
+        }
+
+        // --logout shorthand
+        if (args[0] === '--logout' || args[0] === 'logout') {
+          Auth.clearSession();
+          return { lines: [text('Logged out.', ['muted'])] };
+        }
+
+        if (Auth.isAuthenticated()) {
+          return { lines: [line(
+            '<span style="color:var(--color-green)">✓</span> Already authenticated. ' +
+            '<span style="color:var(--text-muted)">Run <strong>auth --logout</strong> to end session.</span>'
+          )] };
+        }
+
+        if (!args[0]) {
+          return { lines: [
+            line(`Usage: <span style="color:var(--color-blue)">auth</span> <span style="color:var(--text-muted)">&lt;passphrase&gt;</span>`),
+            text('Authenticate to access private note commands.', ['muted']),
+          ]};
+        }
+
+        // Passphrase may contain spaces — join all args
+        const passphrase = args.join(' ');
+
+        Auth.startAuth(passphrase, ctx).then(result => {
+          if (!result) return;
+          if (result.error) {
+            ctx.appendLine(result.error, ['error']);
+          } else if (result.lines) {
+            result.lines.forEach(l => ctx.appendHTML(l.html, l.classes || []));
+          }
+          ctx.scrollBottom();
+        });
+
+        return { lines: [line('<span style="color:var(--text-muted)">Contacting server…</span>')] };
+      },
+    },
+
+    // ── note ──────────────────────────────────────────────────
+    // Hidden from `help` — owner-only private notes.
+    note: {
+      desc: 'Private Markdown notes  (hidden from help)',
+      exec(args, path, ctx) {
+        if (typeof Auth === 'undefined') {
+          return { error: 'note: Auth module not loaded' };
+        }
+        if (typeof NoteEditor === 'undefined') {
+          return { error: 'note: NoteEditor module not loaded' };
+        }
+
+        const sub = (args[0] || '').toLowerCase();
+
+        // ── note / note --help ────────────────────────────────
+        if (!sub || sub === '--help' || sub === 'help') {
+          return { lines: [
+            line('<span class="hr">────────────────────────────────────</span>'),
+            line('<strong style="color:var(--text-primary)">note</strong> — Private Markdown notes (owner only)'),
+            line('<span class="hr">────────────────────────────────────</span>'),
+            line(`  <span style="color:var(--color-blue)">note ls</span><span style="color:var(--text-muted)">                — list all notes</span>`),
+            line(`  <span style="color:var(--color-blue)">note add &lt;file.md&gt;</span><span style="color:var(--text-muted)">    — create new note</span>`),
+            line(`  <span style="color:var(--color-blue)">note cat &lt;file.md&gt;</span><span style="color:var(--text-muted)">    — open split-pane editor/preview</span>`),
+            line(`  <span style="color:var(--color-blue)">note rm  &lt;file.md&gt;</span><span style="color:var(--text-muted)">    — delete a note</span>`),
+            line('<span class="hr">────────────────────────────────────</span>'),
+            line('<span style="color:var(--text-muted)">Requires authentication. Run: <strong>auth &lt;passphrase&gt;</strong></span>'),
+          ]};
+        }
+
+        // ── All other subcommands require auth ────────────────
+        if (!Auth.isAuthenticated()) {
+          return { lines: [line(
+            '<span style="color:var(--color-red)">✗</span> Not authenticated. ' +
+            'Run: <span style="color:var(--color-blue)">auth &lt;passphrase&gt;</span>'
+          )] };
+        }
+
+        // ── note ls ───────────────────────────────────────────
+        if (sub === 'ls') {
+          ctx.appendLine('Loading notes…', ['muted']);
+          ctx.scrollBottom();
+
+          fetch(`${CF_BASE}/notesList`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ token: Auth.getToken() }),
+          })
+            .then(r => r.json())
+            .then(data => {
+              if (!data.ok) throw new Error(data.error || 'unknown error');
+
+              if (!data.notes || !data.notes.length) {
+                ctx.appendLine('No notes yet. Create one: note add <filename>.md', ['muted']);
+              } else {
+                ctx.appendHTML(
+                  '<span style="color:var(--text-muted)">─── notes ───────────────────────────────</span>',
+                  ['output-line']
+                );
+                data.notes.forEach(n => {
+                  const date = new Date(n.updatedAt || 0).toLocaleDateString();
+                  ctx.appendHTML(
+                    `<span style="color:var(--color-blue)">${esc(n.filename)}</span>` +
+                    `  <span style="color:var(--text-muted)">${date}</span>` +
+                    (n.preview ? `<br><span style="color:var(--text-dim)">${esc(n.preview)}…</span>` : ''),
+                    ['output-line']
+                  );
+                });
+              }
+              ctx.scrollBottom();
+            })
+            .catch(e => {
+              ctx.appendLine(`note ls: ${e.message}`, ['error']);
+              ctx.scrollBottom();
+            });
+          return null;
+        }
+
+        // ── note add <filename> ───────────────────────────────
+        if (sub === 'add') {
+          const filename = args[1];
+          if (!filename) {
+            return { error: 'note add: filename required  (e.g. note add ideas.md)' };
+          }
+          if (!/^[a-zA-Z0-9_-]+\.md$/.test(filename) || filename.length > 64) {
+            return { error: `note add: invalid filename '${filename}' — use letters, numbers, hyphens, underscores, .md extension (max 64 chars)` };
+          }
+          NoteEditor.open(filename, '', ctx);
+          return null;
+        }
+
+        // ── note cat <filename> ───────────────────────────────
+        if (sub === 'cat') {
+          const filename = args[1];
+          if (!filename) return { error: 'note cat: filename required' };
+
+          ctx.appendLine(`Loading ${filename}…`, ['muted']);
+          ctx.scrollBottom();
+
+          fetch(`${CF_BASE}/notesRead`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ token: Auth.getToken(), filename }),
+          })
+            .then(r => r.json())
+            .then(data => {
+              if (!data.ok) throw new Error(data.error || 'unknown error');
+              NoteEditor.open(filename, data.note.content || '', ctx);
+            })
+            .catch(e => {
+              ctx.appendLine(`note cat: ${e.message}`, ['error']);
+              ctx.scrollBottom();
+            });
+          return null;
+        }
+
+        // ── note rm <filename> ────────────────────────────────
+        if (sub === 'rm') {
+          const filename = args[1];
+          if (!filename) return { error: 'note rm: filename required' };
+          NoteEditor.confirmDelete(filename, ctx);
+          return null;
+        }
+
+        return { error: `note: unknown subcommand '${sub}'. Run 'note --help'.` };
+      },
+    },
+
+    // ── deploy ────────────────────────────────────────────────
+    // Hidden from `help` — push a note to GitHub repo via API.
+    deploy: {
+      desc: 'Push a note to GitHub repo  (hidden from help)',
+      exec(args, path, ctx) {
+        if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
+          return { lines: [line(
+            '<span style="color:var(--color-red)">✗</span> Not authenticated. ' +
+            'Run: <span style="color:var(--color-blue)">auth &lt;passphrase&gt;</span>'
+          )] };
+        }
+        if (typeof NoteEditor === 'undefined') {
+          return { error: 'deploy: NoteEditor module not loaded' };
+        }
+
+        const filepath = args[0];
+        if (!filepath) {
+          return { lines: [
+            line(`Usage: <span style="color:var(--color-blue)">deploy</span> <span style="color:var(--text-muted)">&lt;filepath&gt;</span>`),
+            line('<span style="color:var(--text-muted)">Example: <code>deploy content/blog/my-post.md</code></span>'),
+            line('<span style="color:var(--text-muted)">Pushes the matching note to GitHub. GitHub Actions auto-deploys.</span>'),
+          ]};
+        }
+
+        NoteEditor.startDeploy(filepath, ctx);
+        return null;
+      },
+    },
+
+  };  // end registry
 
   // ── Unknown command handler ───────────────────────────────
   function unknown(cmd) {

@@ -8,11 +8,61 @@
 const functions = require('firebase-functions/v1');
 const admin     = require('firebase-admin');
 const https     = require('https');
+const crypto    = require('crypto');   // built-in Node module — no new deps
 
 admin.initializeApp();
 const db = admin.database();
 
+// ── Crypto helpers ──────────────────────────────────────────
+function sha256hex(str) {
+  return crypto.createHash('sha256').update(str, 'utf8').digest('hex');
+}
+
+function timingSafeEqual(a, b) {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) {
+    // Still run a dummy comparison to avoid timing leaks on length
+    crypto.timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+// ── CORS helper (browser → Cloud Function calls) ───────────
+function setCors(res, req) {
+  const allowed = ['https://hahuy.site', 'http://localhost', 'http://127.0.0.1'];
+  const origin  = (req.headers.origin || '').trim();
+  if (allowed.some(o => origin.startsWith(o))) {
+    res.set('Access-Control-Allow-Origin', origin);
+  }
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+// ── Session token validator (shared by all notes functions) ─
+async function validateSessionToken(token) {
+  if (!token || typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) {
+    return { valid: false, reason: 'malformed' };
+  }
+  const snap = await db.ref(`owner_sessions/${token}`).once('value');
+  const data  = snap.val();
+  if (!data) return { valid: false, reason: 'not found' };
+  if (data.expires < Date.now()) {
+    await snap.ref.remove();
+    return { valid: false, reason: 'expired' };
+  }
+  return { valid: true };
+}
+
+// ── Filename validator ──────────────────────────────────────
+const FILENAME_RE = /^[a-zA-Z0-9_-]+\.md$/;
+function isValidFilename(name) {
+  return typeof name === 'string' && FILENAME_RE.test(name) && name.length <= 64;
+}
+
 // ── Helper: POST a JSON payload to the Telegram Bot API ────
+//    (unchanged — used by existing message functions)
 function telegramPost(token, method, body) {
   return new Promise((resolve, reject) => {
     const data    = JSON.stringify(body);
@@ -196,4 +246,252 @@ exports.cleanupStaleSessions = functions
     }
 
     return null;
+  });
+
+// ══════════════════════════════════════════════════════════
+// 5.  authRequest
+//     Owner calls this with their passphrase.
+//     Checks it against the hash stored in /auth_config,
+//     then sends a 6-digit OTP via Telegram.
+//
+//     Rate limited: 5 requests per 10 minutes per IP.
+// ══════════════════════════════════════════════════════════
+exports.authRequest = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { passphrase } = req.body || {};
+    if (!passphrase || typeof passphrase !== 'string' || passphrase.length > 256) {
+      return res.status(400).json({ error: 'invalid request' });
+    }
+
+    // ── Rate limit by IP (5 req / 10 min) ──────────────────
+    const ip         = req.ip || req.connection.remoteAddress || 'unknown';
+    const ipHash     = sha256hex(ip).slice(0, 16);
+    const rlRef      = db.ref(`rate_limits/auth/${ipHash}`);
+    const rlSnap     = await rlRef.once('value');
+    const rlData     = rlSnap.val() || { count: 0, window_start: 0 };
+    const WINDOW_MS  = 10 * 60 * 1000;
+    const now        = Date.now();
+
+    if (now - rlData.window_start < WINDOW_MS) {
+      if (rlData.count >= 5) {
+        return res.status(429).json({ error: 'too many requests — try again later' });
+      }
+      await rlRef.update({ count: rlData.count + 1 });
+    } else {
+      await rlRef.set({ count: 1, window_start: now });
+    }
+
+    // ── Passphrase check ────────────────────────────────────
+    const configSnap = await db.ref('auth_config/passphrase_hash').once('value');
+    const storedHash = configSnap.val();
+    if (!storedHash) {
+      console.error('authRequest: /auth_config/passphrase_hash not set in RTDB');
+      return res.status(500).json({ error: 'server misconfigured' });
+    }
+
+    const incoming = sha256hex(passphrase);
+    if (!timingSafeEqual(incoming, storedHash)) {
+      return res.status(403).json({ error: 'invalid passphrase' });
+    }
+
+    // ── Generate and store OTP ──────────────────────────────
+    const otp     = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = now + 5 * 60 * 1000;  // 5 minutes
+    await db.ref(`auth_otp/${otp}`).set({ expires, used: false });
+
+    // ── Send OTP via Telegram ───────────────────────────────
+    const token  = process.env.TELEGRAM_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    await telegramPost(token, 'sendMessage', {
+      chat_id: chatId,
+      text:    `🔐 Your OTP: ${otp}\nExpires in 5 minutes.`,
+    });
+
+    return res.status(200).json({ ok: true, message: 'OTP sent to owner' });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 6.  validateOTP
+//     Owner submits the 6-digit OTP received on Telegram.
+//     On success returns a 64-char session token valid 4h.
+// ══════════════════════════════════════════════════════════
+exports.validateOTP = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { otp } = req.body || {};
+    if (!otp || !/^\d{6}$/.test(String(otp))) {
+      return res.status(400).json({ error: 'OTP must be exactly 6 digits' });
+    }
+
+    const snap = await db.ref(`auth_otp/${otp}`).once('value');
+    const data  = snap.val();
+
+    if (!data) {
+      return res.status(403).json({ error: 'invalid or expired OTP' });
+    }
+    if (data.expires < Date.now()) {
+      await snap.ref.remove();
+      return res.status(403).json({ error: 'OTP expired' });
+    }
+    if (data.used) {
+      return res.status(403).json({ error: 'OTP already used' });
+    }
+
+    // Mark used BEFORE responding to prevent replay
+    await snap.ref.update({ used: true });
+
+    // Generate session token
+    const token   = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + 4 * 60 * 60 * 1000;  // 4 hours
+    await db.ref(`owner_sessions/${token}`).set({ expires });
+
+    // Cleanup OTP node
+    await snap.ref.remove();
+
+    return res.status(200).json({ ok: true, token, expires });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 7.  verifySession
+//     Lightweight check: is this session token still valid?
+// ══════════════════════════════════════════════════════════
+exports.verifySession = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token } = req.body || {};
+    const result = await validateSessionToken(token);
+    return res.status(result.valid ? 200 : 403).json(result);
+  });
+
+// ══════════════════════════════════════════════════════════
+// 8.  notesList
+//     Returns all notes sorted by updatedAt descending.
+// ══════════════════════════════════════════════════════════
+exports.notesList = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token } = req.body || {};
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    const snap  = await db.ref('notes').once('value');
+    const notes = [];
+
+    snap.forEach(child => {
+      const d = child.val();
+      notes.push({
+        filename:  child.key,
+        createdAt: d.createdAt || 0,
+        updatedAt: d.updatedAt || 0,
+        preview:   typeof d.content === 'string' ? d.content.slice(0, 80) : '',
+      });
+    });
+
+    notes.sort((a, b) => b.updatedAt - a.updatedAt);
+    return res.status(200).json({ ok: true, notes });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 9.  notesRead
+//     Returns the full content of a single note.
+// ══════════════════════════════════════════════════════════
+exports.notesRead = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token, filename } = req.body || {};
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    if (!isValidFilename(filename)) {
+      return res.status(400).json({ error: 'invalid filename' });
+    }
+
+    const snap = await db.ref(`notes/${filename}`).once('value');
+    if (!snap.exists()) {
+      return res.status(404).json({ error: `${filename}: not found` });
+    }
+
+    return res.status(200).json({ ok: true, note: snap.val() });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 10. notesWrite
+//     Create, update, or delete a note.
+// ══════════════════════════════════════════════════════════
+exports.notesWrite = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token, action, filename, content } = req.body || {};
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    if (!isValidFilename(filename)) {
+      return res.status(400).json({ error: 'invalid filename' });
+    }
+    if (!['create', 'update', 'delete'].includes(action)) {
+      return res.status(400).json({ error: 'action must be create, update, or delete' });
+    }
+
+    const noteRef = db.ref(`notes/${filename}`);
+    const now     = Date.now();
+
+    if (action === 'create') {
+      const existing = await noteRef.once('value');
+      if (existing.exists()) {
+        return res.status(409).json({ error: `${filename}: already exists` });
+      }
+      const body = typeof content === 'string' ? content : '';
+      await noteRef.set({ content: body, createdAt: now, updatedAt: now });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'update') {
+      const existing = await noteRef.once('value');
+      if (!existing.exists()) {
+        return res.status(404).json({ error: `${filename}: not found` });
+      }
+      const body = typeof content === 'string' ? content : '';
+      await noteRef.update({ content: body, updatedAt: now });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'delete') {
+      const existing = await noteRef.once('value');
+      if (!existing.exists()) {
+        return res.status(404).json({ error: `${filename}: not found` });
+      }
+      await noteRef.remove();
+      return res.status(200).json({ ok: true });
+    }
   });

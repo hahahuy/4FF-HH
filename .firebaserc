@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "hahuy-portfolio"
-  }
+    "default": "hahuy-portfolio-f7f16"
+  },
+  "targets": {},
+  "etags": {}
 }

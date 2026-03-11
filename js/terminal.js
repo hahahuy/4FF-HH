@@ -209,6 +209,35 @@ function createTerminal(winEl) {
       return;
     }
 
+    // ── Intercept owner OTP (auth two-factor step 2) ───────────
+    if (typeof Auth !== 'undefined' && Auth.hasPendingOTP()) {
+      Auth.resolveOTP(raw, ctx).then(result => {
+        if (!result) return;
+        if (result.error) {
+          ctx.appendLine(result.error, ['error']);
+        } else if (result.lines) {
+          result.lines.forEach(l => ctx.appendHTML(l.html, l.classes || []));
+        }
+        ctx.scrollBottom();
+      });
+      trimOutput();
+      return;
+    }
+
+    // ── Intercept deploy PAT / confirm ─────────────────────────
+    if (typeof NoteEditor !== 'undefined' && NoteEditor.hasPendingDeploy()) {
+      NoteEditor.resolveDeploy(raw, ctx);
+      trimOutput();
+      return;
+    }
+
+    // ── Intercept note delete confirm ──────────────────────────
+    if (typeof NoteEditor !== 'undefined' && NoteEditor.hasPendingDelete()) {
+      NoteEditor.resolveDelete(raw, ctx);
+      trimOutput();
+      return;
+    }
+
     const result = Commands.execute(cmd, args, currentPath, ctx);
 
     if (result) {
