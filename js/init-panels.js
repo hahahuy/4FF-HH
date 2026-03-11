@@ -179,7 +179,7 @@ const InitPanels = (() => {
     out.appendChild(hrEl);
 
     // 2. Projects
-    const projects = await safeFetch('content/projects.md');
+    const projects = await safeFetch('content/projects/README.md');
     if (projects) {
       const projDiv = document.createElement('div');
       projDiv.className = 'panel-section panel-section-in';

@@ -7,7 +7,6 @@
      note add <file>.md  — create & open empty note
      note cat <file>.md  — fetch & open existing note
      note rm  <file>.md  — delete (with confirm)
-     deploy   <filepath> — push note to GitHub repo
 
    Vim keybindings inside textarea:
      :w    — save
@@ -24,13 +23,11 @@ const NoteEditor = (() => {
 
   // ── Cloud Functions base URL ───────────────────────────
   const CF_BASE       = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
-  const GITHUB_OWNER  = 'hahahuy';
-  const GITHUB_REPO   = '4FF-HH';
 
   // ── Editor state ──────────────────────────────────────
   let _active        = false;
   let _filename      = null;
-  let _savedContent  = '';     // Last content saved to Firebase
+  let _savedContent  = '';     // Last content saved to Firebase / GitHub
   let _dirty         = false;  // Unsaved changes?
   let _editorWin     = null;   // The .terminal-window DOM element
   let _textareaEl    = null;   // The <textarea>
@@ -39,18 +36,13 @@ const NoteEditor = (() => {
   let _debounceTimer = null;
   let _callerCtx     = null;   // Terminal ctx for messages
   let _callerWin     = null;   // Terminal winEl for layout
+  let _mode          = 'note'; // 'note' | 'site'
+  let _siteFileKey   = null;   // fileKey sent to siteFileWrite CF (site mode only)
 
   // ── Delete confirm state ───────────────────────────────
   let _pendingDelete   = false;
   let _deleteFilename  = null;
   let _deleteCtx       = null;
-
-  // ── Deploy state ───────────────────────────────────────
-  let _pendingDeploy   = false;
-  let _deployFilepath  = null;
-  let _deployStep      = null;   // 'pat' | 'confirm'
-  let _githubPAT       = null;   // In memory only — cleared after use
-  let _deployCtx       = null;
 
   // ── HTML escaper (duplicated from terminal.js — not exported globally) ──
   function esc(str) {
@@ -75,17 +67,26 @@ const NoteEditor = (() => {
   }
 
   // ── Build the editor window DOM ───────────────────────
-  function buildWindow(filename) {
+  function buildWindow(filename, mode) {
     const win = document.createElement('div');
     win.className = 'terminal-window note-editor-window';
+
+    // Titlebar path: site files show content/<path>, notes show notes/<name>
+    const titlePath = (mode === 'site')
+      ? `content/${filename}`
+      : `notes/${filename}`;
+
+    // Badge: site files get a blue "site file" badge
+    const badgeClass = (mode === 'site') ? 'ne-status-badge ne-status-site' : 'ne-status-badge ne-status-muted';
+    const badgeText  = (mode === 'site') ? 'site file' : 'new file';
 
     win.innerHTML =
       `<div class="titlebar ne-titlebar">` +
         `<span class="dot dot-red" id="neDotRed"></span>` +
         `<span class="dot dot-yellow"></span>` +
         `<span class="dot dot-green"></span>` +
-        `<span class="ne-titlebar-filename">notes/${esc(filename)}</span>` +
-        `<span class="ne-status-badge ne-status-muted" id="neStatus">new file</span>` +
+        `<span class="ne-titlebar-filename">${esc(titlePath)}</span>` +
+        `<span class="${esc(badgeClass)}" id="neStatus">${badgeText}</span>` +
       `</div>` +
       `<div class="ne-body">` +
         `<div class="ne-pane ne-editor-pane">` +
@@ -178,7 +179,7 @@ const NoteEditor = (() => {
     _debounceTimer = setTimeout(updatePreview, 300);
   }
 
-  // ── Save to Firebase ───────────────────────────────────
+  // ── Save to Firebase (note mode) or GitHub (site mode) ─
   async function saveNote() {
     if (!_textareaEl) return;
     if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
@@ -189,7 +190,38 @@ const NoteEditor = (() => {
     flashStatus('saving…', 'muted');
 
     const content = _textareaEl.value;
-    const action  = _savedContent === '' && content !== '' ? 'create' : 'update';
+
+    // ── Site file mode: push plain Markdown directly to GitHub ──
+    if (_mode === 'site') {
+      let res, data;
+      try {
+        res  = await fetch(`${CF_BASE}/siteFileWrite`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            token:   Auth.getToken(),
+            fileKey: _siteFileKey,
+            content,
+          }),
+        });
+        data = await res.json().catch(() => ({}));
+      } catch (e) {
+        flashStatus(`save failed: ${e.message}`, 'error');
+        return;
+      }
+
+      if (!res.ok) {
+        flashStatus(`save failed: ${data.error || res.status}`, 'error');
+        return;
+      }
+
+      _savedContent = content;
+      _dirty        = false;
+      flashStatus('saved ✓', 'saved');
+      return;
+    }
+
+    // ── Note mode: save to Firebase RTDB ────────────────────────
     // If both old and new are empty treat it as create (first save of empty note)
     const effectiveAction = _savedContent === '' ? 'create' : 'update';
 
@@ -284,6 +316,8 @@ const NoteEditor = (() => {
     _statusEl     = null;
     _callerCtx    = null;
     _callerWin    = null;
+    _mode         = 'note';
+    _siteFileKey  = null;
   }
 
   // ── beforeunload guard ─────────────────────────────────
@@ -335,9 +369,12 @@ const NoteEditor = (() => {
   }
 
   // ══════════════════════════════════════════════════════
-  // Public: open(filename, content, ctx)
+  // Public: open(filename, content, ctx, mode='note', siteFileKey=null)
+  //   mode='note'  → Firebase RTDB note (default)
+  //   mode='site'  → site content file (saved via siteFileWrite CF)
+  //   siteFileKey  → fileKey sent to siteFileWrite (e.g. 'about', 'blog/post.md')
   // ══════════════════════════════════════════════════════
-  function open(filename, content, ctx) {
+  function open(filename, content, ctx, mode = 'note', siteFileKey = null) {
     if (_active) {
       if (ctx) ctx.appendLine('note: editor already open. Close it first (:q).', ['error']);
       return;
@@ -349,8 +386,10 @@ const NoteEditor = (() => {
     _dirty        = false;
     _callerCtx    = ctx;
     _callerWin    = ctx ? ctx.winEl : null;
+    _mode         = (mode === 'site') ? 'site' : 'note';
+    _siteFileKey  = siteFileKey || null;
 
-    _editorWin = buildWindow(filename);
+    _editorWin = buildWindow(filename, _mode);
     _textareaEl = _editorWin.querySelector('#neTextarea');
     _previewEl  = _editorWin.querySelector('#nePreview');
     _statusEl   = _editorWin.querySelector('#neStatus');
@@ -358,10 +397,10 @@ const NoteEditor = (() => {
     // Populate content
     _textareaEl.value = content;
     if (content) {
-      flashStatus('saved ✓', 'saved');
+      flashStatus(_mode === 'site' ? 'site file' : 'saved ✓', _mode === 'site' ? 'site' : 'saved');
       updatePreview();
     } else {
-      flashStatus('new file', 'muted');
+      flashStatus(_mode === 'site' ? 'site file' : 'new file', _mode === 'site' ? 'site' : 'muted');
     }
 
     layoutEditor();
@@ -447,168 +486,6 @@ const NoteEditor = (() => {
     ctx.scrollBottom();
   }
 
-  // ══════════════════════════════════════════════════════
-  // Public: startDeploy(filepath, ctx)
-  // ══════════════════════════════════════════════════════
-  function startDeploy(filepath, ctx) {
-    _pendingDeploy  = true;
-    _deployFilepath = filepath;
-    _deployStep     = 'pat';
-    _githubPAT      = null;
-    _deployCtx      = ctx;
-
-    ctx.appendHTML(
-      `<span style="color:var(--color-orange)">Enter GitHub PAT</span> ` +
-      `<span style="color:var(--text-muted)">(classic token, ` +
-      `<code>repo</code> scope — not stored):</span>`,
-      ['output-line']
-    );
-    ctx.scrollBottom();
-  }
-
-  function hasPendingDeploy() {
-    return _pendingDeploy;
-  }
-
-  async function resolveDeploy(raw, ctx) {
-    const input = raw.trim();
-
-    // ── Step 1: receive PAT ────────────────────────────────
-    if (_deployStep === 'pat') {
-      if (!input) {
-        ctx.appendLine('deploy: PAT cannot be empty. Cancelled.', ['muted']);
-        _pendingDeploy = false; _deployFilepath = null; _deployStep = null;
-        ctx.scrollBottom();
-        return;
-      }
-      _githubPAT  = input;
-      _deployStep = 'confirm';
-
-      ctx.appendHTML(
-        `Deploy <span style="color:var(--color-blue)">${esc(_deployFilepath)}</span> to GitHub repo? ` +
-        `<span style="color:var(--color-green)">y</span>` +
-        `<span style="color:var(--text-muted)"> / </span>` +
-        `<span style="color:var(--color-red)">n</span>`,
-        ['output-line']
-      );
-      ctx.appendHTML(
-        `<span style="color:var(--text-muted)">Tip: run </span>` +
-        `<span style="color:var(--color-blue)">Ctrl+L</span>` +
-        `<span style="color:var(--text-muted)"> after deploy to clear the PAT from terminal output.</span>`,
-        ['output-line']
-      );
-      ctx.scrollBottom();
-      return;
-    }
-
-    // ── Step 2: confirm ────────────────────────────────────
-    if (_deployStep === 'confirm') {
-      if (input.toLowerCase() !== 'y' && input.toLowerCase() !== 'yes') {
-        ctx.appendLine('Cancelled.', ['muted']);
-        _pendingDeploy = false; _deployFilepath = null; _deployStep = null; _githubPAT = null;
-        ctx.scrollBottom();
-        return;
-      }
-
-      ctx.appendLine('Fetching note content…', ['muted']);
-      ctx.scrollBottom();
-
-      const filepath = _deployFilepath;
-      const pat      = _githubPAT;
-
-      // Clear immediately — don't keep PAT in memory longer than needed
-      _pendingDeploy = false; _deployFilepath = null; _deployStep = null; _githubPAT = null;
-
-      // Derive note filename from the filepath (last path segment)
-      const noteFilename = filepath.split('/').pop();
-
-      let noteContent;
-      try {
-        const noteRes  = await fetch(`${CF_BASE}/notesRead`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ token: Auth.getToken(), filename: noteFilename }),
-        });
-        const noteData = await noteRes.json();
-        if (!noteRes.ok) throw new Error(noteData.error || noteRes.status);
-        noteContent = noteData.note.content;
-      } catch (e) {
-        ctx.appendLine(`deploy: failed to read note — ${e.message}`, ['error']);
-        ctx.scrollBottom();
-        return;
-      }
-
-      ctx.appendLine('Checking GitHub for existing file…', ['muted']);
-      ctx.scrollBottom();
-
-      let sha = null;
-      try {
-        const getRes = await fetch(
-          `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filepath}`,
-          { headers: { 'Authorization': `Bearer ${pat}`, 'Accept': 'application/vnd.github+json' } }
-        );
-        if (getRes.ok) {
-          const existing = await getRes.json();
-          sha = existing.sha || null;
-        } else if (getRes.status !== 404) {
-          throw new Error(`GitHub API returned ${getRes.status}`);
-        }
-      } catch (e) {
-        ctx.appendLine(`deploy: GitHub API error — ${e.message}`, ['error']);
-        ctx.scrollBottom();
-        return;
-      }
-
-      // Double-encode: first pass obfuscates the content stored on GitHub
-      // (people browsing the repo see base64 gibberish, not plain Markdown)
-      // Second pass is the GitHub API's required base64 transport encoding.
-      const obfuscated = btoa(unescape(encodeURIComponent(noteContent))); // stored on GitHub
-      const encoded    = btoa(obfuscated);                                 // GitHub API transport
-
-      const putBody = {
-        message: `notes: update ${filepath}`,
-        content: encoded,
-        ...(sha ? { sha } : {}),
-      };
-
-      ctx.appendLine('Pushing to GitHub…', ['muted']);
-      ctx.scrollBottom();
-
-      try {
-        const putRes = await fetch(
-          `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filepath}`,
-          {
-            method:  'PUT',
-            headers: {
-              'Authorization': `Bearer ${pat}`,
-              'Accept':        'application/vnd.github+json',
-              'Content-Type':  'application/json',
-            },
-            body: JSON.stringify(putBody),
-          }
-        );
-        const putData = await putRes.json().catch(() => ({}));
-        if (!putRes.ok) throw new Error(putData.message || `HTTP ${putRes.status}`);
-
-        const commitUrl = putData.commit && putData.commit.html_url ? putData.commit.html_url : '';
-        ctx.appendHTML(
-          `<span style="color:var(--color-green)">✓</span> Pushed to GitHub.<br>` +
-          (commitUrl
-            ? `<span style="color:var(--text-muted)">Commit: </span>` +
-              `<a href="${esc(commitUrl)}" target="_blank" rel="noopener noreferrer" ` +
-              `style="color:var(--color-blue)">${esc(commitUrl)}</a><br>`
-            : '') +
-          `<span style="color:var(--text-muted)">GitHub Actions will deploy automatically. ` +
-          `Run <strong>Ctrl+L</strong> to clear terminal output.</span>`,
-          ['output-line']
-        );
-      } catch (e) {
-        ctx.appendLine(`deploy: push failed — ${e.message}`, ['error']);
-      }
-      ctx.scrollBottom();
-    }
-  }
-
   // ── Resize handler ─────────────────────────────────────
   window.addEventListener('resize', () => {
     if (_active && _editorWin) layoutEditor();
@@ -620,9 +497,6 @@ const NoteEditor = (() => {
     confirmDelete,
     hasPendingDelete,
     resolveDelete,
-    startDeploy,
-    hasPendingDeploy,
-    resolveDeploy,
   };
 
 })();

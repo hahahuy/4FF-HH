@@ -6,8 +6,31 @@
 
 const Commands = (() => {
 
-  // ── Cloud Functions base URL (shared by auth/note/deploy) ────
+  // ── Cloud Functions base URL ──────────────────────────────
   const CF_BASE = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
+
+  // ── Site content file map (for `note cat` in site mode) ───
+  // BASE is defined in filesystem.js (loads before commands.js).
+  // Client sends only fileKey to the CF — never a path.
+  const SITE_FILES = {
+    'about.md':           { staticUrl: BASE + '/content/about.md',              fileKey: 'about' },
+    'contact.md':         { staticUrl: BASE + '/content/contact.md',             fileKey: 'contact' },
+    'projects/README.md': { staticUrl: BASE + '/content/projects/README.md',     fileKey: 'projects' },
+    'skills.md':          { staticUrl: BASE + '/content/skills.md',              fileKey: 'skills' },
+    'shorter-about.md':   { staticUrl: BASE + '/content/shorter-about.md',       fileKey: 'shorter-about' },
+  };
+
+  /**
+   * Resolve a note-cat filename argument to a site file descriptor
+   * or null if it's not a site file (i.e. treat as Firebase note).
+   */
+  function resolveSiteFile(filename) {
+    if (SITE_FILES[filename]) return SITE_FILES[filename];
+    // blog/<slug>.md
+    const m = filename.match(/^blog\/([a-zA-Z0-9_-]+\.md)$/);
+    if (m) return { staticUrl: BASE + `/content/blog/${m[1]}`, fileKey: `blog/${m[1]}` };
+    return null;
+  }
 
   // ── External links for `open` ──────────────────────────────
   // SECURITY BOUNDARY: Only add https:// or mailto: URLs to this object.
@@ -813,10 +836,18 @@ const Commands = (() => {
             line('<span class="hr">────────────────────────────────────</span>'),
             line('<strong style="color:var(--text-primary)">note</strong> — Private Markdown notes (owner only)'),
             line('<span class="hr">────────────────────────────────────</span>'),
-            line(`  <span style="color:var(--color-blue)">note ls</span><span style="color:var(--text-muted)">                — list all notes</span>`),
-            line(`  <span style="color:var(--color-blue)">note add &lt;file.md&gt;</span><span style="color:var(--text-muted)">    — create new note</span>`),
-            line(`  <span style="color:var(--color-blue)">note cat &lt;file.md&gt;</span><span style="color:var(--text-muted)">    — open split-pane editor/preview</span>`),
-            line(`  <span style="color:var(--color-blue)">note rm  &lt;file.md&gt;</span><span style="color:var(--text-muted)">    — delete a note</span>`),
+            line(`  <span style="color:var(--color-blue)">note ls</span><span style="color:var(--text-muted)">                        — list all notes (with location)</span>`),
+            line(`  <span style="color:var(--color-blue)">note add &lt;file.md&gt;</span><span style="color:var(--text-muted)">        — create new note</span>`),
+            line(`  <span style="color:var(--color-blue)">note cat &lt;file.md&gt;</span><span style="color:var(--text-muted)">        — open note in split-pane editor</span>`),
+            line(`  <span style="color:var(--color-blue)">note cat &lt;about.md&gt;</span><span style="color:var(--text-muted)">       — edit site content file (blue badge)</span>`),
+            line(`  <span style="color:var(--color-blue)">note cat blog/&lt;slug&gt;.md</span><span style="color:var(--text-muted)">  — edit a blog post in place</span>`),
+            line(`  <span style="color:var(--color-blue)">note rm  &lt;file.md&gt;</span><span style="color:var(--text-muted)">        — delete a note</span>`),
+            line('<span class="hr">────────────────────────────────────</span>'),
+            line('<strong style="color:var(--text-primary)">mv</strong> — Move note between locations (visibility)'),
+            line(`  <span style="color:var(--color-blue)">mv notes/file.md blog/file.md</span><span style="color:var(--text-muted)">     — publish to blog</span>`),
+            line(`  <span style="color:var(--color-blue)">mv notes/file.md projects/file.md</span><span style="color:var(--text-muted)"> — publish to projects</span>`),
+            line(`  <span style="color:var(--color-blue)">mv notes/file.md file.md</span><span style="color:var(--text-muted)">          — publish to root (~)</span>`),
+            line(`  <span style="color:var(--color-blue)">mv blog/file.md notes/file.md</span><span style="color:var(--text-muted)">     — make private again</span>`),
             line('<span class="hr">────────────────────────────────────</span>'),
             line('<span style="color:var(--text-muted)">Requires authentication. Run: <strong>auth &lt;passphrase&gt;</strong></span>'),
           ]};
@@ -852,10 +883,14 @@ const Commands = (() => {
                   ['output-line']
                 );
                 data.notes.forEach(n => {
-                  const date = new Date(n.updatedAt || 0).toLocaleDateString();
+                  const date   = new Date(n.updatedAt || 0).toLocaleDateString();
+                  const loc    = n.location || 'notes';
+                  const locTag = loc !== 'notes'
+                    ? `  <span style="color:var(--color-green);font-size:0.85em">[${esc(loc)}]</span>`
+                    : '';
                   ctx.appendHTML(
                     `<span style="color:var(--color-blue)">${esc(n.filename)}</span>` +
-                    `  <span style="color:var(--text-muted)">${date}</span>` +
+                    `  <span style="color:var(--text-muted)">${date}</span>${locTag}` +
                     (n.preview ? `<br><span style="color:var(--text-dim)">${esc(n.preview)}…</span>` : ''),
                     ['output-line']
                   );
@@ -888,6 +923,28 @@ const Commands = (() => {
           const filename = args[1];
           if (!filename) return { error: 'note cat: filename required' };
 
+          // ── Site file detection: check SITE_FILES map first ──
+          const siteFile = resolveSiteFile(filename);
+          if (siteFile) {
+            ctx.appendLine(`Loading ${filename}…`, ['muted']);
+            ctx.scrollBottom();
+
+            fetch(siteFile.staticUrl)
+              .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.text();
+              })
+              .then(content => {
+                NoteEditor.open(filename, content, ctx, 'site', siteFile.fileKey);
+              })
+              .catch(e => {
+                ctx.appendLine(`note cat: ${e.message}`, ['error']);
+                ctx.scrollBottom();
+              });
+            return null;
+          }
+
+          // ── Firebase note ────────────────────────────────────
           ctx.appendLine(`Loading ${filename}…`, ['muted']);
           ctx.scrollBottom();
 
@@ -920,10 +977,16 @@ const Commands = (() => {
       },
     },
 
-    // ── deploy ────────────────────────────────────────────────
-    // Hidden from `help` — push a note to GitHub repo via API.
-    deploy: {
-      desc: 'Push a note to GitHub repo  (hidden from help)',
+    // ── mv ─────────────────────────────────────────────────────
+    // Hidden from `help` — owner-only. Changes note visibility by
+    // updating the `location` field in RTDB via the notesMove CF.
+    // Location determines who can read the note at boot:
+    //   notes    → private (auth-only, default)
+    //   blog     → public  (~/blog/<name>.txt after reload)
+    //   projects → public  (~/projects/<name>.txt after reload)
+    //   root     → public  (~/<name>.txt after reload)
+    mv: {
+      desc: 'Move a note to a different location  (hidden from help)',
       exec(args, path, ctx) {
         if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
           return { lines: [line(
@@ -931,20 +994,188 @@ const Commands = (() => {
             'Run: <span style="color:var(--color-blue)">auth &lt;passphrase&gt;</span>'
           )] };
         }
-        if (typeof NoteEditor === 'undefined') {
-          return { error: 'deploy: NoteEditor module not loaded' };
-        }
 
-        const filepath = args[0];
-        if (!filepath) {
+        const src = args[0], dst = args[1];
+        if (!src || !dst) {
           return { lines: [
-            line(`Usage: <span style="color:var(--color-blue)">deploy</span> <span style="color:var(--text-muted)">&lt;filepath&gt;</span>`),
-            line('<span style="color:var(--text-muted)">Example: <code>deploy content/blog/my-post.md</code></span>'),
-            line('<span style="color:var(--text-muted)">Pushes the matching note to GitHub. GitHub Actions auto-deploys.</span>'),
+            line(`Usage: <span style="color:var(--color-blue)">mv</span> <span style="color:var(--text-muted)">&lt;src&gt; &lt;dst&gt;</span>`),
+            text('Examples:', ['muted']),
+            text('  mv notes/test.md blog/test.md       (publish to blog)', ['muted']),
+            text('  mv notes/test.md projects/test.md   (publish to projects)', ['muted']),
+            text('  mv notes/test.md test.md            (publish to root ~/)', ['muted']),
+            text('  mv blog/test.md notes/test.md       (make private)', ['muted']),
           ]};
         }
 
-        NoteEditor.startDeploy(filepath, ctx);
+        // ── Parse source: extract directory and filename ──────
+        const srcClean = src.replace(/^~\//, '');
+        const srcParts = srcClean.split('/').filter(Boolean);
+        const filename = srcParts[srcParts.length - 1];
+
+        // Source can be a Firebase note (*.md) or a static FS file (*.txt → blog post)
+        const isTxt = /^[a-zA-Z0-9_-]+\.txt$/.test(filename);
+        const isMd  = /^[a-zA-Z0-9_-]+\.md$/.test(filename);
+
+        if (!isMd && !isTxt) {
+          return { error: `mv: source must be a *.md note or *.txt static file` };
+        }
+
+        // ── Detect if source is a static FS file ──────────────
+        const srcFsNode = fsResolve(path, src);
+        if (srcFsNode && srcFsNode.node && srcFsNode.node.src) {
+          // Flow B: static FS file (e.g. blog/*.txt) → notes only
+          const dstClean   = dst.replace(/^~\//, '');
+          const dstParts   = dstClean.split('/').filter(Boolean);
+          const dstDir     = dstParts.length > 1 ? dstParts[0] : '';
+          const dstFile    = dstParts[dstParts.length - 1];
+          const mdFilename = (dstFile && /\.md$/.test(dstFile)) ? dstFile : filename.replace(/\.txt$/, '.md');
+
+          if (dstDir !== 'notes') {
+            return { error: `mv: static files can only be moved to notes/ (to privatise them)` };
+          }
+          if (!/^[a-zA-Z0-9_-]+\.md$/.test(mdFilename) || mdFilename.length > 64) {
+            return { error: `mv: invalid destination filename '${mdFilename}'` };
+          }
+
+          ctx.appendLine(`Reading ${src}…`, ['muted']);
+          ctx.scrollBottom();
+
+          const srcDir = srcParts.length > 1 ? srcParts[0] : '';
+
+          fsReadFile(srcFsNode.node)
+            .then(async content => {
+              // Create Firebase note (private)
+              const createRes = await fetch(`${CF_BASE}/notesWrite`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                  token:    Auth.getToken(),
+                  action:   'create',
+                  filename: mdFilename,
+                  content,
+                  location: 'notes',
+                }),
+              });
+              const createData = await createRes.json().catch(() => ({}));
+              if (!createRes.ok) throw new Error(createData.error || `HTTP ${createRes.status}`);
+
+              // If source was a blog post, remove from manifest
+              if (srcDir === 'blog') {
+                const mdSrcFile = filename.replace(/\.txt$/, '.md');
+                await fetch(`${CF_BASE}/blogManifestRemove`, {
+                  method:  'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body:    JSON.stringify({ token: Auth.getToken(), file: mdSrcFile }),
+                }).catch(() => {}); // non-fatal
+              }
+
+              // Remove FS entry in-memory
+              const fsParent = srcParts.length > 1
+                ? (FS['~'][srcDir] || null)
+                : FS['~'];
+              if (fsParent && fsParent[filename]) {
+                delete fsParent[filename];
+              }
+
+              ctx.appendHTML(
+                `<span style="color:var(--color-green)">✓</span> ` +
+                `<span style="color:var(--color-blue)">${esc(src)}</span> → ` +
+                `<strong>~/notes/${esc(mdFilename)} (private)</strong>` +
+                `<br><span style="color:var(--text-muted)">Reload page for visitors to see the change.</span>`,
+                ['output-line']
+              );
+              ctx.scrollBottom();
+            })
+            .catch(e => {
+              ctx.appendLine(`mv: ${e.message}`, ['error']);
+              ctx.scrollBottom();
+            });
+
+          return null;
+        }
+
+        // ── Flow A: Firebase note → new location ──────────────
+        if (!isMd) {
+          return { error: `mv: Firebase notes must end in .md` };
+        }
+
+        // Validate destination path and derive newLocation
+        const dstClean  = dst.replace(/^~\//, '');
+        const dstParts  = dstClean.split('/').filter(Boolean);
+        const dstDir    = dstParts.length > 1 ? dstParts[0] : (dstParts[0] === filename ? '' : dstParts[0]);
+        const dstFile   = dstParts[dstParts.length - 1];
+
+        // If dst ends in a filename, it must match source filename
+        if (dstFile !== filename && /\./.test(dstFile)) {
+          return { error: `mv: destination filename must match source (${filename})` };
+        }
+
+        const LOCATION_MAP = {
+          'notes':    'notes',
+          'blog':     'blog',
+          'projects': 'projects',
+          '':         'root',
+        };
+        // Determine the directory portion (everything before the filename)
+        let rawDir;
+        if (dstFile === filename) {
+          rawDir = dstParts.slice(0, -1).join('/') || '';
+        } else {
+          rawDir = dstClean;
+        }
+
+        const newLocation = LOCATION_MAP[rawDir];
+        if (newLocation === undefined) {
+          return { error: `mv: unknown destination dir '${rawDir}'. Valid: notes, blog, projects, ~` };
+        }
+
+        ctx.appendLine(`Moving ${filename}…`, ['muted']);
+        ctx.scrollBottom();
+
+        fetch(`${CF_BASE}/notesMove`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ token: Auth.getToken(), filename, newLocation }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (!data.ok) throw new Error(data.error || 'unknown error');
+            const isPrivate = newLocation === 'notes';
+            const pubPath   = newLocation === 'root'
+              ? `~/${filename.replace(/\.md$/, '.txt')}`
+              : `~/${newLocation}/${filename.replace(/\.md$/, '.txt')}`;
+
+            // If the note was previously published in the FS, remove it from the in-memory tree
+            if (!isPrivate) {
+              // nothing to remove — it wasn't in FS yet (boot will add it on next reload)
+            } else {
+              // Remove from in-memory FS if it was previously published
+              const prevSrcParts = src.replace(/^~\//, '').split('/').filter(Boolean);
+              const prevDir      = prevSrcParts.length > 1 ? prevSrcParts[0] : '';
+              const txtName      = filename.replace(/\.md$/, '.txt');
+              if (prevDir === 'blog' && FS['~']['blog'] && FS['~']['blog'][txtName]) {
+                delete FS['~']['blog'][txtName];
+              } else if (prevDir === 'projects' && FS['~']['projects'] && FS['~']['projects'][txtName]) {
+                delete FS['~']['projects'][txtName];
+              } else if (!prevDir && FS['~'][txtName]) {
+                delete FS['~'][txtName];
+              }
+            }
+
+            ctx.appendHTML(
+              `<span style="color:var(--color-green)">✓</span> ` +
+              `<span style="color:var(--color-blue)">${esc(filename)}</span> → ` +
+              `<strong>${isPrivate ? '~/notes/ (private)' : `${esc(pubPath)} (public)`}</strong>` +
+              (isPrivate ? '' : `<br><span style="color:var(--text-muted)">Visitors will see it after a page reload.</span>`),
+              ['output-line']
+            );
+            ctx.scrollBottom();
+          })
+          .catch(e => {
+            ctx.appendLine(`mv: ${e.message}`, ['error']);
+            ctx.scrollBottom();
+          });
+
         return null;
       },
     },

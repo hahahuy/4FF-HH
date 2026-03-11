@@ -63,6 +63,107 @@ function isValidFilename(name) {
   return typeof name === 'string' && FILENAME_RE.test(name) && name.length <= 64;
 }
 
+// ── GitHub auto-sync helper ──────────────────────────────────
+// Notes are stored on GitHub at content/notes/<filename> (encoded).
+// Double base64: inner pass = obfuscation stored on GitHub,
+//                outer pass = GitHub API transport requirement.
+// pathOverride: if set, use this GitHub path instead of 'content/notes/<filename>'
+// obfuscate: false for site files (plain Markdown on GitHub), true for notes (double-base64)
+// Errors are logged but never propagate to the caller —
+// RTDB is the source of truth; GitHub is a mirror.
+async function pushToGitHub(filename, content, action, pathOverride = null, obfuscate = true) {
+  const pat   = process.env.GITHUB_PAT;
+  const owner = process.env.GITHUB_OWNER;
+  const repo  = process.env.GITHUB_REPO;
+  if (!pat || !owner || !repo) return; // not configured — skip silently
+
+  const filepath = pathOverride || `content/notes/${filename}`;
+  const apiUrl   = `https://api.github.com/repos/${owner}/${repo}/contents/${filepath}`;
+  const headers  = {
+    'Authorization': `Bearer ${pat}`,
+    'Accept':        'application/vnd.github+json',
+    'Content-Type':  'application/json',
+  };
+
+  try {
+    if (action === 'delete') {
+      const getRes = await fetch(apiUrl, { headers });
+      if (!getRes.ok) return; // file doesn't exist on GitHub — nothing to delete
+      const existing = await getRes.json();
+      await fetch(apiUrl, {
+        method:  'DELETE',
+        headers,
+        body: JSON.stringify({
+          message: pathOverride ? `content: delete ${filename}` : `notes: delete ${filename}`,
+          sha:     existing.sha,
+        }),
+      });
+      return;
+    }
+
+    // create or update
+    // obfuscate=true  → double base64 (notes)
+    // obfuscate=false → single base64 (site files — plain Markdown on GitHub)
+    const encoded = obfuscate
+      ? Buffer.from(Buffer.from(content, 'utf8').toString('base64'), 'utf8').toString('base64')
+      : Buffer.from(content, 'utf8').toString('base64');
+
+    // GET sha if file already exists on GitHub
+    let sha = null;
+    const getRes = await fetch(apiUrl, { headers });
+    if (getRes.ok) { sha = (await getRes.json()).sha || null; }
+
+    const message = pathOverride ? `content: update ${filename}` : `notes: ${action} ${filename}`;
+
+    await fetch(apiUrl, {
+      method:  'PUT',
+      headers,
+      body: JSON.stringify({
+        message,
+        content: encoded,
+        ...(sha ? { sha } : {}),
+      }),
+    });
+  } catch (e) {
+    console.error(`pushToGitHub: ${action} ${filename} failed — ${e.message}`);
+  }
+}
+
+// ── Site file whitelist (path traversal prevention) ─────────
+// Client sends only a fileKey; server resolves to the actual GitHub path.
+const SITE_FILE_WHITELIST = {
+  'about':         'content/about.md',
+  'contact':       'content/contact.md',
+  'projects':      'content/projects/README.md',
+  'skills':        'content/skills.md',
+  'shorter-about': 'content/shorter-about.md',
+};
+
+function resolveSiteFilePath(fileKey) {
+  if (SITE_FILE_WHITELIST[fileKey]) return SITE_FILE_WHITELIST[fileKey];
+  const m = fileKey.match(/^blog\/([a-zA-Z0-9_-]+\.md)$/);
+  if (m) return `content/blog/${m[1]}`;
+  return null;
+}
+
+// ── Rate limiter helper ──────────────────────────────────────
+// Returns true if rate limit exceeded, false if OK.
+async function isRateLimited(namespace, ip, maxCount, windowMs) {
+  const ipHash = sha256hex(ip).slice(0, 16);
+  const rlRef  = db.ref(`rate_limits/${namespace}/${ipHash}`);
+  const rlSnap = await rlRef.once('value');
+  const rlData = rlSnap.val() || { count: 0, window_start: 0 };
+  const now    = Date.now();
+
+  if (now - rlData.window_start < windowMs) {
+    if (rlData.count >= maxCount) return true;
+    await rlRef.update({ count: rlData.count + 1 });
+  } else {
+    await rlRef.set({ count: 1, window_start: now });
+  }
+  return false;
+}
+
 // ── RTDB key encoder ────────────────────────────────────────
 // Firebase RTDB keys cannot contain "." so "test.md" → "test_dot_md"
 function toRtdbKey(filename) {
@@ -416,6 +517,7 @@ exports.notesList = functions
         createdAt: d.createdAt || 0,
         updatedAt: d.updatedAt || 0,
         preview:   typeof d.content === 'string' ? d.content.slice(0, 80) : '',
+        location:  d.location || 'notes',   // default: private
       });
     });
 
@@ -463,7 +565,7 @@ exports.notesWrite = functions
     if (req.method === 'OPTIONS') return res.status(204).send('');
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const { token, action, filename, content } = req.body || {};
+    const { token, action, filename, content, location: reqLocation } = req.body || {};
     const session = await validateSessionToken(token);
     if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
 
@@ -483,7 +585,9 @@ exports.notesWrite = functions
         return res.status(409).json({ error: `${filename}: already exists` });
       }
       const body = typeof content === 'string' ? content : '';
-      await noteRef.set({ content: body, createdAt: now, updatedAt: now });
+      const loc  = ['blog', 'root', 'projects'].includes(reqLocation) ? reqLocation : 'notes';
+      await noteRef.set({ content: body, createdAt: now, updatedAt: now, location: loc });
+      await pushToGitHub(filename, body, 'create');
       return res.status(200).json({ ok: true });
     }
 
@@ -494,6 +598,7 @@ exports.notesWrite = functions
       }
       const body = typeof content === 'string' ? content : '';
       await noteRef.update({ content: body, updatedAt: now });
+      await pushToGitHub(filename, body, 'update');
       return res.status(200).json({ ok: true });
     }
 
@@ -503,6 +608,285 @@ exports.notesWrite = functions
         return res.status(404).json({ error: `${filename}: not found` });
       }
       await noteRef.remove();
+      await pushToGitHub(filename, '', 'delete');
       return res.status(200).json({ ok: true });
+    }
+  });
+
+// ══════════════════════════════════════════════════════════
+// 11. dailyCleanup
+//     Scheduled function that runs daily at 02:00 ICT
+//     (19:00 UTC) and sweeps all accumulating RTDB paths:
+//     /auth_otp, /owner_sessions, /rate_limits,
+//     /sessions (closed/stale), /single_messages (old).
+// ══════════════════════════════════════════════════════════
+exports.dailyCleanup = functions
+  .region(REGION)
+  .pubsub.schedule('0 19 * * *')   // 02:00 ICT (UTC+7)
+  .timeZone('UTC')
+  .onRun(async () => {
+    const now     = Date.now();
+    let   removed = 0;
+
+    // 1. /auth_otp — expired OTP nodes (normally 5-min TTL)
+    const otpSnap = await db.ref('auth_otp').once('value');
+    const otpDels = [];
+    otpSnap.forEach(child => {
+      if (!child.val().expires || child.val().expires < now) {
+        otpDels.push(child.ref.remove());
+        removed++;
+      }
+    });
+    await Promise.all(otpDels);
+
+    // 2. /owner_sessions — expired session tokens (4-hour TTL)
+    const sessSnap = await db.ref('owner_sessions').once('value');
+    const sessDels = [];
+    sessSnap.forEach(child => {
+      if (!child.val().expires || child.val().expires < now) {
+        sessDels.push(child.ref.remove());
+        removed++;
+      }
+    });
+    await Promise.all(sessDels);
+
+    // 3. /rate_limits — windows older than 1 day
+    const rlCutoff = now - 24 * 60 * 60 * 1000;
+    const rlSnap   = await db.ref('rate_limits/auth').once('value');
+    const rlDels   = [];
+    rlSnap.forEach(child => {
+      if (!child.val().window_start || child.val().window_start < rlCutoff) {
+        rlDels.push(child.ref.remove());
+        removed++;
+      }
+    });
+    await Promise.all(rlDels);
+
+    // 4. /sessions — closed sessions older than 7 days (delete entirely)
+    const msgCutoff = now - 7 * 24 * 60 * 60 * 1000;
+    const chatSnap  = await db.ref('sessions')
+      .orderByChild('createdAt').endAt(msgCutoff).once('value');
+    const chatDels  = [];
+    chatSnap.forEach(child => {
+      if (child.val().status === 'closed' || child.val().status === 'active') {
+        chatDels.push(child.ref.remove());
+        removed++;
+      }
+    });
+    await Promise.all(chatDels);
+
+    // 5. /single_messages — older than 30 days
+    const smCutoff = now - 30 * 24 * 60 * 60 * 1000;
+    const smSnap   = await db.ref('single_messages')
+      .orderByChild('timestamp').endAt(smCutoff).once('value');
+    const smDels   = [];
+    smSnap.forEach(child => { smDels.push(child.ref.remove()); removed++; });
+    await Promise.all(smDels);
+
+    console.log(`dailyCleanup: removed ${removed} stale node(s)`);
+    return null;
+  });
+
+// ══════════════════════════════════════════════════════════
+// 12. siteFileWrite
+//     Authenticated: write plain Markdown to a site content
+//     file on GitHub (no RTDB involvement).
+//     Client sends fileKey (not path) — server resolves to
+//     the actual GitHub path from SITE_FILE_WHITELIST.
+// ══════════════════════════════════════════════════════════
+exports.siteFileWrite = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token, fileKey, content } = req.body || {};
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    if (!fileKey || typeof fileKey !== 'string' || fileKey.length > 128) {
+      return res.status(400).json({ error: 'invalid fileKey' });
+    }
+    if (typeof content !== 'string') {
+      return res.status(400).json({ error: 'content must be a string' });
+    }
+    if (content.length > 512 * 1024) {
+      return res.status(400).json({ error: 'content too large (max 512 KB)' });
+    }
+
+    const gitPath = resolveSiteFilePath(fileKey);
+    if (!gitPath) {
+      return res.status(400).json({ error: `fileKey '${fileKey}' is not in the site file whitelist` });
+    }
+
+    // Derive a display filename for the commit message (last path segment)
+    const displayName = gitPath.split('/').pop();
+
+    try {
+      await pushToGitHub(displayName, content, 'update', gitPath, /* obfuscate= */ false);
+    } catch (e) {
+      return res.status(500).json({ error: `GitHub push failed: ${e.message}` });
+    }
+
+    return res.status(200).json({ ok: true });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 13. notesMove
+//     Authenticated: update the `location` field of a note
+//     in RTDB (the source of truth for publish/visibility).
+//     newLocation: 'notes' | 'blog' | 'root' | 'projects'
+// ══════════════════════════════════════════════════════════
+exports.notesMove = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token, filename, newLocation } = req.body || {};
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    if (!isValidFilename(filename)) {
+      return res.status(400).json({ error: 'invalid filename' });
+    }
+    const VALID_LOCATIONS = ['notes', 'blog', 'root', 'projects'];
+    if (!VALID_LOCATIONS.includes(newLocation)) {
+      return res.status(400).json({ error: `newLocation must be one of: ${VALID_LOCATIONS.join(', ')}` });
+    }
+
+    const noteRef = db.ref(`notes/${toRtdbKey(filename)}`);
+    const snap    = await noteRef.once('value');
+    if (!snap.exists()) {
+      return res.status(404).json({ error: `${filename}: not found` });
+    }
+
+    await noteRef.update({ location: newLocation, updatedAt: Date.now() });
+    return res.status(200).json({ ok: true });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 14. notesListPublic
+//     No auth required — returns notes where location !== 'notes'
+//     for the boot-time public FS population.
+//     Rate-limited: 60 req/min/IP
+//     Capped: 50 notes max, 64 KB/note content
+// ══════════════════════════════════════════════════════════
+exports.notesListPublic = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    // Rate limit: 60 req / 1 min / IP
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const limited = await isRateLimited('notesPublic', ip, 60, 60 * 1000);
+    if (limited) {
+      return res.status(429).json({ error: 'too many requests — try again later' });
+    }
+
+    const snap  = await db.ref('notes').once('value');
+    const notes = [];
+
+    snap.forEach(child => {
+      const d = child.val();
+      if (!d || typeof d.content !== 'string') return;
+      const loc = d.location || 'notes';
+      if (loc === 'notes') return;  // skip private
+      notes.push({
+        filename: fromRtdbKey(child.key),
+        content:  d.content.slice(0, 65536),   // 64 KB cap
+        location: loc,
+      });
+    });
+
+    return res.status(200).json({ ok: true, notes: notes.slice(0, 50) });
+  });
+
+// ══════════════════════════════════════════════════════════
+// 15. blogManifestRemove
+//     Authenticated: removes a post entry from
+//     content/blog/manifest.json on GitHub.
+//     Called when a static blog post is moved to notes.
+// ══════════════════════════════════════════════════════════
+exports.blogManifestRemove = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token, file } = req.body || {};
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    if (!file || !/^[a-zA-Z0-9_-]+\.md$/.test(file) || file.length > 64) {
+      return res.status(400).json({ error: 'invalid file parameter (must match [a-zA-Z0-9_-]+.md)' });
+    }
+
+    const pat   = process.env.GITHUB_PAT;
+    const owner = process.env.GITHUB_OWNER;
+    const repo  = process.env.GITHUB_REPO;
+    if (!pat || !owner || !repo) {
+      return res.status(500).json({ error: 'GitHub not configured' });
+    }
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/content/blog/manifest.json`;
+    const headers = {
+      'Authorization': `Bearer ${pat}`,
+      'Accept':        'application/vnd.github+json',
+      'Content-Type':  'application/json',
+    };
+
+    try {
+      // Fetch current manifest.json from GitHub
+      const getRes = await fetch(apiUrl, { headers });
+      if (!getRes.ok) {
+        return res.status(500).json({ error: `Could not fetch manifest.json: HTTP ${getRes.status}` });
+      }
+      const ghData = await getRes.json();
+      const sha    = ghData.sha;
+      const rawJson = Buffer.from(ghData.content, 'base64').toString('utf8');
+
+      let posts;
+      try { posts = JSON.parse(rawJson); }
+      catch (e) { return res.status(500).json({ error: 'manifest.json is not valid JSON' }); }
+
+      const originalLen = posts.length;
+      const filtered = posts.filter(p => p.file !== file);
+
+      if (filtered.length === originalLen) {
+        // Entry wasn't in manifest — that's OK (idempotent)
+        return res.status(200).json({ ok: true, notFound: true });
+      }
+
+      const newContent = Buffer.from(JSON.stringify(filtered, null, 2) + '\n', 'utf8').toString('base64');
+
+      const putRes = await fetch(apiUrl, {
+        method:  'PUT',
+        headers,
+        body: JSON.stringify({
+          message: `content: remove ${file} from blog manifest`,
+          content: newContent,
+          sha,
+        }),
+      });
+
+      if (!putRes.ok) {
+        const errBody = await putRes.text();
+        return res.status(500).json({ error: `GitHub PUT failed: ${putRes.status} — ${errBody.slice(0, 200)}` });
+      }
+
+      return res.status(200).json({ ok: true });
+    } catch (e) {
+      console.error(`blogManifestRemove: ${e.message}`);
+      return res.status(500).json({ error: e.message });
     }
   });

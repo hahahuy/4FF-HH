@@ -50,6 +50,7 @@
 .ne-status-dirty  { color: var(--color-orange); }
 .ne-status-error  { color: var(--color-red); }
 .ne-status-muted  { color: var(--text-muted); }
+.ne-status-site   { color: var(--color-blue); }
 
 /* ── Body: two-pane flex row ─────────────────────────────── */
 .ne-body {

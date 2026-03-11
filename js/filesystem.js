@@ -36,7 +36,7 @@ const FS = {
       __type: 'dir',
       'README.txt': {
         __type: 'file',
-        src: '/content/projects.md',
+        src: '/content/projects/README.md',
       },
     },
     'blog': {
@@ -176,4 +176,41 @@ async function loadBlogManifest() {
       content: `# Blog\n\nCould not load post list: ${err.message}`,
     };
   }
+}
+
+/**
+ * Fetch published notes from the Cloud Function and populate
+ * the virtual FS at boot time.
+ * Notes with location='blog'     → FS['~']['blog']['<name>.txt']
+ * Notes with location='projects' → FS['~']['projects']['<name>.txt']
+ * Notes with location='root'     → FS['~']['<name>.txt']
+ *
+ * Called once in parallel with loadBlogManifest() at terminal boot.
+ */
+async function loadPublishedNotes() {
+  const CF = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
+  try {
+    const res = await fetch(`${CF}/notesListPublic`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    '{}',
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.ok || !Array.isArray(data.notes) || !data.notes.length) return;
+
+    data.notes.forEach(n => {
+      if (!n.filename || !/^[a-zA-Z0-9_-]+\.md$/.test(n.filename)) return;
+      if (typeof n.content !== 'string') return;
+      const txtName = n.filename.replace(/\.md$/, '.txt');
+      const node    = { __type: 'file', content: n.content };
+      if (n.location === 'blog') {
+        FS['~']['blog'][txtName] = node;
+      } else if (n.location === 'projects') {
+        FS['~']['projects'][txtName] = node;
+      } else if (n.location === 'root') {
+        FS['~'][txtName] = node;
+      }
+    });
+  } catch (e) { /* fail silently — FS still works without published notes */ }
 }

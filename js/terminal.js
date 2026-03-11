@@ -224,13 +224,6 @@ function createTerminal(winEl) {
       return;
     }
 
-    // ── Intercept deploy PAT / confirm ─────────────────────────
-    if (typeof NoteEditor !== 'undefined' && NoteEditor.hasPendingDeploy()) {
-      NoteEditor.resolveDeploy(raw, ctx);
-      trimOutput();
-      return;
-    }
-
     // ── Intercept note delete confirm ──────────────────────────
     if (typeof NoteEditor !== 'undefined' && NoteEditor.hasPendingDelete()) {
       NoteEditor.resolveDelete(raw, ctx);
@@ -423,11 +416,15 @@ function createTerminal(winEl) {
     // Click anywhere in body focuses input
     terminalBody.addEventListener('click', () => inputEl.focus());
 
-    // Blog manifest only needs loading once (FS is shared)
-    if (typeof loadBlogManifest === 'function' && !loadBlogManifest._loaded) {
-      await loadBlogManifest();
-      loadBlogManifest._loaded = true;
+    // Blog manifest + published notes load in parallel (FS is shared across all terminal instances)
+    const bootPromises = [];
+    if (typeof loadBlogManifest   === 'function' && !loadBlogManifest._loaded) {
+      bootPromises.push(loadBlogManifest().then(() => { loadBlogManifest._loaded = true; }));
     }
+    if (typeof loadPublishedNotes === 'function' && !loadPublishedNotes._loaded) {
+      bootPromises.push(loadPublishedNotes().then(() => { loadPublishedNotes._loaded = true; }));
+    }
+    await Promise.all(bootPromises);
 
     await boot();
     updatePrompt();
