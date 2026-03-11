@@ -4,6 +4,7 @@
 # Firebase secrets
 functions/.env
 functions/.env.*
+RTDBRules.md
 
 # OS
 .DS_Store
