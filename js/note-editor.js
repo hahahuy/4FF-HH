@@ -559,8 +559,11 @@ const NoteEditor = (() => {
         return;
       }
 
-      // Base64 encode content (UTF-8 safe)
-      const encoded = btoa(unescape(encodeURIComponent(noteContent)));
+      // Double-encode: first pass obfuscates the content stored on GitHub
+      // (people browsing the repo see base64 gibberish, not plain Markdown)
+      // Second pass is the GitHub API's required base64 transport encoding.
+      const obfuscated = btoa(unescape(encodeURIComponent(noteContent))); // stored on GitHub
+      const encoded    = btoa(obfuscated);                                 // GitHub API transport
 
       const putBody = {
         message: `notes: update ${filepath}`,
