@@ -63,6 +63,15 @@ function isValidFilename(name) {
   return typeof name === 'string' && FILENAME_RE.test(name) && name.length <= 64;
 }
 
+// ── RTDB key encoder ────────────────────────────────────────
+// Firebase RTDB keys cannot contain "." so "test.md" → "test_dot_md"
+function toRtdbKey(filename) {
+  return filename.replace(/\./g, '_dot_');
+}
+function fromRtdbKey(key) {
+  return key.replace(/_dot_/g, '.');
+}
+
 // ── Helper: POST a JSON payload to the Telegram Bot API ────
 //    (unchanged — used by existing message functions)
 function telegramPost(token, method, body) {
@@ -403,7 +412,7 @@ exports.notesList = functions
     snap.forEach(child => {
       const d = child.val();
       notes.push({
-        filename:  child.key,
+        filename:  fromRtdbKey(child.key),   // decode _dot_ back to "."
         createdAt: d.createdAt || 0,
         updatedAt: d.updatedAt || 0,
         preview:   typeof d.content === 'string' ? d.content.slice(0, 80) : '',
@@ -434,7 +443,7 @@ exports.notesRead = functions
       return res.status(400).json({ error: 'invalid filename' });
     }
 
-    const snap = await db.ref(`notes/${filename}`).once('value');
+    const snap = await db.ref(`notes/${toRtdbKey(filename)}`).once('value');
     if (!snap.exists()) {
       return res.status(404).json({ error: `${filename}: not found` });
     }
@@ -465,7 +474,7 @@ exports.notesWrite = functions
       return res.status(400).json({ error: 'action must be create, update, or delete' });
     }
 
-    const noteRef = db.ref(`notes/${filename}`);
+    const noteRef = db.ref(`notes/${toRtdbKey(filename)}`);  // encode "." → "_dot_"
     const now     = Date.now();
 
     if (action === 'create') {
