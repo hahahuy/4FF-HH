@@ -116,9 +116,24 @@
   </div>
 
   <!-- Scripts (order matters) -->
+  <!-- Utils: loaded first — no dependencies -->
+  <script src="js/utils/config.js"></script>
+  <script src="js/utils/html.js"></script>
+  <script src="js/utils/fetch.js"></script>
+  <script src="js/utils/dom.js"></script>
+  <!-- App namespace — populated by each module below -->
+  <script src="js/app.js"></script>
+  <!-- EventBus — decouples intercept chain in terminal.js -->
+  <script src="js/event-bus.js"></script>
   <script src="js/filesystem.js"></script>
   <script src="js/autocomplete.js"></script>
-  <script src="js/commands.js"></script>
+  <script src="js/commands/fs-commands.js"></script>
+  <script src="js/commands/system-commands.js"></script>
+  <script src="js/commands/ui-commands.js"></script>
+  <script src="js/commands/social-commands.js"></script>
+  <script src="js/commands/owner-commands.js"></script>
+  <script src="js/commands/easter-eggs.js"></script>
+  <script src="js/commands/index.js"></script>
   <script src="js/init-panels.js"></script>
   <script src="js/message-panel.js"></script>
   <script src="js/auth.js"></script>

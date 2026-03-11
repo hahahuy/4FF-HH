@@ -5,9 +5,10 @@
 'use strict';
 
 // Base path for fetching markdown content.
-// Empty string = custom domain at root (hahuy.site).
-// Change to '/4FF-HH' if reverting to github.io subpath.
-const BASE = '';
+// Set via Config.CONTENT_BASE (js/utils/config.js).
+// '' = custom domain at root (hahuy.site).
+// '/4FF-HH' = GitHub Pages subpath deploy.
+const BASE = (globalThis.BASE = Config.CONTENT_BASE);
 
 /**
  * Virtual filesystem tree.
@@ -17,7 +18,7 @@ const BASE = '';
  *   - src: string  → fetched from BASE + src at read time
  *   - content: string → inline text content
  */
-const FS = {
+const FS = (globalThis.FS = {
   '~': {
     __type: 'dir',
     'about.txt': {
@@ -44,7 +45,7 @@ const FS = {
       // Populated at runtime by loadBlogManifest()
     },
   },
-};
+});
 
 // ── Path resolution helpers ─────────────────────────────────
 
@@ -188,7 +189,7 @@ async function loadBlogManifest() {
  * Called once in parallel with loadBlogManifest() at terminal boot.
  */
 async function loadPublishedNotes() {
-  const CF = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
+  const CF = Config.CF_BASE;
   try {
     const res = await fetch(`${CF}/notesListPublic`, {
       method:  'POST',
@@ -214,3 +215,11 @@ async function loadPublishedNotes() {
     });
   } catch (e) { /* fail silently — FS still works without published notes */ }
 }
+
+// Export to globalThis for modules loaded via new Function(src)()
+globalThis.fsResolve         = fsResolve;
+globalThis.fsListDir         = fsListDir;
+globalThis.fsReadFile        = fsReadFile;
+globalThis.fsEntriesAt       = fsEntriesAt;
+globalThis.loadBlogManifest  = loadBlogManifest;
+globalThis.loadPublishedNotes = loadPublishedNotes;

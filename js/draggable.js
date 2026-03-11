@@ -9,7 +9,7 @@ const Draggable = (() => {
 
   const MIN_W      = 340;
   const MIN_H      = 220;
-  const MOBILE_BP  = 600;   // must match CSS breakpoint
+  const MOBILE_BP  = Config.BREAKPOINT_MOBILE;   // must match CSS breakpoint
 
   const EDGES = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
@@ -27,7 +27,7 @@ const Draggable = (() => {
    * On mobile the window is always fullscreen instead.
    */
   function pinToScreen(win) {
-    requestAnimationFrame(() => {
+    afterLayout(() => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       win.style.position  = 'fixed';
@@ -302,5 +302,7 @@ const Draggable = (() => {
   return { init, initAll };
 
 })();
+
+App.Draggable = Draggable;  // publish to App namespace
 
 document.addEventListener('DOMContentLoaded', () => Draggable.initAll());

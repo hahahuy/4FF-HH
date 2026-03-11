@@ -19,7 +19,7 @@ const MessagePanel = (() => {
   };
 
   // ── Rate-limit constants ──────────────────────────────────
-  const RATE_KEY   = 'mp_send_times';
+  const RATE_KEY   = Config.STORAGE.RATE;
   const MAX_SENDS  = 5;       // max messages
   const WINDOW_MS  = 40_000;  // per 40 seconds
 
@@ -65,15 +65,8 @@ const MessagePanel = (() => {
     return _db;
   }
 
-  // ── Helper: escape HTML ───────────────────────────────────
-  function esc(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  // ── Helper: escape HTML — uses shared escHtml from js/utils/html.js ──
+  function esc(str) { return escHtml(str); }
 
   // ── Helper: format time ───────────────────────────────────
   function fmtTime(ms) {
@@ -215,9 +208,9 @@ const MessagePanel = (() => {
     document.body.appendChild(panel);
 
     // Animate in (double rAF so the browser paints opacity:0 first)
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    afterLayout(() => {
       panel.classList.add('mp-visible');
-    }));
+    });
 
     return panel;
   }
@@ -459,7 +452,7 @@ const MessagePanel = (() => {
     attachListener(name);
 
     // Save name for next time (2c)
-    try { localStorage.setItem('mp_last_name', name); } catch (e) {}
+    try { localStorage.setItem(Config.STORAGE.LAST_NAME, name); } catch (e) {}
 
     // Stuck session cleanup: close session if tab/window closes (1e)
     window._mpUnloadHandler = () => stop();
@@ -520,7 +513,7 @@ const MessagePanel = (() => {
   // ── Query ─────────────────────────────────────────────────
   function isActive() { return _active; }
   function getLastName() {
-    try { return localStorage.getItem('mp_last_name') || null; } catch (e) { return null; }
+    try { return localStorage.getItem(Config.STORAGE.LAST_NAME) || null; } catch (e) { return null; }
   }
 
   return {
@@ -536,3 +529,18 @@ const MessagePanel = (() => {
   };
 
 })();
+
+App.MessagePanel = MessagePanel;  // publish to App namespace
+
+// ── EventBus registration (highest priority — captcha/confirm first) ──
+App.EventBus.on('rawInput', ({ raw, ctx }) => {
+  if (MessagePanel.hasPendingCaptcha()) {
+    MessagePanel.resolvePendingCaptcha(raw, ctx);
+    return true;
+  }
+  if (MessagePanel.hasPendingConfirm()) {
+    MessagePanel.resolvePendingConfirm(raw, ctx);
+    return true;
+  }
+  return false;
+});

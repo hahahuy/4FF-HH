@@ -7,7 +7,7 @@
 'use strict';
 
 // Tracks whether the very first terminal has already been created.
-// Used to show a different hint line in subsequent windows.
+// Uses App._firstTerminalCreated so multi-window clones stay independent.
 let _isFirstTerminal = true;
 
 /**
@@ -20,6 +20,9 @@ function createTerminal(winEl) {
   // Claim "first terminal" slot before anything else runs
   const isFirst    = _isFirstTerminal;
   _isFirstTerminal = false;
+  if (isFirst) {
+    App._firstTerminalCreated = true;
+  }
 
   // ── DOM refs (scoped to this window) ─────────────────────
   const output         = winEl.querySelector('.output');
@@ -33,8 +36,8 @@ function createTerminal(winEl) {
   const ac = createAutocomplete(inputEl, ghostTextEl, autocompleteEl);
 
   // ── localStorage keys (only used by the first/main terminal) ─
-  const HIST_KEY = 'term_history';
-  const CWD_KEY  = 'term_cwd';
+  const HIST_KEY = Config.STORAGE.HISTORY;
+  const CWD_KEY  = Config.STORAGE.CWD;
 
   // ── State ─────────────────────────────────────────────────
   // Restore command history and cwd from localStorage (first terminal only)
@@ -74,35 +77,20 @@ function createTerminal(winEl) {
   }
 
   function appendLine(text, extraClasses = []) {
-    return appendHTML(escapeHtml(text), extraClasses);
+    return appendHTML(escHtml(text), extraClasses);
   }
 
   function echoCommand(cmd) {
     const div = document.createElement('div');
     div.className = 'cmd-echo output-line';
     div.innerHTML =
-      `<span class="echo-prompt">visitor@portfolio:<span class="echo-dir">${escapeHtml(getCwd())}</span>$&nbsp;</span>` +
-      `<span class="echo-cmd">${escapeHtml(cmd)}</span>`;
+      `<span class="echo-prompt">visitor@portfolio:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
+      `<span class="echo-cmd">${escHtml(cmd)}</span>`;
     output.appendChild(div);
   }
 
   // SEC-6: Strip dangerous elements/attributes from parsed Markdown before insertion.
-  function sanitiseHtml(el) {
-    // Remove script, iframe, object, embed, form, base tags
-    el.querySelectorAll('script,iframe,object,embed,form,base').forEach(n => n.remove());
-    // Walk all elements and strip on* event attributes and javascript: hrefs
-    el.querySelectorAll('*').forEach(node => {
-      [...node.attributes].forEach(attr => {
-        if (/^on/i.test(attr.name)) {
-          node.removeAttribute(attr.name);
-        }
-        if ((attr.name === 'href' || attr.name === 'src' || attr.name === 'action') &&
-            /^\s*javascript:/i.test(attr.value)) {
-          node.removeAttribute(attr.name);
-        }
-      });
-    });
-  }
+  // Shared implementation lives in js/utils/html.js (sanitiseHtml).
 
   function appendMarkdown(mdText) {
     const div = document.createElement('div');
@@ -123,17 +111,14 @@ function createTerminal(winEl) {
     output.appendChild(div);
   }
 
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  // Shared implementation lives in js/utils/html.js; expose locally for public API.
+  function escapeHtml(str) { return escHtml(str); }
 
   function clearOutput() { output.innerHTML = ''; }
 
   // ── Output memory guard (2d) ──────────────────────────────
   function trimOutput() {
-    while (output.children.length > 500) {
+    while (output.children.length > Config.MAX_OUTPUT_LINES) {
       output.removeChild(output.firstChild);
     }
   }
@@ -147,7 +132,7 @@ function createTerminal(winEl) {
   }
 
   // ── Idle hint ─────────────────────────────────────────────
-  const IDLE_DELAY_MS = 20000;
+  const IDLE_DELAY_MS = Config.IDLE_HINT_DELAY_MS;
   let idleTimer     = null;
   let hintFired     = false;
   // Idle hint only arms after the user has typed at least one command
@@ -195,43 +180,16 @@ function createTerminal(winEl) {
     // Render context: async commands (cat) call back into this instance
     const ctx = { appendMarkdown, appendLine, appendHTML, scrollBottom, winEl };
 
-    // ── Intercept captcha answer (1c) ─────────────────────────
-    if (typeof MessagePanel !== 'undefined' && MessagePanel.hasPendingCaptcha()) {
-      MessagePanel.resolvePendingCaptcha(raw, ctx);
+    // ── Dispatch raw input to EventBus first ──────────────────
+    // Registered handlers (message-panel, auth, note-editor) consume
+    // the input and return true if they handle it.
+    const consumed = App.EventBus.emit('rawInput', { raw, ctx });
+    if (consumed) {
       trimOutput();
       return;
     }
 
-    // ── Intercept Y/N confirmation (e.g. for `message` one-shot) ──
-    if (typeof MessagePanel !== 'undefined' && MessagePanel.hasPendingConfirm()) {
-      MessagePanel.resolvePendingConfirm(raw, ctx);
-      trimOutput();
-      return;
-    }
-
-    // ── Intercept owner OTP (auth two-factor step 2) ───────────
-    if (typeof Auth !== 'undefined' && Auth.hasPendingOTP()) {
-      Auth.resolveOTP(raw, ctx).then(result => {
-        if (!result) return;
-        if (result.error) {
-          ctx.appendLine(result.error, ['error']);
-        } else if (result.lines) {
-          result.lines.forEach(l => ctx.appendHTML(l.html, l.classes || []));
-        }
-        ctx.scrollBottom();
-      });
-      trimOutput();
-      return;
-    }
-
-    // ── Intercept note delete confirm ──────────────────────────
-    if (typeof NoteEditor !== 'undefined' && NoteEditor.hasPendingDelete()) {
-      NoteEditor.resolveDelete(raw, ctx);
-      trimOutput();
-      return;
-    }
-
-    const result = Commands.execute(cmd, args, currentPath, ctx);
+    const result = App.Commands.execute(cmd, args, currentPath, ctx);
 
     if (result) {
       if (result.newPath) {
@@ -266,10 +224,10 @@ function createTerminal(winEl) {
         if (raw) {
           echoCommand(raw);
           commandHistory.unshift(raw);
-          if (commandHistory.length > 200) commandHistory.pop();
+          if (commandHistory.length > Config.MAX_HISTORY) commandHistory.pop();
           // Persist history (2a) — first terminal only
           if (isFirst) {
-            try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+            try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, Config.MAX_HISTORY))); } catch (e) {}
           }
           historyIndex = -1; tempBuffer = '';
           executeCommand(raw);
@@ -403,10 +361,10 @@ function createTerminal(winEl) {
       inputEl.value = '';
       echoCommand(cmd);
       commandHistory.unshift(cmd);
-      if (commandHistory.length > 200) commandHistory.pop();
+      if (commandHistory.length > Config.MAX_HISTORY) commandHistory.pop();
       // Persist history (2a)
       if (isFirst) {
-        try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+        try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, Config.MAX_HISTORY))); } catch (e) {}
       }
       historyIndex = -1; tempBuffer = '';
       executeCommand(cmd);
@@ -453,8 +411,8 @@ function createTerminal(winEl) {
               setTimeout(() => {
                 echoCommand(autoCmd);
                 commandHistory.unshift(autoCmd);
-                if (commandHistory.length > 200) commandHistory.pop();
-                try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, 200))); } catch (e) {}
+                if (commandHistory.length > Config.MAX_HISTORY) commandHistory.pop();
+                try { localStorage.setItem(HIST_KEY, JSON.stringify(commandHistory.slice(0, Config.MAX_HISTORY))); } catch (e) {}
                 executeCommand(autoCmd);
               }, 350);
             }
@@ -492,4 +450,9 @@ function createTerminal(winEl) {
 
 // ── Main terminal (original window) ───────────────────────────
 const Terminal = createTerminal(document.getElementById('terminalWindow'));
+App._firstTerminal = Terminal;  // expose to App namespace for `history` command
 document.addEventListener('DOMContentLoaded', () => Terminal.init());
+
+// Export to globalThis for modules loaded via new Function(src)()
+globalThis.createTerminal = createTerminal;
+globalThis.Terminal       = Terminal;

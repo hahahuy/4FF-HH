@@ -12,8 +12,8 @@ const InitPanels = (() => {
 
   const GAP          = 12;   // px gap between panels
   const MIN_TERM_H   = 220;  // min height for the caller terminal
-  const MOBILE_BP    = 600;  // must match CSS / Draggable constant
-  const TABLET_BP    = 900;
+  const MOBILE_BP    = Config.BREAKPOINT_MOBILE;
+  const TABLET_BP    = Config.BREAKPOINT_TABLET;
 
   let leftPanel      = null;
   let rightPanel     = null;
@@ -44,20 +44,7 @@ const InitPanels = (() => {
   }
 
   // SEC-6: Strip dangerous elements/attributes from parsed Markdown before insertion.
-  function sanitiseHtml(el) {
-    el.querySelectorAll('script,iframe,object,embed,form,base').forEach(n => n.remove());
-    el.querySelectorAll('*').forEach(node => {
-      [...node.attributes].forEach(attr => {
-        if (/^on/i.test(attr.name)) {
-          node.removeAttribute(attr.name);
-        }
-        if ((attr.name === 'href' || attr.name === 'src' || attr.name === 'action') &&
-            /^\s*javascript:/i.test(attr.value)) {
-          node.removeAttribute(attr.name);
-        }
-      });
-    });
-  }
+  // Shared implementation lives in js/utils/html.js (sanitiseHtml).
 
   // ── Content helpers ──────────────────────────────────────
   function appendMarkdown(outputEl, mdText) {
@@ -238,13 +225,13 @@ const InitPanels = (() => {
   // ── Fade in a panel ──────────────────────────────────────
   function fadeIn(el) {
     // Double rAF to ensure the browser has painted opacity:0 first
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    afterLayout(() => {
       el.style.transition = 'opacity 0.25s ease';
       el.style.opacity    = '1';
       el.addEventListener('transitionend', () => {
         el.style.transition = '';
       }, { once: true });
-    }));
+    });
   }
 
   // ── Fade out and remove a panel ──────────────────────────
@@ -343,3 +330,5 @@ const InitPanels = (() => {
   return { start, stop, isActive };
 
 })();
+
+App.InitPanels = InitPanels;  // publish to App namespace

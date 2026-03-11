@@ -22,7 +22,7 @@
 const NoteEditor = (() => {
 
   // ── Cloud Functions base URL ───────────────────────────
-  const CF_BASE       = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
+  const CF_BASE       = Config.CF_BASE;
 
   // ── Editor state ──────────────────────────────────────
   let _active        = false;
@@ -44,27 +44,9 @@ const NoteEditor = (() => {
   let _deleteFilename  = null;
   let _deleteCtx       = null;
 
-  // ── HTML escaper (duplicated from terminal.js — not exported globally) ──
-  function esc(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  // ── HTML sanitiser (duplicated from terminal.js — not exported globally) ─
-  function sanitiseHtml(el) {
-    el.querySelectorAll('script,iframe,object,embed,form').forEach(n => n.remove());
-    el.querySelectorAll('*').forEach(n => {
-      [...n.attributes].forEach(attr => {
-        if (/^on/i.test(attr.name)) n.removeAttribute(attr.name);
-        if (attr.name === 'href'   && /^javascript:/i.test(attr.value)) n.removeAttribute(attr.name);
-        if (attr.name === 'action' && /^javascript:/i.test(attr.value)) n.removeAttribute(attr.name);
-      });
-    });
-  }
+  // ── HTML escaper — uses shared escHtml from js/utils/html.js ─
+  // ── HTML sanitiser — uses shared sanitiseHtml from js/utils/html.js ─
+  function esc(str) { return escHtml(str); }
 
   // ── Build the editor window DOM ───────────────────────
   function buildWindow(filename, mode) {
@@ -111,9 +93,9 @@ const NoteEditor = (() => {
     document.body.appendChild(win);
 
     // Animate in
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    afterLayout(() => {
       win.classList.add('ne-visible');
-    }));
+    });
 
     return win;
   }
@@ -124,7 +106,7 @@ const NoteEditor = (() => {
     const vh = window.innerHeight;
     const GAP = 8;
 
-    if (vw <= 600) {
+    if (vw <= Config.BREAKPOINT_MOBILE) {
       // Mobile: fullscreen
       _editorWin.style.cssText =
         `left:0;top:0;width:${vw}px;height:${vh}px;`;
@@ -294,7 +276,7 @@ const NoteEditor = (() => {
     if (_callerWin) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      if (vw > 600) {
+      if (vw > Config.BREAKPOINT_MOBILE) {
         const w = Math.min(860, vw - 40);
         const h = Math.min(680, vh - 40);
         _callerWin.style.cssText =
@@ -500,3 +482,12 @@ const NoteEditor = (() => {
   };
 
 })();
+
+App.NoteEditor = NoteEditor;  // publish to App namespace
+
+// ── EventBus registration ─────────────────────────────────────
+App.EventBus.on('rawInput', ({ raw, ctx }) => {
+  if (!NoteEditor.hasPendingDelete()) return false;
+  NoteEditor.resolveDelete(raw, ctx);
+  return true;
+});

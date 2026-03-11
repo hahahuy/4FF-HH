@@ -1,5 +1,6 @@
 # Claude Code local config
 .claude/
+CLAUDE.md
 
 # Firebase secrets
 functions/.env
@@ -14,3 +15,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Node / build
+node_modules/
+dist/

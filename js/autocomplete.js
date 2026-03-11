@@ -141,3 +141,6 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
 
   return { trigger, updateGhost, hide, resetCycle };
 }
+
+// Export to globalThis for modules loaded via new Function(src)()
+globalThis.createAutocomplete = createAutocomplete;

@@ -36,7 +36,7 @@ const Tips = (() => {
   const INTERVAL_MS  = 8000;   // rotate every 8 s
   const FLIP_OUT_MS  = 320;    // duration of flip-out animation
   const FLIP_IN_MS   = 280;    // duration of flip-in animation
-  const DISMISSED_KEY = 'tips_dismissed';
+  const DISMISSED_KEY = Config.STORAGE.TIPS;
 
   let current  = 0;
   let timer    = null;
@@ -172,3 +172,5 @@ const Tips = (() => {
   return { init };
 
 })();
+
+App.Tips = Tips;  // publish to App namespace

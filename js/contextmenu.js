@@ -20,7 +20,7 @@ const ContextMenu = (() => {
       {
         icon: '⬡',
         label: 'Normal Portfolio',
-        action: () => window.open('https://hahahuy.github.io/porfoliosite/', '_blank', 'noopener,noreferrer'),
+        action: () => window.open('https://hahahuy.github.io/portfoliosite/', '_blank', 'noopener,noreferrer'),
       },
       { separator: true },
       {
@@ -149,8 +149,8 @@ const ContextMenu = (() => {
     document.body.appendChild(clone);
 
     // Wire drag + resize (pinToScreen runs inside rAF, so this is safe)
-    if (typeof Draggable !== 'undefined' && Draggable.init) {
-      Draggable.init(clone);
+    if (App.Draggable?.init) {
+      App.Draggable.init(clone);
     }
 
     // Boot a fresh independent terminal inside the clone
@@ -193,5 +193,7 @@ const ContextMenu = (() => {
   return { init };
 
 })();
+
+App.ContextMenu = ContextMenu;  // publish to App namespace
 
 document.addEventListener('DOMContentLoaded', () => ContextMenu.init());

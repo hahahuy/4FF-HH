@@ -10,9 +10,9 @@
 
 const Auth = (() => {
 
-  // ── Cloud Functions base URL ───────────────────────────
-  const CF_BASE     = 'https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net';
-  const SESSION_KEY = 'owner_session';  // localStorage key
+  // ── Cloud Functions base URL / session storage key ─────
+  const CF_BASE     = Config.CF_BASE;
+  const SESSION_KEY = Config.STORAGE.SESSION;
 
   // ── State ─────────────────────────────────────────────
   let _pendingOTP     = false;
@@ -160,3 +160,20 @@ const Auth = (() => {
   };
 
 })();
+
+App.Auth = Auth;  // publish to App namespace
+
+// ── EventBus registration ─────────────────────────────────────
+App.EventBus.on('rawInput', ({ raw, ctx }) => {
+  if (!Auth.hasPendingOTP()) return false;
+  Auth.resolveOTP(raw, ctx).then(result => {
+    if (!result) return;
+    if (result.error) {
+      ctx.appendLine(result.error, ['error']);
+    } else if (result.lines) {
+      result.lines.forEach(l => ctx.appendHTML(l.html, l.classes || []));
+    }
+    ctx.scrollBottom();
+  });
+  return true;
+});

@@ -113,25 +113,105 @@
     </div>
   </div>
 
-  <!-- Load all production modules -->
+  <!-- ── Shared utilities (must load before any module) ── -->
+  <script src="../js/utils/config.js"></script>
+  <script src="../js/utils/html.js"></script>
+  <script src="../js/utils/fetch.js"></script>
+  <script src="../js/utils/dom.js"></script>
+
+  <!-- ── App namespace + EventBus ── -->
+  <script src="../js/app.js"></script>
+  <script src="../js/event-bus.js"></script>
+
+  <!-- ── Production modules ── -->
   <script src="../js/filesystem.js"></script>
   <script src="../js/autocomplete.js"></script>
-  <!-- InitPanels stub: avoids DOM manipulation in test context -->
+
+  <!-- ── InitPanels stub: avoids real DOM manipulation in test context ── -->
   <script>
     'use strict';
-    const InitPanels = (() => {
+    App.InitPanels = (() => {
       let _active = false;
       function start() { _active = true; }
       function stop()  { _active = false; }
       function isActive() { return _active; }
       return { start, stop, isActive };
     })();
+    const InitPanels = App.InitPanels;  // backward-compat alias
   </script>
-  <!-- MessagePanel stub: avoids real Firebase SDK in tests.
-       Exposes only the methods the test suite calls. -->
+
+  <!-- ── Auth stub: avoids real Cloud Function calls in tests ── -->
   <script>
     'use strict';
-    const MessagePanel = (() => {
+    App.Auth = (() => {
+      let _pendingOTP = false;
+      function isAuthenticated() { return false; }
+      function hasPendingOTP()   { return _pendingOTP; }
+      function getToken()        { return null; }
+      function clearSession()    {}
+      function startAuth(passphrase, ctx) {
+        return Promise.resolve({ error: 'auth: not available in tests' });
+      }
+      function resolveOTP(otp, ctx) {
+        _pendingOTP = false;
+        return Promise.resolve({ error: 'auth: not available in tests' });
+      }
+      return { isAuthenticated, hasPendingOTP, getToken, clearSession, startAuth, resolveOTP };
+    })();
+    const Auth = App.Auth;  // backward-compat alias
+    // Register EventBus listener so terminal.js 4-way chain works
+    App.EventBus.on('rawInput', ({ raw, ctx }) => {
+      if (!App.Auth.hasPendingOTP()) return false;
+      App.Auth.resolveOTP(raw, ctx).then(result => {
+        if (!result) return;
+        if (result.error) ctx.appendLine(result.error, ['error']);
+        else if (result.lines) result.lines.forEach(l => ctx.appendHTML(l.html, l.classes || []));
+        ctx.scrollBottom();
+      });
+      return true;
+    });
+  </script>
+
+  <!-- ── NoteEditor stub: avoids real editor DOM in tests ── -->
+  <script>
+    'use strict';
+    App.NoteEditor = (() => {
+      let _pendingDelete = false;
+      function open() {}
+      function isActive() { return false; }
+      function confirmDelete(filename, ctx) {
+        _pendingDelete = true;
+        ctx.appendHTML(`Delete ${escHtml(filename)}? y/n`, ['output-line']);
+        ctx.scrollBottom();
+      }
+      function hasPendingDelete() { return _pendingDelete; }
+      function resolveDelete(raw, ctx) {
+        const a = raw.trim().toLowerCase();
+        if (a === 'y' || a === 'yes') {
+          _pendingDelete = false;
+          ctx.appendLine('Deleted (stub).', ['success']);
+        } else if (a === 'n' || a === 'no') {
+          _pendingDelete = false;
+          ctx.appendLine('Cancelled.', ['muted']);
+        } else {
+          ctx.appendLine('Type y or n.', ['muted']);
+        }
+        ctx.scrollBottom();
+      }
+      return { open, isActive, confirmDelete, hasPendingDelete, resolveDelete };
+    })();
+    const NoteEditor = App.NoteEditor;  // backward-compat alias
+    App.EventBus.on('rawInput', ({ raw, ctx }) => {
+      if (!App.NoteEditor.hasPendingDelete()) return false;
+      App.NoteEditor.resolveDelete(raw, ctx);
+      return true;
+    });
+  </script>
+
+  <!-- ── MessagePanel stub: avoids real Firebase SDK in tests ── -->
+  <script>
+    'use strict';
+    App.MessagePanel = (() => {
       let _pendingCaptcha  = false;
       let _captchaContent  = '';
       let _captchaAnswer   = null;
@@ -139,13 +219,11 @@
       let _pendingContent  = '';
 
       function confirmSend(content, ctx) {
-        // Mirror validateContent / validateName logic for test coverage
         if (!content || !content.trim())
           return { error: 'Message cannot be empty.' };
         if (content.length > 500)
           return { error: `Message too long. Max 500 characters (got ${content.length}).` };
-        // Rate limit check (reads localStorage directly)
-        const RATE_KEY = 'mp_send_times';
+        const RATE_KEY  = 'mp_send_times';
         const WINDOW_MS = 60_000;
         const MAX_SENDS = 3;
         const times = JSON.parse(localStorage.getItem(RATE_KEY) || '[]')
@@ -153,14 +231,11 @@
         localStorage.setItem(RATE_KEY, JSON.stringify(times));
         if (times.length >= MAX_SENDS)
           return { error: 'Too many messages. Please wait a minute.' };
-        // Show captcha
         const a = 7, b = 4;
         _captchaAnswer  = a + b;
         _captchaContent = content;
         _pendingCaptcha = true;
-        ctx.appendHTML(
-          `<span>Solve to send:</span> ${a} + ${b} = ?`, []
-        );
+        ctx.appendHTML(`<span>Solve to send:</span> ${a} + ${b} = ?`, []);
         ctx.scrollBottom();
         return null;
       }
@@ -173,7 +248,7 @@
           ctx.appendLine('Incorrect, try again.', ['error']);
           ctx.appendHTML('New question…', []);
           ctx.scrollBottom();
-          return; // stays pending
+          return;
         }
         const content   = _captchaContent;
         _pendingCaptcha = false;
@@ -206,7 +281,7 @@
         try { return localStorage.getItem('mp_last_name') || null; }
         catch (e) { return null; }
       }
-      function startChat(name, ctx) { return Promise.resolve(null); }
+      function startChat() { return Promise.resolve(null); }
 
       return {
         confirmSend, hasPendingCaptcha, resolvePendingCaptcha,
@@ -214,8 +289,24 @@
         isActive, stop, getLastName, startChat,
       };
     })();
+    const MessagePanel = App.MessagePanel;  // backward-compat alias
+    // Register EventBus listeners (captcha highest priority)
+    App.EventBus.on('rawInput', ({ raw, ctx }) => {
+      if (App.MessagePanel.hasPendingCaptcha()) { App.MessagePanel.resolvePendingCaptcha(raw, ctx); return true; }
+      if (App.MessagePanel.hasPendingConfirm()) { App.MessagePanel.resolvePendingConfirm(raw, ctx); return true; }
+      return false;
+    });
   </script>
-  <script src="../js/commands.js"></script>
+
+  <!-- ── Split command files (Phase 4b) ── -->
+  <script src="../js/commands/fs-commands.js"></script>
+  <script src="../js/commands/system-commands.js"></script>
+  <script src="../js/commands/ui-commands.js"></script>
+  <script src="../js/commands/social-commands.js"></script>
+  <script src="../js/commands/owner-commands.js"></script>
+  <script src="../js/commands/easter-eggs.js"></script>
+  <script src="../js/commands/index.js"></script>
+
   <script src="../js/terminal.js"></script>
 
   <!-- Test suite -->
