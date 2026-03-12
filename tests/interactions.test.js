@@ -17,9 +17,9 @@
  *   are non-zero (otherwise MIN_W=340/MIN_H=220 clamp fires immediately).
  */
 
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -32,21 +32,24 @@ function loadModule(relPath) {
 // ── One-time environment setup ────────────────────────────────────────────────
 beforeAll(() => {
   // jsdom omits pointer-capture APIs
-  Element.prototype.setPointerCapture   ??= vi.fn();
+  Element.prototype.setPointerCapture ??= vi.fn();
   Element.prototype.releasePointerCapture ??= vi.fn();
 
   // Make rAF synchronous — afterLayout = rAF(rAF(fn)) so two nested calls,
   // both resolve immediately.
   let _id = 0;
-  global.requestAnimationFrame = (fn) => { fn(performance.now()); return ++_id; };
-  global.cancelAnimationFrame  = vi.fn();
+  global.requestAnimationFrame = (fn) => {
+    fn(performance.now());
+    return ++_id;
+  };
+  global.cancelAnimationFrame = vi.fn();
 
   // Desktop viewport: wider than both breakpoints (mobile=600, tablet=900)
-  Object.defineProperty(window, "innerWidth",  { value: 1280, writable: true, configurable: true });
-  Object.defineProperty(window, "innerHeight", { value: 900,  writable: true, configurable: true });
+  Object.defineProperty(window, "innerWidth", { value: 1280, writable: true, configurable: true });
+  Object.defineProperty(window, "innerHeight", { value: 900, writable: true, configurable: true });
 
   // Load modules — App / Config / afterLayout already on globalThis from setup.js
-  loadModule("js/draggable.js");    // → App.Draggable
+  loadModule("js/draggable.js"); // → App.Draggable
   loadModule("js/contextmenu.js"); // → App.ContextMenu
 
   // DOMContentLoaded already fired; call init() manually so event listeners
@@ -69,8 +72,14 @@ function makeWindow({ w = 0, h = 0 } = {}) {
   win.appendChild(tb);
 
   if (w && h) {
-    win.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, right: w, bottom: h, width: w, height: h });
+    win.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      right: w,
+      bottom: h,
+      width: w,
+      height: h,
+    });
   }
 
   document.body.appendChild(win);
@@ -80,16 +89,22 @@ function makeWindow({ w = 0, h = 0 } = {}) {
 /** Build a PointerEvent or fall back to MouseEvent for older jsdom builds. */
 function ptr(type, { x = 0, y = 0, id = 1 } = {}) {
   const init = { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: id };
-  try   { return new PointerEvent(type, init); }
-  catch { const e = new MouseEvent(type, init);
-          Object.defineProperty(e, "pointerId", { value: id });
-          return e; }
+  try {
+    return new PointerEvent(type, init);
+  } catch {
+    const e = new MouseEvent(type, init);
+    Object.defineProperty(e, "pointerId", { value: id });
+    return e;
+  }
 }
 
 // ── Draggable: resize handles created on init ─────────────────────────────────
 describe("Draggable — resize handles", () => {
   let win;
-  beforeEach(() => { win = makeWindow(); App.Draggable.init(win); });
+  beforeEach(() => {
+    win = makeWindow();
+    App.Draggable.init(win);
+  });
   afterEach(() => win.remove());
 
   it("adds exactly 8 resize handles", () => {
@@ -105,9 +120,9 @@ describe("Draggable — resize handles", () => {
   });
 
   it("every handle has the base resize-handle class", () => {
-    win.querySelectorAll("[data-edge]").forEach((h) =>
-      expect(h.classList.contains("resize-handle")).toBe(true)
-    );
+    win
+      .querySelectorAll("[data-edge]")
+      .forEach((h) => expect(h.classList.contains("resize-handle")).toBe(true));
   });
 });
 
@@ -140,19 +155,19 @@ describe("Draggable — drag via titlebar", () => {
   it("pointerup removes .dragging class", () => {
     const tb = win.querySelector(".titlebar");
     tb.dispatchEvent(ptr("pointerdown", { x: 100, y: 80 }));
-    tb.dispatchEvent(ptr("pointerup",   { x: 100, y: 80 }));
+    tb.dispatchEvent(ptr("pointerup", { x: 100, y: 80 }));
     expect(win.classList.contains("dragging")).toBe(false);
   });
 
   it("does NOT drag when clicking a .dot inside the titlebar", () => {
-    const tb  = win.querySelector(".titlebar");
+    const tb = win.querySelector(".titlebar");
     const dot = document.createElement("span");
     dot.className = "dot";
     tb.appendChild(dot);
 
     // pointerdown on the dot — the handler returns early
     dot.dispatchEvent(ptr("pointerdown", { x: 100, y: 80 }));
-    tb.dispatchEvent(ptr("pointermove",  { x: 200, y: 160 }));
+    tb.dispatchEvent(ptr("pointermove", { x: 200, y: 160 }));
 
     // window should NOT have been dragged
     expect(win.classList.contains("dragging")).toBe(false);
@@ -160,11 +175,11 @@ describe("Draggable — drag via titlebar", () => {
   });
 
   it("does NOT drag when clicking a .resize-handle (resize takes priority)", () => {
-    const tb     = win.querySelector(".titlebar");
+    const tb = win.querySelector(".titlebar");
     const handle = win.querySelector(".resize-n");
 
     handle.dispatchEvent(ptr("pointerdown", { x: 100, y: 0 }));
-    tb.dispatchEvent(ptr("pointermove",     { x: 200, y: 50 }));
+    tb.dispatchEvent(ptr("pointermove", { x: 200, y: 50 }));
 
     // Drag listener ignores events from resize handles
     expect(win.classList.contains("dragging")).toBe(false);
@@ -210,36 +225,36 @@ describe("Draggable — resize via handles", () => {
 
   it("pointermove on .resize-se grows width and height", () => {
     const se = win.querySelector(".resize-se");
-    se.dispatchEvent(ptr("pointerdown", { x: 860, y: 640 }));  // startW=860, startH=640
+    se.dispatchEvent(ptr("pointerdown", { x: 860, y: 640 })); // startW=860, startH=640
     win.dispatchEvent(ptr("pointermove", { x: 910, y: 680 })); // dx=+50, dy=+40
 
-    expect(win.style.width).toBe("910px");   // 860 + 50
-    expect(win.style.height).toBe("680px");  // 640 + 40
+    expect(win.style.width).toBe("910px"); // 860 + 50
+    expect(win.style.height).toBe("680px"); // 640 + 40
   });
 
   it("pointermove on .resize-nw shrinks width and height from top-left", () => {
     const nw = win.querySelector(".resize-nw");
-    nw.dispatchEvent(ptr("pointerdown", { x: 0, y: 0 }));      // startW=860, startH=640
-    win.dispatchEvent(ptr("pointermove", { x: 50, y: 40 }));   // dx=+50, dy=+40 (shrinking nw)
+    nw.dispatchEvent(ptr("pointerdown", { x: 0, y: 0 })); // startW=860, startH=640
+    win.dispatchEvent(ptr("pointermove", { x: 50, y: 40 })); // dx=+50, dy=+40 (shrinking nw)
 
-    expect(win.style.width).toBe("810px");   // 860 - 50
-    expect(win.style.height).toBe("600px");  // 640 - 40
+    expect(win.style.width).toBe("810px"); // 860 - 50
+    expect(win.style.height).toBe("600px"); // 640 - 40
   });
 
   it("pointerup removes .resizing class", () => {
     const se = win.querySelector(".resize-se");
     se.dispatchEvent(ptr("pointerdown", { x: 860, y: 640 }));
-    win.dispatchEvent(ptr("pointerup",  { x: 860, y: 640 }));
+    win.dispatchEvent(ptr("pointerup", { x: 860, y: 640 }));
     expect(win.classList.contains("resizing")).toBe(false);
   });
 
   it("resize does not shrink below MIN_W=340 / MIN_H=220", () => {
     const nw = win.querySelector(".resize-nw");
-    nw.dispatchEvent(ptr("pointerdown", { x: 0,    y: 0    }));
+    nw.dispatchEvent(ptr("pointerdown", { x: 0, y: 0 }));
     win.dispatchEvent(ptr("pointermove", { x: 2000, y: 2000 })); // try to shrink massively
 
-    const gotW = parseFloat(win.style.width  || "860");
-    const gotH = parseFloat(win.style.height || "640");
+    const gotW = Number.parseFloat(win.style.width || "860");
+    const gotH = Number.parseFloat(win.style.height || "640");
     expect(gotW).toBeGreaterThanOrEqual(340);
     expect(gotH).toBeGreaterThanOrEqual(220);
   });
@@ -276,9 +291,14 @@ describe("ContextMenu — right-click on background", () => {
     el.className = "backdrop";
     document.body.appendChild(el);
 
-    el.dispatchEvent(new MouseEvent("contextmenu", {
-      bubbles: true, cancelable: true, clientX: 400, clientY: 300,
-    }));
+    el.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 400,
+        clientY: 300,
+      }),
+    );
 
     // rAF is synchronous → .visible is added immediately
     const menu = document.getElementById("bg-context-menu");
@@ -291,9 +311,14 @@ describe("ContextMenu — right-click on background", () => {
   it("right-click INSIDE a .terminal-window does NOT show the menu", () => {
     const win = makeWindow();
 
-    win.dispatchEvent(new MouseEvent("contextmenu", {
-      bubbles: true, cancelable: true, clientX: 400, clientY: 300,
-    }));
+    win.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 400,
+        clientY: 300,
+      }),
+    );
 
     const menu = document.getElementById("bg-context-menu");
     // Either no menu at all, or not visible
@@ -307,11 +332,16 @@ describe("ContextMenu — right-click on background", () => {
     el.className = "backdrop";
     document.body.appendChild(el);
 
-    el.dispatchEvent(new MouseEvent("contextmenu", {
-      bubbles: true, cancelable: true, clientX: 10, clientY: 10,
-    }));
+    el.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 10,
+        clientY: 10,
+      }),
+    );
 
-    const menu  = document.getElementById("bg-context-menu");
+    const menu = document.getElementById("bg-context-menu");
     const items = menu?.querySelectorAll(".ctx-item");
     expect(items?.length ?? 0, "at least 2 .ctx-item elements").toBeGreaterThanOrEqual(2);
 
@@ -327,9 +357,14 @@ describe("ContextMenu — right-click on background", () => {
     el.className = "backdrop";
     document.body.appendChild(el);
 
-    el.dispatchEvent(new MouseEvent("contextmenu", {
-      bubbles: true, cancelable: true, clientX: 10, clientY: 10,
-    }));
+    el.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 10,
+        clientY: 10,
+      }),
+    );
 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
@@ -344,9 +379,14 @@ describe("ContextMenu — right-click on background", () => {
     el.className = "backdrop";
     document.body.appendChild(el);
 
-    el.dispatchEvent(new MouseEvent("contextmenu", {
-      bubbles: true, cancelable: true, clientX: 10, clientY: 10,
-    }));
+    el.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 10,
+        clientY: 10,
+      }),
+    );
 
     // Click somewhere not inside the menu
     document.dispatchEvent(new MouseEvent("click", { bubbles: true }));
