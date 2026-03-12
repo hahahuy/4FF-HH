@@ -1,6 +1,6 @@
 /* ============================================================
    js/commands/easter-eggs.js — Fun / discovery commands
-   Commands: cowsay, fortune, weather, neofetch
+   Commands: cowsay, fortune, weather, neofetch, hn, apis
    ============================================================ */
 
 'use strict';
@@ -153,6 +153,123 @@ const EasterEggs = {
         lines.push(line(`<span style="color:var(--color-blue)">${art}</span>  ${inf}`));
       }
       return { lines };
+    },
+  },
+
+  // ── hn ─────────────────────────────────────────────────────
+  hn: {
+    desc: 'Top Hacker News stories  (hn [n=5])',
+    usage: 'hn [n]',
+    exec(args, path, ctx, { line, text, esc }) {
+      const n = Math.min(Math.max(parseInt(args[0], 10) || 5, 1), 10);
+
+      const HN_TOP  = 'https://hacker-news.firebaseio.com/v0/topstories.json';
+      const HN_ITEM = 'https://hacker-news.firebaseio.com/v0/item/';
+
+      (async () => {
+        try {
+          const idsRes = await fetch(HN_TOP);
+          if (!idsRes.ok) throw new Error(`HTTP ${idsRes.status}`);
+          const ids = await idsRes.json();
+
+          const top = ids.slice(0, n);
+          const items = await Promise.all(
+            top.map(id =>
+              fetch(`${HN_ITEM}${id}.json`)
+                .then(r => r.ok ? r.json() : null)
+                .catch(() => null)
+            )
+          );
+
+          const valid = items.filter(it => it && it.title);
+          if (!valid.length) throw new Error('no stories returned');
+
+          const maxRank = String(valid.length).length;
+          valid.forEach((it, i) => {
+            const rank    = String(i + 1).padStart(maxRank, ' ');
+            const score   = it.score  ? `▲ ${it.score}` : '';
+            const by      = it.by    ? `by ${esc(it.by)}` : '';
+            const url     = it.url || `https://news.ycombinator.com/item?id=${it.id}`;
+            const domain  = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return 'news.ycombinator.com'; } })();
+
+            ctx.appendHTML(
+              `<span style="color:var(--text-muted)">${esc(rank)}.</span> ` +
+              `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" ` +
+              `style="color:var(--text-primary)">${esc(it.title)}</a> ` +
+              `<span style="color:var(--text-dim)">(${esc(domain)})</span>` +
+              (score || by
+                ? `<br><span style="color:var(--text-dim)">&nbsp;&nbsp;&nbsp;&nbsp;${score}${score && by ? ' · ' : ''}${by}</span>`
+                : '')
+            );
+          });
+          ctx.appendHTML(
+            `<span style="color:var(--text-muted)">` +
+            `<a href="https://news.ycombinator.com" target="_blank" rel="noopener noreferrer" ` +
+            `style="color:var(--text-muted)">→ news.ycombinator.com</a></span>`
+          );
+        } catch (e) {
+          ctx.appendLine(`hn: ${e.message}`, ['error']);
+        }
+        ctx.scrollBottom();
+      })();
+
+      return { lines: [text(`Fetching top ${n} HN stories…`, ['muted'])] };
+    },
+  },
+
+  // ── apis ───────────────────────────────────────────────────
+  apis: {
+    desc: 'Search the public-APIs catalogue  (apis <keyword>)',
+    usage: 'apis <keyword>',
+    exec(args, path, ctx, { text, esc }) {
+      const keyword = args.join(' ').trim();
+      if (!keyword) return { error: 'Usage: apis <keyword>   e.g. apis weather' };
+
+      const url = `https://api.publicapis.org/entries?title=${encodeURIComponent(keyword)}`;
+
+      (async () => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+
+          const entries = data?.entries ?? [];
+          if (!entries.length) {
+            ctx.appendLine(`apis: no results for "${keyword}"`, ['muted']);
+            ctx.scrollBottom();
+            return;
+          }
+
+          const shown = entries.slice(0, 8);
+          ctx.appendHTML(
+            `<span style="color:var(--color-green)">` +
+            `${data.count} result${data.count === 1 ? '' : 's'} for <strong>${esc(keyword)}</strong>` +
+            `${data.count > 8 ? ` (showing 8)` : ''}:</span>`
+          );
+
+          shown.forEach(e => {
+            const auth   = e.Auth     ? `<span style="color:var(--color-yellow)"> [${esc(e.Auth)}]</span>` : '';
+            const cors   = e.Cors === 'yes' ? `<span style="color:var(--color-green)"> CORS</span>` : '';
+            const https  = e.HTTPS ? '' : `<span style="color:var(--color-red)"> HTTP</span>`;
+            const link   = e.Link
+              ? `<a href="${esc(e.Link)}" target="_blank" rel="noopener noreferrer" ` +
+                `style="color:var(--text-muted)">${esc(e.Link)}</a>`
+              : '';
+            ctx.appendHTML(
+              `<span style="color:var(--text-primary);font-weight:600">${esc(e.API)}</span>` +
+              `${auth}${cors}${https}` +
+              `<span style="color:var(--text-muted)"> — ${esc(e.Category)}</span>` +
+              `<br><span style="color:var(--text-dim)">&nbsp;&nbsp;${esc(e.Description)}</span>` +
+              (link ? `<br><span style="color:var(--text-dim)">&nbsp;&nbsp;${link}</span>` : '')
+            );
+          });
+        } catch (e) {
+          ctx.appendLine(`apis: ${e.message}`, ['error']);
+        }
+        ctx.scrollBottom();
+      })();
+
+      return { lines: [text(`Searching for "${keyword}"…`, ['muted'])] };
     },
   },
 

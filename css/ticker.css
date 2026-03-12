@@ -1,0 +1,168 @@
+/* ============================================================
+   ticker.css — Scrolling top-of-page live ticker
+   Shown only when the tips bubble has been permanently dismissed.
+   ============================================================ */
+
+/* ── Bar shell ───────────────────────────────────────────── */
+#ticker-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 1200;           /* above terminal windows (z≤1000) */
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-titlebar, #1f2428);
+  border-bottom: 1px solid var(--border-color, #30363d);
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  color: var(--text-muted, #6e7681);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── "LIVE" label chip ───────────────────────────────────── */
+#ticker-label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 100%;
+  border-right: 1px solid var(--border-color, #30363d);
+  background: var(--bg-window, #161b22);
+}
+
+#ticker-label span {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-green, #7ee787);
+  text-transform: uppercase;
+}
+
+/* ── Scrolling track ─────────────────────────────────────── */
+/* The track holds two .tk-copy children side by side.
+   The animation scrolls by -50% (= one copy width) for a seamless loop. */
+#ticker-track {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  animation: ticker-scroll 55s linear infinite;
+}
+
+/* Pause on hover so users can read / click */
+#ticker-bar:hover #ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Each copy is a flex row of segments */
+.tk-copy {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 24px;   /* breathing room at the join point */
+  white-space: nowrap;
+}
+
+/* ── Segments ────────────────────────────────────────────── */
+.tk-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.tk-lbl {
+  color: var(--text-dim, #484f58);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tk-val {
+  color: var(--text-primary, #c9d1d9);
+  font-size: 11.5px;
+}
+
+.tk-val.tk-loading {
+  color: var(--text-dim, #484f58);
+}
+
+/* Price directional colouring */
+.tk-up { color: var(--color-green,  #7ee787); }
+.tk-dn { color: var(--color-red,    #ff7b72); }
+
+/* ── Separator dot ───────────────────────────────────────── */
+.tk-sep {
+  color: var(--text-dim, #484f58);
+  padding: 0 2px;
+}
+
+/* ── Command hint items ──────────────────────────────────── */
+.tk-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  cursor: pointer;
+  color: var(--text-muted, #6e7681);
+  transition: color 0.15s ease;
+}
+
+.tk-hint:hover {
+  color: var(--text-primary, #c9d1d9);
+}
+
+.tk-hint .tk-cmd {
+  color: var(--color-green, #7ee787);
+  background: rgba(126, 231, 135, 0.08);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-size: 11px;
+}
+
+/* ── Dismiss button ──────────────────────────────────────── */
+#ticker-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-left: 1px solid var(--border-color, #30363d);
+  background: transparent;
+  color: var(--text-dim, #484f58);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+#ticker-close:hover {
+  color: var(--text-primary, #c9d1d9);
+  background: var(--bg-hover, #1c2128);
+}
+
+/* ── Body offset: push page content below the bar ───────── */
+/* Applied when bar is present. ticker.js doesn't add a body class,
+   so we target the sibling via :has() where supported, with a
+   fallback top-padding set inline by ticker.js on mount. */
+body:has(#ticker-bar) {
+  padding-top: 28px;
+}
+
+/* ── Hide on mobile — ticker is a detail, not critical ───── */
+@media (max-width: 600px) {
+  #ticker-bar { display: none !important; }
+}

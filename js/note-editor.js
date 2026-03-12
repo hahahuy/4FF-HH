@@ -107,7 +107,7 @@ const NoteEditor = (() => {
     if (vw <= Config.BREAKPOINT_MOBILE) {
       // Mobile: fullscreen
       _editorWin.style.cssText =
-        `left:0;top:0;width:${vw}px;height:${vh}px;`;
+        `position:fixed;left:0;top:0;width:${vw}px;height:${vh}px;`;
       return;
     }
 
@@ -118,13 +118,13 @@ const NoteEditor = (() => {
     const t = Math.round((vh - h) / 2);
 
     _editorWin.style.cssText =
-      `left:${l}px;top:${t}px;width:${w}px;height:${h}px;`;
+      `position:fixed;left:${l}px;top:${t}px;width:${w}px;height:${h}px;`;
 
     // Shrink caller terminal to a small bottom strip
     if (_callerWin) {
       const STRIP_H = 160;
       _callerWin.style.cssText =
-        `left:${GAP}px;bottom:${GAP}px;top:auto;` +
+        `position:fixed;left:${GAP}px;bottom:${GAP}px;top:auto;` +
         `width:${w * 0.45}px;height:${STRIP_H}px;`;
     }
   }
@@ -272,10 +272,10 @@ const NoteEditor = (() => {
         const w = Math.min(860, vw - 40);
         const h = Math.min(680, vh - 40);
         _callerWin.style.cssText =
-          `left:${Math.round((vw - w) / 2)}px;top:${Math.round((vh - h) / 2)}px;` +
+          `position:fixed;left:${Math.round((vw - w) / 2)}px;top:${Math.round((vh - h) / 2)}px;` +
           `width:${w}px;height:${h}px;`;
       } else {
-        _callerWin.style.cssText = `left:0;top:0;width:${vw}px;height:${vh}px;`;
+        _callerWin.style.cssText = `position:fixed;left:0;top:0;width:${vw}px;height:${vh}px;`;
       }
     }
 
