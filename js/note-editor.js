@@ -1,98 +1,77 @@
-/* ============================================================
-   note-editor.js — NoteEditor singleton
-   Split-pane Markdown editor for private notes stored in
-   Firebase RTDB via Cloud Functions.
-
-   Commands wired via commands.js:
-     note add <file>.md  — create & open empty note
-     note cat <file>.md  — fetch & open existing note
-     note rm  <file>.md  — delete (with confirm)
-
-   Vim keybindings inside textarea:
-     :w    — save
-     :q    — quit (prompts if unsaved)
-     :q!   — force quit
-     :wq   — save then quit
-     Ctrl+S — save
-     Esc    — attempt quit
-   ============================================================ */
-
-'use strict';
-
 const NoteEditor = (() => {
-
   // ── Cloud Functions base URL ───────────────────────────
-  const CF_BASE       = Config.CF_BASE;
+  const CF_BASE = Config.CF_BASE;
 
   // ── Editor state ──────────────────────────────────────
-  let _active        = false;
-  let _filename      = null;
-  let _savedContent  = '';     // Last content saved to Firebase / GitHub
-  let _dirty         = false;  // Unsaved changes?
-  let _editorWin     = null;   // The .terminal-window DOM element
-  let _textareaEl    = null;   // The <textarea>
-  let _previewEl     = null;   // The preview <div>
-  let _statusEl      = null;   // Status badge in titlebar
+  let _active = false;
+  let _filename = null;
+  let _savedContent = ""; // Last content saved to Firebase / GitHub
+  let _dirty = false; // Unsaved changes?
+  let _editorWin = null; // The .terminal-window DOM element
+  let _textareaEl = null; // The <textarea>
+  let _previewEl = null; // The preview <div>
+  let _statusEl = null; // Status badge in titlebar
   let _debounceTimer = null;
-  let _callerCtx     = null;   // Terminal ctx for messages
-  let _callerWin     = null;   // Terminal winEl for layout
-  let _mode          = 'note'; // 'note' | 'site'
-  let _siteFileKey   = null;   // fileKey sent to siteFileWrite CF (site mode only)
+  let _callerCtx = null; // Terminal ctx for messages
+  let _callerWin = null; // Terminal winEl for layout
+  let _mode = "note"; // 'note' | 'site'
+  let _siteFileKey = null; // fileKey sent to siteFileWrite CF (site mode only)
 
   // ── Delete confirm state ───────────────────────────────
-  let _pendingDelete   = false;
-  let _deleteFilename  = null;
-  let _deleteCtx       = null;
+  let _pendingDelete = false;
+  let _deleteFilename = null;
+  let _deleteCtx = null;
 
   // ── HTML escaper — uses shared escHtml from js/utils/html.js ─
   // ── HTML sanitiser — uses shared sanitiseHtml from js/utils/html.js ─
-  function esc(str) { return escHtml(str); }
+  function esc(str) {
+    return escHtml(str);
+  }
 
   // ── Build the editor window DOM ───────────────────────
   function buildWindow(filename, mode) {
-    const win = document.createElement('div');
-    win.className = 'terminal-window note-editor-window';
+    const win = document.createElement("div");
+    win.className = "terminal-window note-editor-window";
 
     // Titlebar path: site files show content/<path>, notes show notes/<name>
-    const titlePath = (mode === 'site')
-      ? `content/${filename}`
-      : `notes/${filename}`;
+    const titlePath = mode === "site" ? `content/${filename}` : `notes/${filename}`;
 
     // Badge: site files get a blue "site file" badge
-    const badgeClass = (mode === 'site') ? 'ne-status-badge ne-status-site' : 'ne-status-badge ne-status-muted';
-    const badgeText  = (mode === 'site') ? 'site file' : 'new file';
+    const badgeClass =
+      mode === "site" ? "ne-status-badge ne-status-site" : "ne-status-badge ne-status-muted";
+    const badgeText = mode === "site" ? "site file" : "new file";
 
     win.innerHTML =
       `<div class="titlebar ne-titlebar">` +
-        `<span class="dot dot-red" id="neDotRed"></span>` +
-        `<span class="dot dot-yellow"></span>` +
-        `<span class="dot dot-green"></span>` +
-        `<span class="ne-titlebar-filename">${esc(titlePath)}</span>` +
-        `<span class="${esc(badgeClass)}" id="neStatus">${badgeText}</span>` +
+      `<span class="dot dot-red" id="neDotRed"></span>` +
+      `<span class="dot dot-yellow"></span>` +
+      `<span class="dot dot-green"></span>` +
+      `<span class="ne-titlebar-filename">${esc(titlePath)}</span>` +
+      `<span class="${esc(badgeClass)}" id="neStatus">${badgeText}</span>` +
       `</div>` +
       `<div class="ne-body">` +
-        `<div class="ne-pane ne-editor-pane">` +
-          `<textarea class="ne-textarea" id="neTextarea" ` +
-            `autocomplete="off" autocorrect="off" ` +
-            `autocapitalize="off" spellcheck="false" ` +
-            `placeholder="Start writing Markdown…"></textarea>` +
-          `<div class="ne-editor-hint">` +
-            `<span style="color:var(--text-muted)">Ctrl+S save &nbsp; Esc quit</span>` +
-          `</div>` +
-        `</div>` +
-        `<div class="ne-divider"></div>` +
-        `<div class="ne-pane ne-preview-pane">` +
-          `<div class="ne-preview md-render" id="nePreview">` +
-            `<p style="color:var(--text-dim);font-style:italic">Preview will appear here…</p>` +
-          `</div>` +
-        `</div>` +
+      `<div class="ne-pane ne-editor-pane">` +
+      `<textarea class="ne-textarea" id="neTextarea" ` +
+      `autocomplete="off" autocorrect="off" ` +
+      `autocapitalize="off" spellcheck="false" ` +
+      `placeholder="Start writing Markdown…"></textarea>` +
+      `<div class="ne-editor-hint">` +
+      `<span style="color:var(--text-muted)">Ctrl+S save &nbsp; Esc quit</span>` +
+      `</div>` +
+      `</div>` +
+      `<div class="ne-divider"></div>` +
+      `<div class="ne-pane ne-preview-pane">` +
+      `<div class="ne-preview md-render" id="nePreview">` +
+      `<p style="color:var(--text-dim);font-style:italic">Preview will appear here…</p>` +
+      `</div>` +
+      `</div>` +
       `</div>`;
 
     document.body.appendChild(win);
 
     // Animate in
     afterLayout(() => {
-      win.classList.add('ne-visible');
+      win.classList.add("ne-visible");
     });
 
     return win;
@@ -106,8 +85,7 @@ const NoteEditor = (() => {
 
     if (vw <= Config.BREAKPOINT_MOBILE) {
       // Mobile: fullscreen
-      _editorWin.style.cssText =
-        `position:fixed;left:0;top:0;width:${vw}px;height:${vh}px;`;
+      _editorWin.style.cssText = `position:fixed;left:0;top:0;width:${vw}px;height:${vh}px;`;
       return;
     }
 
@@ -117,8 +95,7 @@ const NoteEditor = (() => {
     const l = Math.round((vw - w) / 2);
     const t = Math.round((vh - h) / 2);
 
-    _editorWin.style.cssText =
-      `position:fixed;left:${l}px;top:${t}px;width:${w}px;height:${h}px;`;
+    _editorWin.style.cssText = `position:fixed;left:${l}px;top:${t}px;width:${w}px;height:${h}px;`;
 
     // Shrink caller terminal to a small bottom strip
     if (_callerWin) {
@@ -133,24 +110,23 @@ const NoteEditor = (() => {
   function flashStatus(text, type) {
     if (!_statusEl) return;
     _statusEl.textContent = text;
-    _statusEl.className   = `ne-status-badge ne-status-${type}`;
+    _statusEl.className = `ne-status-badge ne-status-${type}`;
   }
 
   // ── Update live preview ────────────────────────────────
   function updatePreview() {
     if (!_previewEl || !_textareaEl) return;
-    const raw     = _textareaEl.value;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'md-render';
-    wrapper.innerHTML = (typeof marked !== 'undefined')
-      ? marked.parse(raw)
-      : `<pre>${esc(raw)}</pre>`;
+    const raw = _textareaEl.value;
+    const wrapper = document.createElement("div");
+    wrapper.className = "md-render";
+    wrapper.innerHTML =
+      typeof marked !== "undefined" ? marked.parse(raw) : `<pre>${esc(raw)}</pre>`;
     sanitiseHtml(wrapper);
-    wrapper.querySelectorAll('a').forEach(a => {
-      a.target = '_blank';
-      a.rel    = 'noopener noreferrer';
+    wrapper.querySelectorAll("a").forEach((a) => {
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
     });
-    _previewEl.innerHTML = '';
+    _previewEl.innerHTML = "";
     _previewEl.appendChild(wrapper);
   }
 
@@ -162,82 +138,82 @@ const NoteEditor = (() => {
   // ── Save to Firebase (note mode) or GitHub (site mode) ─
   async function saveNote() {
     if (!_textareaEl) return;
-    if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
-      flashStatus('not authenticated!', 'error');
+    if (typeof Auth === "undefined" || !Auth.isAuthenticated()) {
+      flashStatus("not authenticated!", "error");
       return;
     }
 
-    flashStatus('saving…', 'muted');
+    flashStatus("saving…", "muted");
 
     const content = _textareaEl.value;
 
     // ── Site file mode: push plain Markdown directly to GitHub ──
-    if (_mode === 'site') {
+    if (_mode === "site") {
       let res, data;
       try {
-        res  = await fetch(`${CF_BASE}/siteFileWrite`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            token:   Auth.getToken(),
+        res = await fetch(`${CF_BASE}/siteFileWrite`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token: Auth.getToken(),
             fileKey: _siteFileKey,
             content,
           }),
         });
         data = await res.json().catch(() => ({}));
       } catch (e) {
-        flashStatus(`save failed: ${e.message}`, 'error');
+        flashStatus(`save failed: ${e.message}`, "error");
         return;
       }
 
       if (!res.ok) {
-        flashStatus(`save failed: ${data.error || res.status}`, 'error');
+        flashStatus(`save failed: ${data.error || res.status}`, "error");
         return;
       }
 
       _savedContent = content;
-      _dirty        = false;
-      flashStatus('saved ✓', 'saved');
+      _dirty = false;
+      flashStatus("saved ✓", "saved");
       return;
     }
 
     // ── Note mode: save to Firebase RTDB ────────────────────────
     // If both old and new are empty treat it as create (first save of empty note)
-    const effectiveAction = _savedContent === '' ? 'create' : 'update';
+    const effectiveAction = _savedContent === "" ? "create" : "update";
 
     let res, data;
     try {
-      res  = await fetch(`${CF_BASE}/notesWrite`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          token:    Auth.getToken(),
-          action:   effectiveAction,
+      res = await fetch(`${CF_BASE}/notesWrite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: Auth.getToken(),
+          action: effectiveAction,
           filename: _filename,
           content,
         }),
       });
       data = await res.json().catch(() => ({}));
     } catch (e) {
-      flashStatus(`save failed: ${e.message}`, 'error');
+      flashStatus(`save failed: ${e.message}`, "error");
       return;
     }
 
     if (!res.ok) {
-      flashStatus(`save failed: ${data.error || res.status}`, 'error');
+      flashStatus(`save failed: ${data.error || res.status}`, "error");
       return;
     }
 
     _savedContent = content;
-    _dirty        = false;
-    flashStatus('saved ✓', 'saved');
+    _dirty = false;
+    flashStatus("saved ✓", "saved");
   }
 
   // ── Attempt quit ───────────────────────────────────────
   function attemptQuit() {
     if (_dirty) {
       // Show warning inside the editor via the status badge
-      flashStatus('unsaved! type :q! to force quit', 'dirty');
+      flashStatus("unsaved! type :q! to force quit", "dirty");
     } else {
       closeEditor();
     }
@@ -256,13 +232,15 @@ const NoteEditor = (() => {
     clearTimeout(_debounceTimer);
 
     // Remove beforeunload guard
-    window.removeEventListener('beforeunload', _beforeUnloadHandler);
+    window.removeEventListener("beforeunload", _beforeUnloadHandler);
 
     // Fade out
     const win = _editorWin;
-    win.classList.remove('ne-visible');
-    win.classList.add('ne-closing');
-    setTimeout(() => { if (win.parentNode) win.remove(); }, 220);
+    win.classList.remove("ne-visible");
+    win.classList.add("ne-closing");
+    setTimeout(() => {
+      if (win.parentNode) win.remove();
+    }, 220);
 
     // Restore caller terminal position
     if (_callerWin) {
@@ -280,18 +258,18 @@ const NoteEditor = (() => {
     }
 
     // Reset state
-    _active       = false;
-    _filename     = null;
-    _savedContent = '';
-    _dirty        = false;
-    _editorWin    = null;
-    _textareaEl   = null;
-    _previewEl    = null;
-    _statusEl     = null;
-    _callerCtx    = null;
-    _callerWin    = null;
-    _mode         = 'note';
-    _siteFileKey  = null;
+    _active = false;
+    _filename = null;
+    _savedContent = "";
+    _dirty = false;
+    _editorWin = null;
+    _textareaEl = null;
+    _previewEl = null;
+    _statusEl = null;
+    _callerCtx = null;
+    _callerWin = null;
+    _mode = "note";
+    _siteFileKey = null;
   }
 
   // ── beforeunload guard ─────────────────────────────────
@@ -302,26 +280,34 @@ const NoteEditor = (() => {
   // ── Wire keyboard events on the textarea ───────────────
   function wireTextarea(textarea) {
     // Ctrl+S → save
-    textarea.addEventListener('keydown', e => {
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveNote(); return; }
-      if (e.key === 'Escape')         { e.preventDefault(); attemptQuit(); return; }
+    textarea.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault();
+        saveNote();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        attemptQuit();
+        return;
+      }
     });
 
     // Detect content changes → mark dirty / clean
-    textarea.addEventListener('input', () => {
+    textarea.addEventListener("input", () => {
       if (!_dirty && textarea.value !== _savedContent) {
         _dirty = true;
-        flashStatus('unsaved', 'dirty');
+        flashStatus("unsaved", "dirty");
       } else if (_dirty && textarea.value === _savedContent) {
         _dirty = false;
-        flashStatus('saved ✓', 'saved');
+        flashStatus("saved ✓", "saved");
       }
       schedulePreviewUpdate();
     });
 
     // Red dot click → close (like macOS)
-    const dotRed = _editorWin.querySelector('#neDotRed');
-    if (dotRed) dotRed.addEventListener('click', () => attemptQuit());
+    const dotRed = _editorWin.querySelector("#neDotRed");
+    if (dotRed) dotRed.addEventListener("click", () => attemptQuit());
   }
 
   // ══════════════════════════════════════════════════════
@@ -330,40 +316,40 @@ const NoteEditor = (() => {
   //   mode='site'  → site content file (saved via siteFileWrite CF)
   //   siteFileKey  → fileKey sent to siteFileWrite (e.g. 'about', 'blog/post.md')
   // ══════════════════════════════════════════════════════
-  function open(filename, content, ctx, mode = 'note', siteFileKey = null) {
+  function open(filename, content, ctx, mode = "note", siteFileKey = null) {
     if (_active) {
-      if (ctx) ctx.appendLine('note: editor already open. Close it first (:q).', ['error']);
+      if (ctx) ctx.appendLine("note: editor already open. Close it first (:q).", ["error"]);
       return;
     }
 
-    _active       = true;
-    _filename     = filename;
+    _active = true;
+    _filename = filename;
     _savedContent = content;
-    _dirty        = false;
-    _callerCtx    = ctx;
-    _callerWin    = ctx ? ctx.winEl : null;
-    _mode         = (mode === 'site') ? 'site' : 'note';
-    _siteFileKey  = siteFileKey || null;
+    _dirty = false;
+    _callerCtx = ctx;
+    _callerWin = ctx ? ctx.winEl : null;
+    _mode = mode === "site" ? "site" : "note";
+    _siteFileKey = siteFileKey || null;
 
     _editorWin = buildWindow(filename, _mode);
-    _textareaEl = _editorWin.querySelector('#neTextarea');
-    _previewEl  = _editorWin.querySelector('#nePreview');
-    _statusEl   = _editorWin.querySelector('#neStatus');
+    _textareaEl = _editorWin.querySelector("#neTextarea");
+    _previewEl = _editorWin.querySelector("#nePreview");
+    _statusEl = _editorWin.querySelector("#neStatus");
 
     // Populate content
     _textareaEl.value = content;
     if (content) {
-      flashStatus(_mode === 'site' ? 'site file' : 'saved ✓', _mode === 'site' ? 'site' : 'saved');
+      flashStatus(_mode === "site" ? "site file" : "saved ✓", _mode === "site" ? "site" : "saved");
       updatePreview();
     } else {
-      flashStatus(_mode === 'site' ? 'site file' : 'new file', _mode === 'site' ? 'site' : 'muted');
+      flashStatus(_mode === "site" ? "site file" : "new file", _mode === "site" ? "site" : "muted");
     }
 
     layoutEditor();
     wireTextarea(_textareaEl);
 
     // Guard unsaved changes on tab close
-    window.addEventListener('beforeunload', _beforeUnloadHandler);
+    window.addEventListener("beforeunload", _beforeUnloadHandler);
 
     // Focus textarea after animation
     setTimeout(() => _textareaEl.focus(), 300);
@@ -373,16 +359,16 @@ const NoteEditor = (() => {
   // Public: confirmDelete(filename, ctx)
   // ══════════════════════════════════════════════════════
   function confirmDelete(filename, ctx) {
-    _pendingDelete  = true;
+    _pendingDelete = true;
     _deleteFilename = filename;
-    _deleteCtx      = ctx;
+    _deleteCtx = ctx;
 
     ctx.appendHTML(
       `Delete <span style="color:var(--color-blue)">${esc(filename)}</span>? ` +
-      `<span style="color:var(--color-green)">y</span>` +
-      `<span style="color:var(--text-muted)"> / </span>` +
-      `<span style="color:var(--color-red)">n</span>`,
-      ['output-line']
+        `<span style="color:var(--color-green)">y</span>` +
+        `<span style="color:var(--text-muted)"> / </span>` +
+        `<span style="color:var(--color-red)">n</span>`,
+      ["output-line"],
     );
     ctx.scrollBottom();
   }
@@ -394,19 +380,19 @@ const NoteEditor = (() => {
   async function resolveDelete(raw, ctx) {
     const answer = raw.trim().toLowerCase();
 
-    if (answer !== 'y' && answer !== 'yes' && answer !== 'n' && answer !== 'no') {
-      ctx.appendLine('Please type y (yes) or n (no).', ['muted']);
+    if (answer !== "y" && answer !== "yes" && answer !== "n" && answer !== "no") {
+      ctx.appendLine("Please type y (yes) or n (no).", ["muted"]);
       ctx.scrollBottom();
-      return;  // Stay pending
+      return; // Stay pending
     }
 
     _pendingDelete = false;
     const filename = _deleteFilename;
     _deleteFilename = null;
-    _deleteCtx      = null;
+    _deleteCtx = null;
 
-    if (answer === 'n' || answer === 'no') {
-      ctx.appendLine('Cancelled.', ['muted']);
+    if (answer === "n" || answer === "no") {
+      ctx.appendLine("Cancelled.", ["muted"]);
       ctx.scrollBottom();
       return;
     }
@@ -414,53 +400,52 @@ const NoteEditor = (() => {
     // Perform delete
     let res, data;
     try {
-      res  = await fetch(`${CF_BASE}/notesWrite`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          token:    Auth.getToken(),
-          action:   'delete',
+      res = await fetch(`${CF_BASE}/notesWrite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: Auth.getToken(),
+          action: "delete",
           filename,
         }),
       });
       data = await res.json().catch(() => ({}));
     } catch (e) {
-      ctx.appendLine(`note rm: network error — ${e.message}`, ['error']);
+      ctx.appendLine(`note rm: network error — ${e.message}`, ["error"]);
       ctx.scrollBottom();
       return;
     }
 
     if (!res.ok) {
-      ctx.appendLine(`note rm: ${data.error || res.status}`, ['error']);
+      ctx.appendLine(`note rm: ${data.error || res.status}`, ["error"]);
     } else {
       ctx.appendHTML(
         `<span style="color:var(--color-green)">✓</span> Deleted ` +
-        `<span style="color:var(--color-blue)">${esc(filename)}</span>`,
-        ['output-line']
+          `<span style="color:var(--color-blue)">${esc(filename)}</span>`,
+        ["output-line"],
       );
     }
     ctx.scrollBottom();
   }
 
   // ── Resize handler ─────────────────────────────────────
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     if (_active && _editorWin) layoutEditor();
   });
 
   return {
     open,
-    isActive:         () => _active,
+    isActive: () => _active,
     confirmDelete,
     hasPendingDelete,
     resolveDelete,
   };
-
 })();
 
-App.NoteEditor = NoteEditor;  // publish to App namespace
+App.NoteEditor = NoteEditor; // publish to App namespace
 
 // ── EventBus registration ─────────────────────────────────────
-App.EventBus.on('rawInput', ({ raw, ctx }) => {
+App.EventBus.on("rawInput", ({ raw, ctx }) => {
   if (!NoteEditor.hasPendingDelete()) return false;
   NoteEditor.resolveDelete(raw, ctx);
   return true;

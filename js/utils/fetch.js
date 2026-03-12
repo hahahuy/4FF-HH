@@ -1,11 +1,3 @@
-/* ============================================================
-   js/utils/fetch.js — Shared Cloud Function POST helper
-   Replaces the 10+ identical try/catch + res.ok + .json() patterns
-   scattered across auth.js, note-editor.js, and commands.js.
-   ============================================================ */
-
-'use strict';
-
 /**
  * POST JSON to a Cloud Function endpoint and return the parsed response.
  * Throws a descriptive Error on network failure, 429, 403, or any non-2xx.
@@ -18,9 +10,9 @@ async function cfPost(endpoint, body = {}) {
   let res;
   try {
     res = await fetch(endpoint, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
   } catch (e) {
     throw new Error(`network error — ${e.message}`);
@@ -28,9 +20,9 @@ async function cfPost(endpoint, body = {}) {
 
   const data = await res.json().catch(() => ({}));
 
-  if (res.status === 429) throw new Error('rate limited — try again later');
-  if (res.status === 403) throw new Error('forbidden');
-  if (!res.ok)            throw new Error(data.error || `server error (${res.status})`);
+  if (res.status === 429) throw new Error("rate limited — try again later");
+  if (res.status === 403) throw new Error("forbidden");
+  if (!res.ok) throw new Error(data.error || `server error (${res.status})`);
 
   return data;
 }

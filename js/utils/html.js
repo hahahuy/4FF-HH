@@ -1,12 +1,3 @@
-/* ============================================================
-   js/utils/html.js — Shared HTML-safety helpers
-   Replaces local esc()/escapeHtml() and sanitiseHtml() copies
-   in commands.js, terminal.js, note-editor.js, message-panel.js,
-   and init-panels.js.
-   ============================================================ */
-
-'use strict';
-
 /**
  * Escape special HTML characters so a string is safe to inject
  * into innerHTML.  Replaces all local `esc()` / `escapeHtml()` copies.
@@ -16,11 +7,11 @@
  */
 function escHtml(str) {
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -31,16 +22,13 @@ function escHtml(str) {
  * @param {Element} el
  */
 function sanitiseHtml(el) {
-  el.querySelectorAll('script,iframe,object,embed,form,base').forEach(n => n.remove());
-  el.querySelectorAll('*').forEach(node => {
-    [...node.attributes].forEach(attr => {
+  el.querySelectorAll("script,iframe,object,embed,form,base").forEach((n) => n.remove());
+  el.querySelectorAll("*").forEach((node) => {
+    [...node.attributes].forEach((attr) => {
       if (/^on/i.test(attr.name)) {
         node.removeAttribute(attr.name);
       }
-      if (
-        ['href', 'src', 'action'].includes(attr.name) &&
-        /^\s*javascript:/i.test(attr.value)
-      ) {
+      if (["href", "src", "action"].includes(attr.name) && /^\s*javascript:/i.test(attr.value)) {
         node.removeAttribute(attr.name);
       }
     });
@@ -48,5 +36,5 @@ function sanitiseHtml(el) {
 }
 
 // Export to globalThis for modules loaded via new Function(src)()
-globalThis.escHtml     = escHtml;
+globalThis.escHtml = escHtml;
 globalThis.sanitiseHtml = sanitiseHtml;

@@ -1,20 +1,14 @@
-/* ============================================================
-   js/commands/index.js — Command registry assembler
-   Merges all domain files into App.Commands.
-   ============================================================ */
-
-'use strict';
-
-(function () {
-
+(() => {
   // ── Shared helper factories ───────────────────────────────
   function _line(html, classes = []) {
-    return { html, classes: ['output-line', ...classes] };
+    return { html, classes: ["output-line", ...classes] };
   }
   function _text(str, classes = []) {
     return _line(escHtml(str), classes);
   }
-  function _esc(str) { return escHtml(str); }
+  function _esc(str) {
+    return escHtml(str);
+  }
 
   const _helpers = { line: _line, text: _text, esc: _esc };
 
@@ -37,6 +31,7 @@
   for (const [name, entry] of Object.entries(_raw)) {
     _registry[name] = {
       desc: entry.desc,
+      /** @param {any[]} args @param {string[]} path @param {any} ctx */
       exec(args, path, ctx) {
         return entry.exec(args, path, ctx, _helpers, _registry);
       },
@@ -51,8 +46,8 @@
       if (!entry) {
         return {
           lines: [
-            _text(`${cmd}: command not found`, ['error']),
-            _text('Type `help` for available commands.', ['muted']),
+            _text(`${cmd}: command not found`, ["error"]),
+            _text("Type `help` for available commands.", ["muted"]),
           ],
         };
       }
@@ -70,5 +65,4 @@
   const Commands = App.Commands;
   // Export to globalThis for modules loaded via new Function(src)()
   globalThis.Commands = Commands;
-
 })();

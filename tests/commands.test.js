@@ -63,7 +63,7 @@ describe('Commands.execute — core commands', () => {
   });
 
   it('cd into a file returns error', () => {
-    const result = Commands.execute('cd', ['about.txt'], ['~']);
+    const result = Commands.execute('cd', ['about.md'], ['~']);
     expect(result.error).toBeTruthy();
   });
 
@@ -101,7 +101,7 @@ describe('Commands.execute — core commands', () => {
   });
 
   it('cat nonexistent file returns error', () => {
-    const result = Commands.execute('cat', ['ghost.txt'], ['~']);
+    const result = Commands.execute('cat', ['ghost.md'], ['~']);
     expect(result.error).toBeTruthy();
   });
 
@@ -111,7 +111,7 @@ describe('Commands.execute — core commands', () => {
   });
 
   it('cat inline file returns output descriptor', () => {
-    const result = Commands.execute('cat', ['blog/index.txt'], ['~'], mockCtx());
+    const result = Commands.execute('cat', ['blog/index.md'], ['~'], mockCtx());
     expect(result === null || result?.lines || result?.markdown).toBeTruthy();
   });
 
@@ -298,7 +298,7 @@ describe('Commands.execute — SEC-1 deep-link whitelist', () => {
   const WL = /^(cat|ls|cd|whoami|neofetch|theme|help|pwd|echo|fortune|cowsay|banner|weather)\b/i;
 
   it('whitelist matches safe commands', () => {
-    expect(WL.test('cat about.txt')).toBe(true);
+    expect(WL.test('cat about.md')).toBe(true);
     expect(WL.test('ls projects')).toBe(true);
     expect(WL.test('cd blog')).toBe(true);
     expect(WL.test('whoami')).toBe(true);
@@ -322,7 +322,7 @@ describe('Commands.execute — SEC-1 deep-link whitelist', () => {
   });
 
   it('whitelist is case-insensitive', () => {
-    expect(WL.test('CAT about.txt')).toBe(true);
+    expect(WL.test('CAT about.md')).toBe(true);
     expect(WL.test('LS')).toBe(true);
     expect(WL.test('Help')).toBe(true);
   });

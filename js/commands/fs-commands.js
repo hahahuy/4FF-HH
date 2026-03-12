@@ -1,24 +1,16 @@
-/* ============================================================
-   js/commands/fs-commands.js — Filesystem commands
-   Commands: ls, cd, cat, pwd, grep
-   ============================================================ */
-
-'use strict';
-
 // ── Shared helpers (injected via helpers object from index.js) ─
 // line(), text(), esc() are provided by the assembler scope.
 
 // Directories that require authentication to be visible in ls ~/
-const AUTH_GATED_DIRS = new Set(['notes', 'images']);
+const AUTH_GATED_DIRS = new Set(["notes", "images"]);
 
 const FsCommands = {
-
   // ── ls ────────────────────────────────────────────────────
   ls: {
-    desc: 'List directory contents',
-    usage: 'ls [dir]',
+    desc: "List directory contents",
+    usage: "ls [dir]",
     exec(args, path, ctx, { line, text, esc }) {
-      const target   = args[0] || null;
+      const target = args[0] || null;
       const resolved = fsResolve(path, target);
 
       if (!resolved) {
@@ -27,20 +19,24 @@ const FsCommands = {
 
       const { node } = resolved;
 
-      if (node.__type === 'file') {
+      if (node.__type === "file") {
         const cmd = `cat ${args[0]}`;
-        return { lines: [line(
-          `<span class="ls-item ls-file" data-cmd="${esc(cmd)}" title="click to run: ${esc(cmd)}">${esc(args[0])}</span>`
-        )] };
+        return {
+          lines: [
+            line(
+              `<span class="ls-item ls-file" data-cmd="${esc(cmd)}" title="click to run: ${esc(cmd)}">${esc(args[0])}</span>`,
+            ),
+          ],
+        };
       }
 
-      const authed  = typeof Auth !== 'undefined' && Auth.isAuthenticated();
-      const isRoot  = resolved.path.length === 1 && resolved.path[0] === '~';
+      const authed = typeof Auth !== "undefined" && Auth.isAuthenticated();
+      const isRoot = resolved.path.length === 1 && resolved.path[0] === "~";
 
       // Inject notes dir for authenticated owner when listing root
       if (isRoot && authed) {
-        if (!FS['~']['notes'] || FS['~']['notes'].__type !== 'dir') {
-          FS['~']['notes'] = { __type: 'dir' };
+        if (!FS["~"]["notes"] || FS["~"]["notes"].__type !== "dir") {
+          FS["~"]["notes"] = { __type: "dir" };
         }
       }
 
@@ -48,21 +44,21 @@ const FsCommands = {
 
       // Hide auth-gated dirs for unauthenticated users at root
       if (isRoot && !authed) {
-        entries = entries.filter(e => !AUTH_GATED_DIRS.has(e.name));
+        entries = entries.filter((e) => !AUTH_GATED_DIRS.has(e.name));
       }
 
       if (entries.length === 0) {
-        return { lines: [text('(empty directory)', ['muted'])] };
+        return { lines: [text("(empty directory)", ["muted"])] };
       }
 
       let gridHtml = '<div class="ls-grid">';
-      entries.forEach(e => {
-        const isDir  = e.type === 'dir';
-        const cls    = isDir ? 'ls-dir' : 'ls-file';
+      entries.forEach((e) => {
+        const isDir = e.type === "dir";
+        const cls = isDir ? "ls-dir" : "ls-file";
         const isGated = isDir && AUTH_GATED_DIRS.has(e.name);
         // Auth-gated dirs get a 🔒 label but the data-cmd still uses the real name
-        const label  = isGated ? `${e.name}🔒` : e.name;
-        const suffix = isDir ? '/' : '';
+        const label = isGated ? `${e.name}🔒` : e.name;
+        const suffix = isDir ? "/" : "";
         let cmd;
         if (isDir) {
           const relBase = target ? `${target}/${e.name}` : e.name;
@@ -76,23 +72,23 @@ const FsCommands = {
           `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" ` +
           `title="click to run: ${esc(cmd)} | link: ${esc(shareUrl)}">${esc(label)}${suffix}</span>`;
       });
-      gridHtml += '</div>';
+      gridHtml += "</div>";
       return { lines: [{ html: gridHtml, classes: [] }] };
     },
   },
 
   // ── cd ────────────────────────────────────────────────────
   cd: {
-    desc: 'Change directory',
-    usage: 'cd <dir>',
+    desc: "Change directory",
+    usage: "cd <dir>",
     exec(args, path, ctx, { text }) {
-      const target   = args[0] || '~';
+      const target = args[0] || "~";
       const resolved = fsResolve(path, target);
 
       if (!resolved) {
         return { error: `cd: ${target}: No such file or directory` };
       }
-      if (resolved.node.__type === 'file') {
+      if (resolved.node.__type === "file") {
         return { error: `cd: ${target}: Not a directory` };
       }
 
@@ -102,52 +98,52 @@ const FsCommands = {
 
   // ── cat ───────────────────────────────────────────────────
   cat: {
-    desc: 'Display file contents (Markdown rendered)',
-    usage: 'cat <file>',
+    desc: "Display file contents (Markdown rendered)",
+    usage: "cat <file>",
     exec(args, path, ctx, { text }) {
       if (!args[0]) {
-        return { error: 'cat: missing file argument' };
+        return { error: "cat: missing file argument" };
       }
 
       const resolved = fsResolve(path, args[0]);
       if (!resolved) {
         return { error: `cat: ${args[0]}: No such file or directory` };
       }
-      if (resolved.node.__type === 'dir') {
+      if (resolved.node.__type === "dir") {
         return { error: `cat: ${args[0]}: Is a directory` };
       }
 
       // __isNote stubs: hint owner to use note cat instead
       if (resolved.node.__isNote) {
-        const nf = args[0].split('/').pop();
-        ctx.appendLine(`Hint: use 'note cat ${nf}' to open this note in the editor.`, ['muted']);
+        const nf = args[0].split("/").pop();
+        ctx.appendLine(`Hint: use 'note cat ${nf}' to open this note in the editor.`, ["muted"]);
         ctx.scrollBottom();
         return null;
       }
 
       // Media files: render inline if they have a src and a media MIME type
-      const filename = args[0].split('/').pop();
-      const mime     = fsMimeType(filename, resolved.node);
-      const isImage  = mime && mime.startsWith('image/');
-      const isPdf    = mime === 'application/pdf';
+      const filename = args[0].split("/").pop();
+      const mime = fsMimeType(filename, resolved.node);
+      const isImage = mime && mime.startsWith("image/");
+      const isPdf = mime === "application/pdf";
 
       if ((isImage || isPdf) && resolved.node.src) {
         const url = BASE + resolved.node.src;
         if (isImage) {
           ctx.appendHTML(
             `<div class="cat-media-wrap">` +
-            `<img class="cat-image" src="${escHtml(url)}" alt="${escHtml(filename)}" loading="lazy" />` +
-            `<div class="cat-media-meta">${escHtml(filename)}</div>` +
-            `</div>`
+              `<img class="cat-image" src="${escHtml(url)}" alt="${escHtml(filename)}" loading="lazy" />` +
+              `<div class="cat-media-meta">${escHtml(filename)}</div>` +
+              `</div>`,
           );
         } else {
           ctx.appendHTML(
             `<div class="cat-media-wrap cat-pdf-wrap">` +
-            `<iframe class="cat-pdf" src="${escHtml(url)}" title="${escHtml(filename)}"></iframe>` +
-            `<div class="cat-media-meta">` +
-            `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">↗ open ${escHtml(filename)} in new tab</a>` +
-            `</div>` +
-            `</div>`
+              `<iframe class="cat-pdf" src="${escHtml(url)}" title="${escHtml(filename)}"></iframe>` +
+              `<div class="cat-media-meta">` +
+              `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">↗ open ${escHtml(filename)} in new tab</a>` +
+              `</div>` +
+              `</div>`,
           );
         }
         ctx.scrollBottom();
@@ -155,71 +151,71 @@ const FsCommands = {
       }
 
       fsReadFile(resolved.node)
-        .then(content => {
+        .then((content) => {
           ctx.appendMarkdown(content);
           ctx.scrollBottom();
         })
-        .catch(err => {
-          ctx.appendLine(`cat: error reading file — ${err.message}`, ['error']);
+        .catch((err) => {
+          ctx.appendLine(`cat: error reading file — ${err.message}`, ["error"]);
         });
 
-      return { lines: [text('Loading…', ['muted'])] };
+      return { lines: [text("Loading…", ["muted"])] };
     },
   },
 
   // ── pwd ───────────────────────────────────────────────────
   pwd: {
-    desc: 'Print working directory',
-    usage: 'pwd',
+    desc: "Print working directory",
+    usage: "pwd",
     exec(args, path, ctx, { text }) {
-      return { lines: [text(path.join('/'), ['success'])] };
+      return { lines: [text(path.join("/"), ["success"])] };
     },
   },
 
   // ── grep ──────────────────────────────────────────────────
   grep: {
-    desc: 'Search file contents  (grep <term>)',
-    usage: 'grep <term>',
+    desc: "Search file contents  (grep <term>)",
+    usage: "grep <term>",
     exec(args, path, ctx, { esc }) {
       if (!args[0]) {
-        return { error: 'grep: missing search term. Usage: grep <term>' };
+        return { error: "grep: missing search term. Usage: grep <term>" };
       }
 
-      const term      = args.join(' ');
+      const term = args.join(" ");
       const termLower = term.toLowerCase();
 
       function collectFiles(node, currentPath) {
         const results = [];
-        if (!node || typeof node !== 'object') return results;
+        if (!node || typeof node !== "object") return results;
         for (const [key, child] of Object.entries(node)) {
-          if (key === '__type') continue;
-          if (!child || typeof child !== 'object') continue;
-          if (child.__type === 'file') {
-            results.push({ name: [...currentPath, key].join('/'), node: child });
-          } else if (child.__type === 'dir') {
+          if (key === "__type") continue;
+          if (!child || typeof child !== "object") continue;
+          if (child.__type === "file") {
+            results.push({ name: [...currentPath, key].join("/"), node: child });
+          } else if (child.__type === "dir") {
             results.push(...collectFiles(child, [...currentPath, key]));
           }
         }
         return results;
       }
 
-      const files = collectFiles(FS['~'], ['~']);
+      const files = collectFiles(FS["~"], ["~"]);
 
-      ctx.appendLine(`Searching for "${term}"…`, ['muted']);
+      ctx.appendLine(`Searching for "${term}"…`, ["muted"]);
       ctx.scrollBottom();
 
       let found = 0;
       let pending = files.length;
 
       if (files.length === 0) {
-        ctx.appendLine('No files to search.', ['muted']);
+        ctx.appendLine("No files to search.", ["muted"]);
         return null;
       }
 
       files.forEach(({ name, node: fileNode }) => {
         fsReadFile(fileNode)
-          .then(content => {
-            const lines = content.split('\n');
+          .then((content) => {
+            const lines = content.split("\n");
             lines.forEach((fileLine, idx) => {
               if (fileLine.toLowerCase().includes(termLower)) {
                 found++;
@@ -227,9 +223,9 @@ const FsCommands = {
                 const preview = fileLine.trim().slice(0, 100);
                 ctx.appendHTML(
                   `<span style="color:var(--color-blue)">${esc(name)}</span>` +
-                  `<span style="color:var(--text-muted)">:${lineNum}:</span> ` +
-                  `${esc(preview)}`,
-                  ['output-line']
+                    `<span style="color:var(--text-muted)">:${lineNum}:</span> ` +
+                    `${esc(preview)}`,
+                  ["output-line"],
                 );
               }
             });
@@ -239,9 +235,9 @@ const FsCommands = {
             pending--;
             if (pending === 0) {
               if (found === 0) {
-                ctx.appendLine(`No matches found for "${term}".`, ['muted']);
+                ctx.appendLine(`No matches found for "${term}".`, ["muted"]);
               } else {
-                ctx.appendLine(`— ${found} match${found === 1 ? '' : 'es'} found.`, ['muted']);
+                ctx.appendLine(`— ${found} match${found === 1 ? "" : "es"} found.`, ["muted"]);
               }
               ctx.scrollBottom();
             }
@@ -251,7 +247,6 @@ const FsCommands = {
       return null;
     },
   },
-
 };
 
 // Export to globalThis for modules loaded via new Function(src)()

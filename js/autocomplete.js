@@ -1,9 +1,3 @@
-/* ============================================================
-   autocomplete.js — Tab completion factory
-   ============================================================ */
-
-'use strict';
-
 /**
  * Create an independent autocomplete instance scoped to a set of DOM elements.
  * @param {HTMLInputElement} inputEl
@@ -11,18 +5,17 @@
  * @param {HTMLElement}      autocompleteEl
  */
 function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
-
-  let cycleMatches  = [];
-  let cycleIndex    = -1;
-  let cycleBase     = '';
-  let cycleToken    = '';
+  let cycleMatches = [];
+  let cycleIndex = -1;
+  let cycleBase = "";
+  let cycleToken = "";
 
   // ── Tokenise ────────────────────────────────────────────
   function tokenise(input) {
-    const lastSpace = input.lastIndexOf(' ');
-    if (lastSpace === -1) return { base: '', token: input };
+    const lastSpace = input.lastIndexOf(" ");
+    if (lastSpace === -1) return { base: "", token: input };
     return {
-      base:  input.slice(0, lastSpace + 1),
+      base: input.slice(0, lastSpace + 1),
       token: input.slice(lastSpace + 1),
     };
   }
@@ -38,30 +31,30 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
     // → suggest --stop
     const initMatch = trimmed.match(/^init\s+(--?s\S*)?\s*$/);
     if (initMatch) {
-      const token = (initMatch[1] || '');
-      if ('--stop'.startsWith(token)) {
-        return { base: 'init ', token, matches: ['--stop'] };
+      const token = initMatch[1] || "";
+      if ("--stop".startsWith(token)) {
+        return { base: "init ", token, matches: ["--stop"] };
       }
     }
     // "init " with nothing after the space
     if (/^init\s+$/.test(trimmed)) {
-      return { base: 'init ', token: '', matches: ['--stop'] };
+      return { base: "init ", token: "", matches: ["--stop"] };
     }
 
     // "message --name <anything>" followed by a space (and optional partial --stop)
     // → suggest --stop
     const msgMatch = trimmed.match(/^message\s+--name\s+\S+\s+(--?s\S*)?\s*$/);
     if (msgMatch) {
-      const token = (msgMatch[1] || '');
-      if ('--stop'.startsWith(token)) {
-        const base = trimmed.replace(/(--?s\S*)?\s*$/, '');
-        return { base: base + (base.endsWith(' ') ? '' : ' '), token, matches: ['--stop'] };
+      const token = msgMatch[1] || "";
+      if ("--stop".startsWith(token)) {
+        const base = trimmed.replace(/(--?s\S*)?\s*$/, "");
+        return { base: base + (base.endsWith(" ") ? "" : " "), token, matches: ["--stop"] };
       }
     }
     // "message --name <anything> " with nothing after
     const msgSpaceMatch = trimmed.match(/^(message\s+--name\s+\S+)\s+$/);
     if (msgSpaceMatch) {
-      return { base: msgSpaceMatch[1] + ' ', token: '', matches: ['--stop'] };
+      return { base: msgSpaceMatch[1] + " ", token: "", matches: ["--stop"] };
     }
 
     return null;
@@ -74,22 +67,25 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
     if (flagResult) return flagResult;
 
     const { base, token } = tokenise(input);
-    const parts       = input.trimStart().split(/\s+/);
-    const isFirstWord = parts.length === 1 && !input.endsWith(' ');
-    const candidates  = isFirstWord ? Commands.names() : fsEntriesAt(currentPath);
-    const lower       = token.toLowerCase();
-    const matches     = candidates.filter(c => c.toLowerCase().startsWith(lower));
+    const parts = input.trimStart().split(/\s+/);
+    const isFirstWord = parts.length === 1 && !input.endsWith(" ");
+    const candidates = isFirstWord ? App.Commands.names() : fsEntriesAt(currentPath);
+    const lower = token.toLowerCase();
+    const matches = candidates.filter((c) => c.toLowerCase().startsWith(lower));
     return { base, token, matches };
   }
 
   // ── Ghost text ──────────────────────────────────────────
   function updateGhost(input, currentPath) {
-    if (!input) { ghostTextEl.textContent = ''; return; }
+    if (!input) {
+      ghostTextEl.textContent = "";
+      return;
+    }
     const { base, token, matches } = getCandidates(input, currentPath);
     if (matches.length === 1 && (token.length > 0 || getFlagCandidates(input))) {
       ghostTextEl.textContent = base + matches[0];
     } else {
-      ghostTextEl.textContent = '';
+      ghostTextEl.textContent = "";
     }
   }
 
@@ -114,32 +110,40 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
   function trigger(input, currentPath) {
     const { base, token, matches } = getCandidates(input, currentPath);
 
-    if (matches.length === 0) { hide(); ghostTextEl.textContent = ''; return; }
-
-    if (matches.length === 1) {
-      inputEl.value = base + matches[0];
-      ghostTextEl.textContent = '';
-      hide(); resetCycle();
+    if (matches.length === 0) {
+      hide();
+      ghostTextEl.textContent = "";
       return;
     }
 
-    const startingNew = cycleMatches.join(',') !== matches.join(',') || cycleBase !== base;
-    if (startingNew) {
-      cycleMatches = matches; cycleBase = base; cycleToken = token; cycleIndex = -1;
+    if (matches.length === 1) {
+      inputEl.value = base + matches[0];
+      ghostTextEl.textContent = "";
+      hide();
+      resetCycle();
+      return;
     }
 
-    cycleIndex    = (cycleIndex + 1) % cycleMatches.length;
+    const startingNew = cycleMatches.join(",") !== matches.join(",") || cycleBase !== base;
+    if (startingNew) {
+      cycleMatches = matches;
+      cycleBase = base;
+      cycleToken = token;
+      cycleIndex = -1;
+    }
+
+    cycleIndex = (cycleIndex + 1) % cycleMatches.length;
     inputEl.value = cycleBase + cycleMatches[cycleIndex];
-    ghostTextEl.textContent = '';
+    ghostTextEl.textContent = "";
     showList(cycleMatches, cycleIndex);
   }
 
   // ── List ────────────────────────────────────────────────
   function showList(matches, activeIndex) {
-    autocompleteEl.innerHTML = '';
+    autocompleteEl.innerHTML = "";
     matches.forEach((m, i) => {
-      const span = document.createElement('span');
-      span.className = 'autocomplete-item' + (i === activeIndex ? ' current' : '');
+      const span = document.createElement("span");
+      span.className = "autocomplete-item" + (i === activeIndex ? " current" : "");
       span.textContent = m;
       autocompleteEl.appendChild(span);
     });
@@ -147,12 +151,15 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
   }
 
   function hide() {
-    autocompleteEl.hidden   = true;
-    autocompleteEl.innerHTML = '';
+    autocompleteEl.hidden = true;
+    autocompleteEl.innerHTML = "";
   }
 
   function resetCycle() {
-    cycleMatches = []; cycleIndex = -1; cycleBase = ''; cycleToken = '';
+    cycleMatches = [];
+    cycleIndex = -1;
+    cycleBase = "";
+    cycleToken = "";
     hide();
   }
 

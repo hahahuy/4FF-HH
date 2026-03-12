@@ -1,9 +1,3 @@
-/* ============================================================
-   filesystem.js — Virtual Filesystem + Fetch Loader
-   ============================================================ */
-
-'use strict';
-
 // Base path for fetching markdown content.
 // Set via Config.CONTENT_BASE (js/utils/config.js).
 // '' = custom domain at root (hahuy.site).
@@ -19,38 +13,38 @@ const BASE = (globalThis.BASE = Config.CONTENT_BASE);
  *   - content: string → inline text content
  */
 const FS = (globalThis.FS = {
-  '~': {
-    __type: 'dir',
-    'about.md': {
-      __type: 'file',
-      src: '/content/about.md',
+  "~": {
+    __type: "dir",
+    "about.md": {
+      __type: "file",
+      src: "/content/about.md",
     },
-    'skills.md': {
-      __type: 'file',
-      src: '/content/skills.md',
+    "skills.md": {
+      __type: "file",
+      src: "/content/skills.md",
     },
-    'contact.md': {
-      __type: 'file',
-      src: '/content/contact.md',
+    "contact.md": {
+      __type: "file",
+      src: "/content/contact.md",
     },
-    'resume.pdf': {
-      __type: 'file',
-      src: '/content/resume.pdf',
-      mimeType: 'application/pdf',
+    "resume.pdf": {
+      __type: "file",
+      src: "/content/resume.pdf",
+      mimeType: "application/pdf",
     },
-    'projects': {
-      __type: 'dir',
-      'README.md': {
-        __type: 'file',
-        src: '/content/projects/README.md',
+    projects: {
+      __type: "dir",
+      "README.md": {
+        __type: "file",
+        src: "/content/projects/README.md",
       },
     },
-    'blog': {
-      __type: 'dir',
+    blog: {
+      __type: "dir",
       // Populated at runtime by loadBlogManifest()
     },
-    'images': {
-      __type: 'dir',
+    images: {
+      __type: "dir",
       // Populated at runtime by loadUploadedImages()
     },
   },
@@ -70,18 +64,18 @@ function fsResolve(currentPath, arg) {
 
   if (!arg) {
     segments = [...currentPath];
-  } else if (arg === '~' || arg === '/') {
-    segments = ['~'];
-  } else if (arg.startsWith('~/')) {
-    segments = ['~', ...arg.slice(2).split('/').filter(Boolean)];
+  } else if (arg === "~" || arg === "/") {
+    segments = ["~"];
+  } else if (arg.startsWith("~/")) {
+    segments = ["~", ...arg.slice(2).split("/").filter(Boolean)];
   } else {
     // Relative path
     segments = [...currentPath];
-    const parts = arg.split('/').filter(Boolean);
+    const parts = arg.split("/").filter(Boolean);
     for (const part of parts) {
-      if (part === '..') {
+      if (part === "..") {
         if (segments.length > 1) segments.pop();
-      } else if (part !== '.') {
+      } else if (part !== ".") {
         segments.push(part);
       }
     }
@@ -90,7 +84,7 @@ function fsResolve(currentPath, arg) {
   // Walk the FS tree
   let node = FS;
   for (const seg of segments) {
-    if (node && typeof node === 'object' && seg in node) {
+    if (node && typeof node === "object" && seg in node) {
       node = node[seg];
     } else {
       return null;
@@ -106,10 +100,10 @@ function fsResolve(currentPath, arg) {
  */
 function fsListDir(dirNode) {
   return Object.entries(dirNode)
-    .filter(([k]) => !k.startsWith('__'))
+    .filter(([k]) => !k.startsWith("__"))
     .map(([name, val]) => ({
       name,
-      type: val.__type || 'file',
+      type: val.__type || "file",
     }));
 }
 
@@ -127,7 +121,7 @@ async function fsReadFile(fileNode) {
     if (!res.ok) throw new Error(`fetch failed: ${res.status} ${res.statusText}`);
     return await res.text();
   }
-  throw new Error('file has no content or src');
+  throw new Error("file has no content or src");
 }
 
 /**
@@ -136,8 +130,8 @@ async function fsReadFile(fileNode) {
  */
 function fsEntriesAt(pathArr) {
   const result = fsResolve(pathArr);
-  if (!result || result.node.__type !== 'dir') return [];
-  return fsListDir(result.node).map(e => e.name);
+  if (!result || result.node.__type !== "dir") return [];
+  return fsListDir(result.node).map((e) => e.name);
 }
 
 /**
@@ -148,40 +142,39 @@ function fsEntriesAt(pathArr) {
  * Manifest format: [{ "file": "post.md", "title": "...", "date": "YYYY-MM-DD" }]
  */
 async function loadBlogManifest() {
-  const blogNode = FS['~']['blog'];
+  const blogNode = FS["~"].blog;
 
   try {
-    const res = await fetch(BASE + '/content/blog/manifest.json');
+    const res = await fetch(`${BASE}/content/blog/manifest.json`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const posts = await res.json();
 
     // Build index content dynamically from manifest
     const maxLen = posts.reduce((m, p) => Math.max(m, p.file.length), 0);
-    const indexLines = ['# Blog', '', 'Posts available:', ''];
-    posts.forEach(p => {
+    const indexLines = ["# Blog", "", "Posts available:", ""];
+    posts.forEach((p) => {
       const name = p.file;
-      const pad  = ' '.repeat(Math.max(1, maxLen - name.length + 2));
+      const pad = " ".repeat(Math.max(1, maxLen - name.length + 2));
       indexLines.push(`  ${name}${pad}— ${p.title}  (${p.date})`);
     });
-    indexLines.push('', 'Read a post:  cat blog/<filename>.md');
+    indexLines.push("", "Read a post:  cat blog/<filename>.md");
 
-    blogNode['index.md'] = {
-      __type: 'file',
-      content: indexLines.join('\n'),
+    blogNode["index.md"] = {
+      __type: "file",
+      content: indexLines.join("\n"),
     };
 
     // Register each post as a .md file
-    posts.forEach(p => {
+    posts.forEach((p) => {
       blogNode[p.file] = {
-        __type: 'file',
+        __type: "file",
         src: `/content/blog/${p.file}`,
       };
     });
-
   } catch (err) {
     // Fallback: leave blog dir empty with an error note
-    blogNode['index.md'] = {
-      __type: 'file',
+    blogNode["index.md"] = {
+      __type: "file",
       content: `# Blog\n\nCould not load post list: ${err.message}`,
     };
   }
@@ -200,27 +193,29 @@ async function loadPublishedNotes() {
   const CF = Config.CF_BASE;
   try {
     const res = await fetch(`${CF}/notesListPublic`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    '{}',
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
     });
     if (!res.ok) return;
     const data = await res.json();
     if (!data.ok || !Array.isArray(data.notes) || !data.notes.length) return;
 
-    data.notes.forEach(n => {
+    data.notes.forEach((n) => {
       if (!n.filename || !/^[a-zA-Z0-9_-]+\.md$/.test(n.filename)) return;
-      if (typeof n.content !== 'string') return;
-      const node = { __type: 'file', content: n.content };
-      if (n.location === 'blog') {
-        FS['~']['blog'][n.filename] = node;
-      } else if (n.location === 'projects') {
-        FS['~']['projects'][n.filename] = node;
-      } else if (n.location === 'root') {
-        FS['~'][n.filename] = node;
+      if (typeof n.content !== "string") return;
+      const node = { __type: "file", content: n.content };
+      if (n.location === "blog") {
+        FS["~"].blog[n.filename] = node;
+      } else if (n.location === "projects") {
+        FS["~"].projects[n.filename] = node;
+      } else if (n.location === "root") {
+        FS["~"][n.filename] = node;
       }
     });
-  } catch (e) { /* fail silently — FS still works without published notes */ }
+  } catch (e) {
+    /* fail silently — FS still works without published notes */
+  }
 }
 
 // ── MIME helpers ─────────────────────────────────────────────
@@ -230,13 +225,13 @@ async function loadPublishedNotes() {
  * Used by `cat` to decide how to render a file (image vs PDF vs text).
  */
 const MIME_BY_EXT = {
-  jpg:  'image/jpeg',
-  jpeg: 'image/jpeg',
-  png:  'image/png',
-  gif:  'image/gif',
-  webp: 'image/webp',
-  svg:  'image/svg+xml',
-  pdf:  'application/pdf',
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  pdf: "application/pdf",
 };
 
 /**
@@ -248,8 +243,8 @@ const MIME_BY_EXT = {
  * @returns {string|null}
  */
 function fsMimeType(filename, node) {
-  if (node && node.mimeType) return node.mimeType;
-  const ext = (filename || '').split('.').pop().toLowerCase();
+  if (node?.mimeType) return node.mimeType;
+  const ext = (filename || "").split(".").pop().toLowerCase();
   return MIME_BY_EXT[ext] || null;
 }
 
@@ -261,33 +256,38 @@ function fsMimeType(filename, node) {
  * Manifest format: [{ "name": "photo.png", "mimeType": "image/png" }, ...]
  */
 async function loadUploadedImages() {
-  const imagesNode = FS['~']['images'];
+  const imagesNode = FS["~"].images;
   try {
-    const res = await fetch(BASE + '/content/images/manifest.json');
+    const res = await fetch(`${BASE}/content/images/manifest.json`);
     if (!res.ok) return; // 404 = no images yet — silent fallback
 
     const entries = await res.json();
     if (!Array.isArray(entries)) return;
 
-    entries.forEach(entry => {
-      if (!entry.name || typeof entry.name !== 'string') return;
+    entries.forEach((entry) => {
+      if (!entry.name || typeof entry.name !== "string") return;
       if (!/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|svg)$/i.test(entry.name)) return;
       imagesNode[entry.name] = {
-        __type:   'file',
-        src:      `/content/images/${entry.name}`,
-        mimeType: typeof entry.mimeType === 'string' ? entry.mimeType : `image/${entry.name.split('.').pop().toLowerCase()}`,
+        __type: "file",
+        src: `/content/images/${entry.name}`,
+        mimeType:
+          typeof entry.mimeType === "string"
+            ? entry.mimeType
+            : `image/${entry.name.split(".").pop().toLowerCase()}`,
       };
     });
-  } catch (_) { /* fail silently — images dir stays empty */ }
+  } catch (_) {
+    /* fail silently — images dir stays empty */
+  }
 }
 
 // Export to globalThis for modules loaded via new Function(src)()
-globalThis.fsResolve          = fsResolve;
-globalThis.fsListDir          = fsListDir;
-globalThis.fsReadFile         = fsReadFile;
-globalThis.fsEntriesAt        = fsEntriesAt;
-globalThis.loadBlogManifest   = loadBlogManifest;
+globalThis.fsResolve = fsResolve;
+globalThis.fsListDir = fsListDir;
+globalThis.fsReadFile = fsReadFile;
+globalThis.fsEntriesAt = fsEntriesAt;
+globalThis.loadBlogManifest = loadBlogManifest;
 globalThis.loadPublishedNotes = loadPublishedNotes;
 globalThis.loadUploadedImages = loadUploadedImages;
-globalThis.MIME_BY_EXT        = MIME_BY_EXT;
-globalThis.fsMimeType         = fsMimeType;
+globalThis.MIME_BY_EXT = MIME_BY_EXT;
+globalThis.fsMimeType = fsMimeType;
