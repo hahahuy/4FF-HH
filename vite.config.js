@@ -13,9 +13,10 @@ export default defineConfig({
   plugins: [
     viteStaticCopy({
       targets: [
-        { src: 'content', dest: '.' },  // Markdown content files
-        { src: 'CNAME',   dest: '.' },  // Custom domain
-        { src: 'js',      dest: '.' },  // Classic scripts — copied verbatim (no bundling)
+        { src: 'content',      dest: '.' },  // Markdown content files
+        { src: 'CNAME',        dest: '.' },  // Custom domain
+        { src: 'js',           dest: '.' },  // Classic scripts — copied verbatim (no bundling)
+        { src: 'manifest.json', dest: '.' }, // PWA web app manifest
       ],
     }),
   ],

@@ -432,7 +432,7 @@ const MessagePanel = (() => {
     try {
       await db.ref(`sessions/${name}`).set({
         status: "active",
-        createdAt: Date.now(),
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
       });
     } catch (e) {
       return { error: `Failed to open session: ${e.message}` };

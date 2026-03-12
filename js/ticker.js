@@ -13,9 +13,11 @@ const Ticker = (() => {
   const HN_TOP_URL = "https://hacker-news.firebaseio.com/v0/topstories.json";
   const HN_ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/";
 
-  // Numbers API — trivia for today's date
-  const now = new Date();
-  const NUMBERS_URL = `https://numbersapi.com/${now.getMonth() + 1}/${now.getDate()}/date`;
+  // Wikipedia "On this day" — events for today's date (replaces defunct numbersapi.com)
+  const _now = new Date();
+  const WIKI_ONTHISDAY_URL =
+    `https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/` +
+    `${String(_now.getMonth() + 1).padStart(2, "0")}/${String(_now.getDate()).padStart(2, "0")}`;
 
   const WEATHER_URL = "https://wttr.in/Ho+Chi+Minh?format=%C+%t";
 
@@ -330,16 +332,19 @@ const Ticker = (() => {
     _updateHn();
   }
 
-  // ── Numbers API — date trivia ─────────────────────────────
+  // ── Wikipedia "On this day" — date event trivia ──────────
   // One request on mount for today's date; never refreshed (stable for the day).
   async function fetchNumbers() {
     try {
-      const res = await fetch(NUMBERS_URL);
+      const res = await fetch(WIKI_ONTHISDAY_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = (await res.text()).trim();
-      // Strip leading date prefix (e.g. "October 3rd is ") → keep the fact itself
-      const fact = text.replace(/^[A-Z][a-z]+ \d+[a-z]* is /, "");
-      const short = fact.length > 80 ? fact.slice(0, 77) + "…" : fact;
+      const json = await res.json();
+      // Pick a random event from the list
+      const events = json.events;
+      if (!events || !events.length) throw new Error("no events");
+      const ev = events[Math.floor(Math.random() * events.length)];
+      const raw = `${ev.year}: ${ev.text}`;
+      const short = raw.length > 80 ? raw.slice(0, 77) + "…" : raw;
       _setAll(".tk-numbers", short, "tk-val tk-numbers");
     } catch (_e) {
       _setAll(".tk-numbers", "n/a", "tk-val tk-numbers");
