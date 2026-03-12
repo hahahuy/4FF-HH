@@ -1,7 +1,8 @@
 // ── Module-level constants (shared by upload + download) ─────
 const _MEDIA_EXTS = new Set(["pdf", "jpg", "jpeg", "png", "gif", "webp", "svg", "md"]);
 const _UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
-const _UPLOAD_RE = /^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|svg|pdf|md)$/i;
+// Note: .md is intentionally excluded — md uploads go to notesWrite CF, not fileUpload CF
+const _UPLOAD_RE = /^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|svg|pdf)$/i;
 
 /**
  * Trigger a browser download using a temporary <a> element.
@@ -202,14 +203,18 @@ const UiCommands = {
           ctx.scrollBottom();
         }
 
-        // .md files → notesWrite CF (private note)
-        if (ext === "md") {
-          const reader = new FileReader();
+        function attachReaderHandlers(reader) {
           reader.onerror = () => onReadError(reader);
           reader.onabort = () => {
             ctx.appendLine("upload: file read aborted.", ["muted"]);
             ctx.scrollBottom();
           };
+        }
+
+        // .md files → notesWrite CF (private note)
+        if (ext === "md") {
+          const reader = new FileReader();
+          attachReaderHandlers(reader);
           reader.onload = () => {
             const content = reader.result || "";
             cfPost(`${CF_BASE}/notesWrite`, {
@@ -239,11 +244,7 @@ const UiCommands = {
 
         // Binary files → fileUpload CF
         const reader = new FileReader();
-        reader.onerror = () => onReadError(reader);
-        reader.onabort = () => {
-          ctx.appendLine("upload: file read aborted.", ["muted"]);
-          ctx.scrollBottom();
-        };
+        attachReaderHandlers(reader);
         reader.onload = () => {
           // Strip data URL prefix (data:<mime>;base64,<data>)
           const result = /** @type {string} */ (reader.result);
@@ -254,7 +255,7 @@ const UiCommands = {
             token: Auth.getToken(),
             filename: file.name,
             dataBase64,
-            mimeType: file.type || `image/${ext}`,
+            mimeType: file.type || MIME_BY_EXT[ext] || `image/${ext}`,
           })
             .then((data) => {
               const isPdf = ext === "pdf";
@@ -270,7 +271,7 @@ const UiCommands = {
                 FS["~"].images[file.name] = {
                   __type: "file",
                   src,
-                  mimeType: file.type || `image/${ext}`,
+                  mimeType: file.type || MIME_BY_EXT[ext] || `image/${ext}`,
                 };
               }
 
@@ -332,14 +333,7 @@ const UiCommands = {
       const tLower = target.toLowerCase();
       if (tLower === "resume" || tLower === "cv") target = "resume.pdf";
 
-      const ext = target.split(".").pop().toLowerCase();
-      if (!_MEDIA_EXTS.has(ext)) {
-        return {
-          error: `download: unsupported file type '.${esc(ext)}' — supported: ${[..._MEDIA_EXTS].join(", ")}`,
-        };
-      }
-
-      // Resolve via virtual FS
+      // Resolve via virtual FS first (gives "no such file" before "unsupported type")
       const resolved = fsResolve(path, target);
       if (!resolved) {
         return { error: `download: ${esc(target)}: No such file or directory` };
@@ -351,6 +345,13 @@ const UiCommands = {
         const fname = target.split("/").pop();
         return {
           error: `download: use 'note cat ${esc(fname)}' to open this note in the editor first`,
+        };
+      }
+
+      const ext = target.split(".").pop().toLowerCase();
+      if (!_MEDIA_EXTS.has(ext)) {
+        return {
+          error: `download: unsupported file type '.${esc(ext)}' — supported: ${[..._MEDIA_EXTS].join(", ")}`,
         };
       }
 
@@ -394,18 +395,8 @@ const UiCommands = {
       if (!outputEl) return { error: "export: could not find output element" };
       const content = outputEl.innerText || "";
       const date = new Date().toISOString().slice(0, 10);
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `session-${date}.txt`;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 1000);
+      const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+      _triggerDownload(url, `session-${date}.txt`, true);
       return {
         lines: [
           line(
