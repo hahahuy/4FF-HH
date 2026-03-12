@@ -32,6 +32,9 @@
   height: 100%;
   border-right: 1px solid var(--border-color, #30363d);
   background: var(--bg-window, #161b22);
+  /* sit above the scrolling track so content disappears behind it */
+  position: relative;
+  z-index: 2;
 }
 
 #ticker-label span {
@@ -43,22 +46,38 @@
 }
 
 /* ── Scrolling track ─────────────────────────────────────── */
-/* The track holds two .tk-copy children side by side.
-   The animation scrolls by -50% (= one copy width) for a seamless loop. */
+/* The track holds two identical .tk-copy children side by side.
+   We animate the FIRST copy out of view (-100% of its own width),
+   at which point the second copy is exactly where the first started —
+   creating a true seamless loop with zero blank-space gap.
+   The wrapper clips to its own bounds; z-index:1 keeps it below
+   the LIVE chip and close button. */
 #ticker-track {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   display: flex;
   align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Inner belt: holds both copies inline; animation shifts the belt */
+#ticker-belt {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  will-change: transform;
   animation: ticker-scroll 55s linear infinite;
 }
 
 /* Pause on hover so users can read / click */
-#ticker-bar:hover #ticker-track {
+#ticker-bar:hover #ticker-belt {
   animation-play-state: paused;
 }
 
+/* Scroll exactly one copy-width to the left, then snap back.
+   Because both copies are identical the snap is invisible. */
 @keyframes ticker-scroll {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -147,6 +166,10 @@
   transition: color 0.15s ease, background 0.15s ease;
   padding: 0;
   line-height: 1;
+  /* sit above the scrolling track so content disappears behind it */
+  position: relative;
+  z-index: 2;
+  background: var(--bg-titlebar, #1f2428);
 }
 
 #ticker-close:hover {

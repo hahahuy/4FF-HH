@@ -56,7 +56,18 @@ const OwnerCommands = {
       // --logout shorthand
       if (args[0] === "--logout" || args[0] === "logout") {
         Auth.clearSession();
-        return { lines: [text("Logged out.", ["muted"])] };
+        // If currently inside a private directory, auto-navigate to home
+        // so the user isn't stranded in a dir they can no longer access.
+        const PRIVATE_DIRS = ["notes", "images"];
+        const isInPrivate = path.length >= 2 && PRIVATE_DIRS.includes(path[1]);
+        const result = { lines: [text("Logged out.", ["muted"])] };
+        if (isInPrivate) {
+          result.newPath = ["~"];
+          result.lines.push(
+            text("Returned to ~ (private directory no longer accessible).", ["muted"]),
+          );
+        }
+        return result;
       }
 
       if (Auth.isAuthenticated()) {

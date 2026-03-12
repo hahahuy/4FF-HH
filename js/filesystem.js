@@ -191,12 +191,16 @@ async function loadBlogManifest() {
  */
 async function loadPublishedNotes() {
   const CF = Config.CF_BASE;
+  const controller = new AbortController();
+  const _timer = setTimeout(() => controller.abort(), 3000); // 3s — covers CF cold start
   try {
     const res = await fetch(`${CF}/notesListPublic`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{}",
+      signal: controller.signal,
     });
+    clearTimeout(_timer);
     if (!res.ok) return;
     const data = await res.json();
     if (!data.ok || !Array.isArray(data.notes) || !data.notes.length) return;
@@ -214,6 +218,7 @@ async function loadPublishedNotes() {
       }
     });
   } catch (e) {
+    clearTimeout(_timer);
     /* fail silently — FS still works without published notes */
   }
 }

@@ -185,8 +185,14 @@ const Ticker = (() => {
 
     _track = document.createElement("div");
     _track.id = "ticker-track";
-    _track.appendChild(_makeCopy(false));
-    _track.appendChild(_makeCopy(true));
+
+    // Belt wraps both copies — the CSS animation runs on the belt,
+    // not on the track, so overflow:hidden on the track clips cleanly.
+    const belt = document.createElement("div");
+    belt.id = "ticker-belt";
+    belt.appendChild(_makeCopy(false));
+    belt.appendChild(_makeCopy(true));
+    _track.appendChild(belt);
     _bar.appendChild(_track);
 
     const close = document.createElement("button");
@@ -413,7 +419,9 @@ const Ticker = (() => {
     setInterval(fetchHn, 60 * 60_000);
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  // PERF: Defer until terminal boot finishes — avoids competing with boot network requests.
+  // Ticker.init() has `if (_mounted) return` guard so double-calling is safe.
+  document.addEventListener("terminal:ready", init, { once: true });
 
   return { init };
 })();

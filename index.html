@@ -44,17 +44,31 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
 
-  <!-- Styles -->
+  <!-- Styles — critical: needed for first paint -->
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/terminal.css" />
-  <link rel="stylesheet" href="css/markdown.css" />
-  <link rel="stylesheet" href="css/contextmenu.css" />
-  <link rel="stylesheet" href="css/init-panels.css" />
-  <link rel="stylesheet" href="css/message-panel.css" />
-  <link rel="stylesheet" href="css/tips.css" />
   <link rel="stylesheet" href="css/ticker.css" />
-  <link rel="stylesheet" href="css/auth.css" />
-  <link rel="stylesheet" href="css/note-editor.css" />
+
+  <!-- Styles — deferred: loaded at low priority, applied when ready -->
+  <!-- PERF: media="print" trick — browser downloads async, onload switches to "all" -->
+  <link rel="stylesheet" href="css/markdown.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/markdown.css" /></noscript>
+  <link rel="stylesheet" href="css/contextmenu.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/contextmenu.css" /></noscript>
+  <link rel="stylesheet" href="css/init-panels.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/init-panels.css" /></noscript>
+  <link rel="stylesheet" href="css/message-panel.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/message-panel.css" /></noscript>
+  <link rel="stylesheet" href="css/auth.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/auth.css" /></noscript>
+  <link rel="stylesheet" href="css/note-editor.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/note-editor.css" /></noscript>
 
   <!-- marked.js (CDN) — SEC-3: SRI hash pinned to marked@9 -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"
@@ -116,34 +130,33 @@
     </div>
   </div>
 
-  <!-- Scripts (order matters) -->
+  <!-- Scripts (order matters; defer = parallel download, preserved execution order) -->
   <!-- Utils: loaded first — no dependencies -->
-  <script src="js/utils/config.js"></script>
-  <script src="js/utils/html.js"></script>
-  <script src="js/utils/fetch.js"></script>
-  <script src="js/utils/dom.js"></script>
+  <script src="js/utils/config.js" defer></script>
+  <script src="js/utils/html.js" defer></script>
+  <script src="js/utils/fetch.js" defer></script>
+  <script src="js/utils/dom.js" defer></script>
   <!-- App namespace — populated by each module below -->
-  <script src="js/app.js"></script>
+  <script src="js/app.js" defer></script>
   <!-- EventBus — decouples intercept chain in terminal.js -->
-  <script src="js/event-bus.js"></script>
-  <script src="js/filesystem.js"></script>
-  <script src="js/autocomplete.js"></script>
-  <script src="js/commands/fs-commands.js"></script>
-  <script src="js/commands/system-commands.js"></script>
-  <script src="js/commands/ui-commands.js"></script>
-  <script src="js/commands/social-commands.js"></script>
-  <script src="js/commands/owner-commands.js"></script>
-  <script src="js/commands/easter-eggs.js"></script>
-  <script src="js/commands/index.js"></script>
-  <script src="js/init-panels.js"></script>
-  <script src="js/message-panel.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/note-editor.js"></script>
-  <script src="js/terminal.js"></script>
-  <script src="js/draggable.js"></script>
-  <script src="js/contextmenu.js"></script>
-  <script src="js/tips.js"></script>
-  <script src="js/ticker.js"></script>
+  <script src="js/event-bus.js" defer></script>
+  <script src="js/filesystem.js" defer></script>
+  <script src="js/autocomplete.js" defer></script>
+  <script src="js/commands/fs-commands.js" defer></script>
+  <script src="js/commands/system-commands.js" defer></script>
+  <script src="js/commands/ui-commands.js" defer></script>
+  <script src="js/commands/social-commands.js" defer></script>
+  <script src="js/commands/owner-commands.js" defer></script>
+  <script src="js/commands/easter-eggs.js" defer></script>
+  <script src="js/commands/index.js" defer></script>
+  <script src="js/init-panels.js" defer></script>
+  <script src="js/message-panel.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/note-editor.js" defer></script>
+  <script src="js/terminal.js" defer></script>
+  <script src="js/draggable.js" defer></script>
+  <script src="js/contextmenu.js" defer></script>
+  <script src="js/ticker.js" defer></script>
 
 </body>
 </html>

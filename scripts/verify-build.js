@@ -98,6 +98,15 @@ for (const f of requiredJsFiles) {
   else fail(f, "NOT FOUND in dist/");
 }
 
+// ─── 3b. Minification sanity check ──────────────────────────────────────────
+section("JS minification check");
+const termJs = join(DIST, "js/terminal.js");
+if (existsSync(termJs)) {
+  const sz = readFileSync(termJs).length;
+  if (sz < 12_000) ok(`terminal.js minified (${(sz / 1024).toFixed(1)} KB)`);
+  else fail(`terminal.js looks unminified: ${(sz / 1024).toFixed(1)} KB — run minify step`);
+}
+
 // ─── 4. CSS bundle content ────────────────────────────────────────────────────
 section("CSS bundle content");
 const assetsDir = join(DIST, "assets");

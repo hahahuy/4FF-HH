@@ -80,11 +80,14 @@ function createTerminal(winEl) {
   }
 
   function echoCommand(cmd) {
+    // SEC: mask the passphrase when echoing `auth <passphrase>` so it never
+    // appears in plain text in the terminal output.
+    const displayCmd = /^auth\s+\S/.test(cmd) ? cmd.replace(/^(auth\s+)\S.*/, "$1****") : cmd;
     const div = document.createElement("div");
     div.className = "cmd-echo output-line";
     div.innerHTML =
       `<span class="echo-prompt">visitor@portfolio:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
-      `<span class="echo-cmd">${escHtml(cmd)}</span>`;
+      `<span class="echo-cmd">${escHtml(displayCmd)}</span>`;
     output.appendChild(div);
   }
 
@@ -450,6 +453,12 @@ function createTerminal(winEl) {
     await boot();
     updatePrompt();
     inputEl.focus();
+
+    // PERF: Signal other modules that terminal boot is done.
+    // Only dispatch on the first terminal window — contextmenu-cloned windows must not re-fire.
+    if (isFirst) {
+      document.dispatchEvent(new CustomEvent("terminal:ready"));
+    }
 
     // URL deep-linking (3a) — auto-execute #cmd=<encoded> after boot
     // SEC-1: Only whitelisted read-only commands may be deep-linked.
