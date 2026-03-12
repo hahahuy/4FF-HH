@@ -9,7 +9,8 @@
     "test":       "vitest run",
     "test:watch": "vitest",
     "typecheck":  "tsc --project jsconfig.json",
-    "lint":       "biome check js/ tests/"
+    "lint":       "biome check js/ tests/",
+    "verify-build": "node scripts/verify-build.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
