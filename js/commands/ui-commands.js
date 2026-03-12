@@ -1,9 +1,31 @@
 /* ============================================================
    js/commands/ui-commands.js — UI / presentation commands
-   Commands: theme, scanlines, init, download, export, open
+   Commands: theme, scanlines, init, upload, download, export, open
    ============================================================ */
 
 'use strict';
+
+// ── Module-level constants (shared by upload + download) ─────
+const _MEDIA_EXTS   = new Set(['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'md']);
+const _UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+const _UPLOAD_RE    = /^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|svg|pdf|md)$/i;
+
+/**
+ * Trigger a browser download using a temporary <a> element.
+ * If `revokeUrl` is true the href is treated as an object URL and revoked after 1 s.
+ */
+function _triggerDownload(href, filename, revokeUrl = false) {
+  const a = document.createElement('a');
+  a.href     = href;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    if (revokeUrl) URL.revokeObjectURL(href);
+  }, 1000);
+}
 
 const UiCommands = {
 
@@ -98,38 +120,216 @@ const UiCommands = {
     },
   },
 
+  // ── upload ────────────────────────────────────────────────
+  upload: {
+    desc: 'Upload a file to the portfolio  (upload)',
+    usage: 'upload',
+    exec(args, path, ctx, { line, text, esc }) {
+      if (!Auth.isAuthenticated()) {
+        return { lines: [line(
+          '<span style="color:var(--color-red)">✗</span> Not authenticated. ' +
+          'Run: <span style="color:var(--color-blue)">auth &lt;passphrase&gt;</span>'
+        )] };
+      }
+
+      const CF_BASE = Config.CF_BASE;
+
+      const input = document.createElement('input');
+      input.type   = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.md';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+
+      let pickerResolved = false;
+
+      input.addEventListener('change', () => {
+        pickerResolved = true;
+        const file = input.files && input.files[0];
+        document.body.removeChild(input);
+        if (!file) return;
+
+        // Client-side validation (server mirrors these)
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!_MEDIA_EXTS.has(ext)) {
+          ctx.appendLine(`upload: unsupported file type '.${esc(ext)}' — allowed: ${[..._MEDIA_EXTS].join(', ')}`, ['error']);
+          ctx.scrollBottom();
+          return;
+        }
+        if (!_UPLOAD_RE.test(file.name)) {
+          ctx.appendLine(`upload: invalid filename '${esc(file.name)}' — use letters, numbers, hyphens, underscores`, ['error']);
+          ctx.scrollBottom();
+          return;
+        }
+        if (file.size > _UPLOAD_BYTES) {
+          ctx.appendLine(`upload: file too large (${(file.size / 1024 / 1024).toFixed(1)} MB) — max 5 MB`, ['error']);
+          ctx.scrollBottom();
+          return;
+        }
+
+        ctx.appendLine(`Uploading ${esc(file.name)}…`, ['muted']);
+        ctx.scrollBottom();
+
+        function onReadError(reader) {
+          ctx.appendLine(`upload: file read failed — ${reader.error || 'unknown error'}`, ['error']);
+          ctx.scrollBottom();
+        }
+
+        // .md files → notesWrite CF (private note)
+        if (ext === 'md') {
+          const reader = new FileReader();
+          reader.onerror = () => onReadError(reader);
+          reader.onabort = () => { ctx.appendLine('upload: file read aborted.', ['muted']); ctx.scrollBottom(); };
+          reader.onload  = () => {
+            const content = reader.result || '';
+            cfPost(`${CF_BASE}/notesWrite`, {
+              token:    Auth.getToken(),
+              action:   'create',
+              filename: file.name,
+              content,
+              location: 'notes',
+            })
+              .then(data => {
+                ctx.appendHTML(
+                  `<span style="color:var(--color-green)">✓</span> ` +
+                  `<span style="color:var(--color-blue)">${esc(file.name)}</span> saved as private note. ` +
+                  `Run <span style="color:var(--color-blue)">note cat ${esc(file.name)}</span> to view.`,
+                  ['output-line']
+                );
+                ctx.scrollBottom();
+              })
+              .catch(e => {
+                ctx.appendLine(`upload: ${e.message}`, ['error']);
+                ctx.scrollBottom();
+              });
+          };
+          reader.readAsText(file);
+          return;
+        }
+
+        // Binary files → fileUpload CF
+        const reader = new FileReader();
+        reader.onerror = () => onReadError(reader);
+        reader.onabort = () => { ctx.appendLine('upload: file read aborted.', ['muted']); ctx.scrollBottom(); };
+        reader.onload  = () => {
+          // Strip data URL prefix (data:<mime>;base64,<data>)
+          const result     = reader.result;
+          const commaIdx   = result.indexOf(',');
+          const dataBase64 = commaIdx >= 0 ? result.slice(commaIdx + 1) : result;
+
+          cfPost(`${CF_BASE}/fileUpload`, {
+            token:      Auth.getToken(),
+            filename:   file.name,
+            dataBase64,
+            mimeType:   file.type || `image/${ext}`,
+          })
+            .then(data => {
+              const isPdf = ext === 'pdf';
+              const src   = data.url;
+
+              // Inject into in-memory FS immediately (no reload needed)
+              if (isPdf) {
+                FS['~'][file.name] = { __type: 'file', src, mimeType: 'application/pdf' };
+              } else {
+                if (!FS['~']['images'] || FS['~']['images'].__type !== 'dir') {
+                  FS['~']['images'] = { __type: 'dir' };
+                }
+                FS['~']['images'][file.name] = { __type: 'file', src, mimeType: file.type || `image/${ext}` };
+              }
+
+              ctx.appendHTML(
+                `<span style="color:var(--color-green)">✓</span> ` +
+                `<span style="color:var(--color-blue)">${esc(file.name)}</span> uploaded. ` +
+                `Run <span style="color:var(--color-blue)">cat ${isPdf ? esc(file.name) : `images/${esc(file.name)}`}</span> to view.`,
+                ['output-line']
+              );
+              ctx.scrollBottom();
+            })
+            .catch(e => {
+              ctx.appendLine(`upload: ${e.message}`, ['error']);
+              ctx.scrollBottom();
+            });
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Cancel detection: focus returns without a change event
+      window.addEventListener('focus', () => {
+        setTimeout(() => {
+          if (!pickerResolved) {
+            pickerResolved = true;
+            if (input.parentNode) document.body.removeChild(input);
+            ctx.appendLine('upload: cancelled.', ['muted']);
+            ctx.scrollBottom();
+          }
+        }, 500);
+      }, { once: true });
+
+      input.click();
+      return { lines: [text('Opening file picker…', ['muted'])] };
+    },
+  },
+
   // ── download ──────────────────────────────────────────────
   download: {
-    desc: 'Download a file  (download resume)',
-    usage: 'download <file>',
-    exec(args, path, ctx, { line, text }) {
-      const target = (args[0] || '').toLowerCase();
-
+    desc: 'Download a file  (download <path>)',
+    usage: 'download <path>',
+    exec(args, path, ctx, { line, text, esc }) {
+      let target = args[0] || '';
       if (!target) {
         return {
           lines: [
-            text('Usage: download <file>', ['muted']),
-            text('Available: resume', ['muted']),
+            text('Usage: download <path>', ['muted']),
+            text('Examples: download resume.pdf   download images/photo.png   download about.md', ['muted']),
           ],
         };
       }
 
-      if (target === 'resume' || target === 'resume.pdf' || target === 'cv') {
-        const a = document.createElement('a');
-        a.href     = Config.CONTENT_BASE + '/content/resume.pdf';
-        a.download = 'resume.pdf';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => document.body.removeChild(a), 1000);
+      // Legacy aliases
+      const tLower = target.toLowerCase();
+      if (tLower === 'resume' || tLower === 'cv') target = 'resume.pdf';
+
+      const ext = target.split('.').pop().toLowerCase();
+      if (!_MEDIA_EXTS.has(ext)) {
+        return { error: `download: unsupported file type '.${esc(ext)}' — supported: ${[..._MEDIA_EXTS].join(', ')}` };
+      }
+
+      // Resolve via virtual FS
+      const resolved = fsResolve(path, target);
+      if (!resolved) {
+        return { error: `download: ${esc(target)}: No such file or directory` };
+      }
+      if (resolved.node.__type === 'dir') {
+        return { error: `download: ${esc(target)}: Is a directory` };
+      }
+      if (resolved.node.__isNote) {
+        const fname = target.split('/').pop();
+        return { error: `download: use 'note cat ${esc(fname)}' to open this note in the editor first` };
+      }
+
+      const filename = target.split('/').pop();
+
+      // Case A: src node → direct link
+      if (resolved.node.src) {
+        _triggerDownload(Config.CONTENT_BASE + resolved.node.src, filename, false);
         return {
-          lines: [
-            line('<span style="color:var(--color-green)">↓</span> Downloading <span style="color:var(--color-blue)">resume.pdf</span>…'),
-          ],
+          lines: [line(
+            `<span style="color:var(--color-green)">↓</span> Downloading <span style="color:var(--color-blue)">${esc(filename)}</span>…`
+          )],
         };
       }
 
-      return { error: `download: '${target}' not available. Try: resume` };
+      // Case B: inline content node → blob
+      if (typeof resolved.node.content === 'string') {
+        const url = URL.createObjectURL(new Blob([resolved.node.content], { type: 'text/plain' }));
+        _triggerDownload(url, filename, true);
+        return {
+          lines: [line(
+            `<span style="color:var(--color-green)">↓</span> Downloading <span style="color:var(--color-blue)">${esc(filename)}</span>…`
+          )],
+        };
+      }
+
+      return { error: `download: ${esc(target)}: file has no downloadable content` };
     },
   },
 

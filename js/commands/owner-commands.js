@@ -24,6 +24,36 @@ function _resolveSiteFile(filename) {
   return null;
 }
 
+// ── _ensureNotesDir() ──────────────────────────────────────
+// Ensures FS['~']['notes'] exists and is populated with stub nodes
+// for each note in RTDB (used by ls notes/ for the authenticated owner).
+// Guards against duplicate CF calls with __populated flag.
+// Flag is only set on success — failed fetches allow retry on next call.
+async function _ensureNotesDir() {
+  const CF_BASE = Config.CF_BASE;
+
+  // Create the dir node if it doesn't exist
+  if (!FS['~']['notes'] || FS['~']['notes'].__type !== 'dir') {
+    FS['~']['notes'] = { __type: 'dir' };
+  }
+  const notesDir = FS['~']['notes'];
+  if (notesDir.__populated) return; // already done
+
+  try {
+    const data = await cfPost(`${CF_BASE}/notesList`, { token: Auth.getToken() });
+    if (!data.ok || !Array.isArray(data.notes)) return;
+
+    data.notes.forEach(n => {
+      if (!n.filename || !/^[a-zA-Z0-9_-]+\.md$/.test(n.filename)) return;
+      // Only inject stub if not already present
+      if (!notesDir[n.filename]) {
+        notesDir[n.filename] = { __type: 'file', content: '', __isNote: true };
+      }
+    });
+    notesDir.__populated = true; // only set on success — allows retry on failure
+  } catch (_) { /* fail silently */ }
+}
+
 const OwnerCommands = {
 
   // ── auth ──────────────────────────────────────────────────

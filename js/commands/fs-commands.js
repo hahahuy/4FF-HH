@@ -8,6 +8,9 @@
 // ── Shared helpers (injected via helpers object from index.js) ─
 // line(), text(), esc() are provided by the assembler scope.
 
+// Directories that require authentication to be visible in ls ~/
+const AUTH_GATED_DIRS = new Set(['notes', 'images']);
+
 const FsCommands = {
 
   // ── ls ────────────────────────────────────────────────────
@@ -31,7 +34,23 @@ const FsCommands = {
         )] };
       }
 
-      const entries = fsListDir(node);
+      const authed  = typeof Auth !== 'undefined' && Auth.isAuthenticated();
+      const isRoot  = resolved.path.length === 1 && resolved.path[0] === '~';
+
+      // Inject notes dir for authenticated owner when listing root
+      if (isRoot && authed) {
+        if (!FS['~']['notes'] || FS['~']['notes'].__type !== 'dir') {
+          FS['~']['notes'] = { __type: 'dir' };
+        }
+      }
+
+      let entries = fsListDir(node);
+
+      // Hide auth-gated dirs for unauthenticated users at root
+      if (isRoot && !authed) {
+        entries = entries.filter(e => !AUTH_GATED_DIRS.has(e.name));
+      }
+
       if (entries.length === 0) {
         return { lines: [text('(empty directory)', ['muted'])] };
       }
@@ -40,6 +59,9 @@ const FsCommands = {
       entries.forEach(e => {
         const isDir  = e.type === 'dir';
         const cls    = isDir ? 'ls-dir' : 'ls-file';
+        const isGated = isDir && AUTH_GATED_DIRS.has(e.name);
+        // Auth-gated dirs get a 🔒 label but the data-cmd still uses the real name
+        const label  = isGated ? `${e.name}🔒` : e.name;
         const suffix = isDir ? '/' : '';
         let cmd;
         if (isDir) {
@@ -52,7 +74,7 @@ const FsCommands = {
         const shareUrl = `${location.origin}${location.pathname}#cmd=${encodeURIComponent(cmd)}`;
         gridHtml +=
           `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" ` +
-          `title="click to run: ${esc(cmd)} | link: ${esc(shareUrl)}">${esc(e.name)}${suffix}</span>`;
+          `title="click to run: ${esc(cmd)} | link: ${esc(shareUrl)}">${esc(label)}${suffix}</span>`;
       });
       gridHtml += '</div>';
       return { lines: [{ html: gridHtml, classes: [] }] };
@@ -93,6 +115,43 @@ const FsCommands = {
       }
       if (resolved.node.__type === 'dir') {
         return { error: `cat: ${args[0]}: Is a directory` };
+      }
+
+      // __isNote stubs: hint owner to use note cat instead
+      if (resolved.node.__isNote) {
+        const nf = args[0].split('/').pop();
+        ctx.appendLine(`Hint: use 'note cat ${nf}' to open this note in the editor.`, ['muted']);
+        ctx.scrollBottom();
+        return null;
+      }
+
+      // Media files: render inline if they have a src and a media MIME type
+      const filename = args[0].split('/').pop();
+      const mime     = fsMimeType(filename, resolved.node);
+      const isImage  = mime && mime.startsWith('image/');
+      const isPdf    = mime === 'application/pdf';
+
+      if ((isImage || isPdf) && resolved.node.src) {
+        const url = BASE + resolved.node.src;
+        if (isImage) {
+          ctx.appendHTML(
+            `<div class="cat-media-wrap">` +
+            `<img class="cat-image" src="${escHtml(url)}" alt="${escHtml(filename)}" loading="lazy" />` +
+            `<div class="cat-media-meta">${escHtml(filename)}</div>` +
+            `</div>`
+          );
+        } else {
+          ctx.appendHTML(
+            `<div class="cat-media-wrap cat-pdf-wrap">` +
+            `<iframe class="cat-pdf" src="${escHtml(url)}" title="${escHtml(filename)}"></iframe>` +
+            `<div class="cat-media-meta">` +
+            `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">↗ open ${escHtml(filename)} in new tab</a>` +
+            `</div>` +
+            `</div>`
+          );
+        }
+        ctx.scrollBottom();
+        return null;
       }
 
       fsReadFile(resolved.node)

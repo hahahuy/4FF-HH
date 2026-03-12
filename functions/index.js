@@ -63,6 +63,17 @@ function isValidFilename(name) {
   return typeof name === 'string' && FILENAME_RE.test(name) && name.length <= 64;
 }
 
+// ── GitHub API helpers ───────────────────────────────────────
+// Centralise GitHub header construction — used by pushToGitHub,
+// fileUpload, and updateImagesManifest.
+function makeGitHubHeaders(pat) {
+  return {
+    'Authorization': `Bearer ${pat}`,
+    'Accept':        'application/vnd.github+json',
+    'Content-Type':  'application/json',
+  };
+}
+
 // ── GitHub auto-sync helper ──────────────────────────────────
 // Notes are stored on GitHub at content/notes/<filename> (encoded).
 // Double base64: inner pass = obfuscation stored on GitHub,
@@ -79,11 +90,7 @@ async function pushToGitHub(filename, content, action, pathOverride = null, obfu
 
   const filepath = pathOverride || `content/notes/${filename}`;
   const apiUrl   = `https://api.github.com/repos/${owner}/${repo}/contents/${filepath}`;
-  const headers  = {
-    'Authorization': `Bearer ${pat}`,
-    'Accept':        'application/vnd.github+json',
-    'Content-Type':  'application/json',
-  };
+  const headers  = makeGitHubHeaders(pat);
 
   try {
     if (action === 'delete') {
@@ -887,6 +894,149 @@ exports.blogManifestRemove = functions
       return res.status(200).json({ ok: true });
     } catch (e) {
       console.error(`blogManifestRemove: ${e.message}`);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+// ══════════════════════════════════════════════════════════
+// 16. fileUpload
+//     Authenticated: upload a binary file (image/pdf) to
+//     GitHub content/ directory.
+//     Accepts: { token, filename, dataBase64, mimeType }
+//     PDFs  → content/<filename>.pdf
+//     Images → content/images/<filename>
+//     Also maintains content/images/manifest.json for images.
+//     Max size: 5 MB.  Allowed: jpg|jpeg|png|gif|webp|svg|pdf
+// ══════════════════════════════════════════════════════════
+const UPLOAD_FILENAME_RE = /^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|svg|pdf)$/i;
+const UPLOAD_MAX_BYTES   = 5 * 1024 * 1024; // 5 MB
+
+async function updateImagesManifest(filename, mimeType, pat, owner, repo) {
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/content/images/manifest.json`;
+  const headers = makeGitHubHeaders(pat);
+
+  let entries = [];
+  let sha     = null;
+
+  const getRes = await fetch(apiUrl, { headers });
+  if (getRes.ok) {
+    const ghData = await getRes.json();
+    sha = ghData.sha || null;
+    try {
+      const raw = Buffer.from(ghData.content, 'base64').toString('utf8');
+      entries = JSON.parse(raw);
+      if (!Array.isArray(entries)) entries = [];
+    } catch (_) { entries = []; }
+  }
+
+  // Upsert entry
+  const idx = entries.findIndex(e => e.name === filename);
+  if (idx >= 0) {
+    entries[idx].mimeType = mimeType;
+  } else {
+    entries.push({ name: filename, mimeType });
+  }
+
+  const newContent = Buffer.from(JSON.stringify(entries, null, 2) + '\n', 'utf8').toString('base64');
+  await fetch(apiUrl, {
+    method:  'PUT',
+    headers,
+    body: JSON.stringify({
+      message: `content: update images/manifest.json (add ${filename})`,
+      content: newContent,
+      ...(sha ? { sha } : {}),
+    }),
+  });
+}
+
+exports.fileUpload = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { token, filename, dataBase64, mimeType } = req.body || {};
+
+    // Auth
+    const session = await validateSessionToken(token);
+    if (!session.valid) return res.status(403).json({ error: 'unauthorized' });
+
+    // Validate filename
+    if (!filename || typeof filename !== 'string' ||
+        !UPLOAD_FILENAME_RE.test(filename) || filename.length > 128) {
+      return res.status(400).json({
+        error: 'invalid filename — only letters, numbers, hyphens, underscores + allowed extension (max 128 chars)',
+      });
+    }
+
+    // Validate base64 payload
+    if (!dataBase64 || typeof dataBase64 !== 'string') {
+      return res.status(400).json({ error: 'dataBase64 is required' });
+    }
+
+    const buf = Buffer.from(dataBase64, 'base64');
+    if (buf.length > UPLOAD_MAX_BYTES) {
+      return res.status(400).json({ error: `file too large — max ${UPLOAD_MAX_BYTES / 1024 / 1024} MB` });
+    }
+    if (buf.length === 0) {
+      return res.status(400).json({ error: 'empty file' });
+    }
+
+    const pat   = process.env.GITHUB_PAT;
+    const owner = process.env.GITHUB_OWNER;
+    const repo  = process.env.GITHUB_REPO;
+    if (!pat || !owner || !repo) {
+      return res.status(500).json({ error: 'GitHub not configured' });
+    }
+
+    const ext      = filename.split('.').pop().toLowerCase();
+    const isPdf    = ext === 'pdf';
+    const gitPath  = isPdf
+      ? `content/${filename}`
+      : `content/images/${filename}`;
+    const apiUrl   = `https://api.github.com/repos/${owner}/${repo}/contents/${gitPath}`;
+    const ghHeaders = makeGitHubHeaders(pat);
+
+    try {
+      // GET existing SHA (for update)
+      let sha = null;
+      const getRes = await fetch(apiUrl, { headers: ghHeaders });
+      if (getRes.ok) {
+        const existing = await getRes.json();
+        sha = existing.sha || null;
+      }
+
+      // PUT file to GitHub (raw base64, no obfuscation)
+      const putRes = await fetch(apiUrl, {
+        method:  'PUT',
+        headers: ghHeaders,
+        body: JSON.stringify({
+          message: `content: upload ${filename}`,
+          content: dataBase64,
+          ...(sha ? { sha } : {}),
+        }),
+      });
+
+      if (!putRes.ok) {
+        const errBody = await putRes.text();
+        return res.status(500).json({ error: `GitHub PUT failed: ${putRes.status} — ${errBody.slice(0, 200)}` });
+      }
+
+      // Update images manifest fire-and-forget — don't block the client response
+      if (!isPdf) {
+        const safeMime = (typeof mimeType === 'string' && mimeType.length < 64) ? mimeType : `image/${ext}`;
+        updateImagesManifest(filename, safeMime, pat, owner, repo).catch(e => {
+          console.error(`fileUpload: manifest update failed — ${e.message}`);
+        });
+      }
+
+      const url = `/${gitPath}`;
+      return res.status(200).json({ ok: true, url });
+
+    } catch (e) {
+      console.error(`fileUpload: ${e.message}`);
       return res.status(500).json({ error: e.message });
     }
   });

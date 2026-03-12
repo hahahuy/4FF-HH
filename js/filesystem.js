@@ -33,6 +33,11 @@ const FS = (globalThis.FS = {
       __type: 'file',
       src: '/content/contact.md',
     },
+    'resume.pdf': {
+      __type: 'file',
+      src: '/content/resume.pdf',
+      mimeType: 'application/pdf',
+    },
     'projects': {
       __type: 'dir',
       'README.md': {
@@ -43,6 +48,10 @@ const FS = (globalThis.FS = {
     'blog': {
       __type: 'dir',
       // Populated at runtime by loadBlogManifest()
+    },
+    'images': {
+      __type: 'dir',
+      // Populated at runtime by loadUploadedImages()
     },
   },
 });
@@ -214,10 +223,71 @@ async function loadPublishedNotes() {
   } catch (e) { /* fail silently — FS still works without published notes */ }
 }
 
+// ── MIME helpers ─────────────────────────────────────────────
+
+/**
+ * Extension → MIME type lookup for binary/media files.
+ * Used by `cat` to decide how to render a file (image vs PDF vs text).
+ */
+const MIME_BY_EXT = {
+  jpg:  'image/jpeg',
+  jpeg: 'image/jpeg',
+  png:  'image/png',
+  gif:  'image/gif',
+  webp: 'image/webp',
+  svg:  'image/svg+xml',
+  pdf:  'application/pdf',
+};
+
+/**
+ * Return the MIME type for a file node.
+ * Prefers node.mimeType if set, otherwise falls back to extension lookup.
+ *
+ * @param {string}  filename  e.g. 'photo.png', 'resume.pdf'
+ * @param {object}  [node]    FS node (may have a mimeType property)
+ * @returns {string|null}
+ */
+function fsMimeType(filename, node) {
+  if (node && node.mimeType) return node.mimeType;
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  return MIME_BY_EXT[ext] || null;
+}
+
+/**
+ * Fetch content/images/manifest.json and populate the virtual ~/images/ dir.
+ * Called once at boot in parallel with loadBlogManifest + loadPublishedNotes.
+ * Falls back silently on 404 (no images uploaded yet).
+ *
+ * Manifest format: [{ "name": "photo.png", "mimeType": "image/png" }, ...]
+ */
+async function loadUploadedImages() {
+  const imagesNode = FS['~']['images'];
+  try {
+    const res = await fetch(BASE + '/content/images/manifest.json');
+    if (!res.ok) return; // 404 = no images yet — silent fallback
+
+    const entries = await res.json();
+    if (!Array.isArray(entries)) return;
+
+    entries.forEach(entry => {
+      if (!entry.name || typeof entry.name !== 'string') return;
+      if (!/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|svg)$/i.test(entry.name)) return;
+      imagesNode[entry.name] = {
+        __type:   'file',
+        src:      `/content/images/${entry.name}`,
+        mimeType: typeof entry.mimeType === 'string' ? entry.mimeType : `image/${entry.name.split('.').pop().toLowerCase()}`,
+      };
+    });
+  } catch (_) { /* fail silently — images dir stays empty */ }
+}
+
 // Export to globalThis for modules loaded via new Function(src)()
-globalThis.fsResolve         = fsResolve;
-globalThis.fsListDir         = fsListDir;
-globalThis.fsReadFile        = fsReadFile;
-globalThis.fsEntriesAt       = fsEntriesAt;
-globalThis.loadBlogManifest  = loadBlogManifest;
+globalThis.fsResolve          = fsResolve;
+globalThis.fsListDir          = fsListDir;
+globalThis.fsReadFile         = fsReadFile;
+globalThis.fsEntriesAt        = fsEntriesAt;
+globalThis.loadBlogManifest   = loadBlogManifest;
 globalThis.loadPublishedNotes = loadPublishedNotes;
+globalThis.loadUploadedImages = loadUploadedImages;
+globalThis.MIME_BY_EXT        = MIME_BY_EXT;
+globalThis.fsMimeType         = fsMimeType;

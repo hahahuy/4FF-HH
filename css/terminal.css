@@ -262,3 +262,52 @@ body.scanlines .terminal-body::after {
 .spacer {
   height: 8px;
 }
+
+/* ── cat: inline media (images + PDFs) ───────────────────── */
+.cat-media-wrap {
+  margin: 6px 0;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.cat-image {
+  display: block;
+  max-width: min(640px, 100%);
+  max-height: 480px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  object-fit: contain;
+  background: var(--bg-page);
+}
+
+.cat-pdf-wrap {
+  display: block;
+  width: 100%;
+}
+
+.cat-pdf {
+  display: block;
+  width: 100%;
+  min-height: 500px;
+  max-height: 70vh;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.cat-media-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cat-media-meta a {
+  color: var(--color-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .cat-image { max-height: 280px; }
+  .cat-pdf   { min-height: 320px; max-height: 55vh; }
+}

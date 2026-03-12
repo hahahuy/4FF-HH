@@ -395,6 +395,9 @@ function createTerminal(winEl) {
     if (typeof loadPublishedNotes === 'function' && !loadPublishedNotes._loaded) {
       bootPromises.push(loadPublishedNotes().then(() => { loadPublishedNotes._loaded = true; }));
     }
+    if (typeof loadUploadedImages === 'function' && !loadUploadedImages._loaded) {
+      bootPromises.push(loadUploadedImages().then(() => { loadUploadedImages._loaded = true; }));
+    }
     await Promise.all(bootPromises);
 
     await boot();
