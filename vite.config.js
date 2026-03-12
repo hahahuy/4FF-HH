@@ -15,6 +15,7 @@ export default defineConfig({
       targets: [
         { src: 'content', dest: '.' },  // Markdown content files
         { src: 'CNAME',   dest: '.' },  // Custom domain
+        { src: 'js',      dest: '.' },  // Classic scripts — copied verbatim (no bundling)
       ],
     }),
   ],
