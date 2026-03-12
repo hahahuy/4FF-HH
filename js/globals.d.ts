@@ -55,6 +55,7 @@ declare global {
   var SystemCommands: any;
   var SocialCommands: any;
   var EasterEggs:     any;
+  var MessagePanel:   any;
 
   // ── Filesystem helpers ──────────────────────────────────────
   function fsResolve(path: string[], arg?: string): { node: FsNode; path: string[] } | null;
@@ -83,5 +84,25 @@ declare global {
   interface Window {
     _mpUnloadHandler?: EventListenerOrEventListenerObject;
     [key: string]: any;
+  }
+
+  // ── DOM type widening ────────────────────────────────────────
+  // querySelector/closest/style/value are used throughout this codebase on
+  // values typed as Element/Node/EventTarget by the TS DOM lib.
+  // These extensions bring the types in line with how the code actually runs.
+  interface Element {
+    style: CSSStyleDeclaration;
+    value?: string;
+    focus(options?: FocusOptions): void;
+    target?: string;
+    rel?: string;
+  }
+  interface Node {
+    querySelector<E extends Element = Element>(selectors: string): E | null;
+    querySelectorAll<E extends Element = Element>(selectors: string): NodeListOf<E>;
+  }
+  interface EventTarget {
+    closest<K extends keyof HTMLElementTagNameMap>(selector: K): HTMLElementTagNameMap[K] | null;
+    closest<E extends Element = Element>(selectors: string): E | null;
   }
 }

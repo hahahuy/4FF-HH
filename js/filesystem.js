@@ -82,7 +82,7 @@ function fsResolve(currentPath, arg) {
   }
 
   // Walk the FS tree
-  let node = FS;
+  let node = /** @type {any} */ (FS);
   for (const seg of segments) {
     if (node && typeof node === "object" && seg in node) {
       node = node[seg];

@@ -33,6 +33,7 @@
       desc: entry.desc,
       /** @param {any[]} args @param {string[]} path @param {any} ctx */
       exec(args, path, ctx) {
+        // @ts-ignore — internal exec receives helpers+registry as extra args
         return entry.exec(args, path, ctx, _helpers, _registry);
       },
     };

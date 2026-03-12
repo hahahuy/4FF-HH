@@ -113,6 +113,7 @@ const ContextMenu = (() => {
       // Reset all windows back to base + their stacking order
       const windows = [...document.querySelectorAll(".terminal-window")];
       windows.forEach((w, i) => {
+        // @ts-ignore — zIndex accepts numbers at runtime even though DOM types it as string
         w.style.zIndex = Z_BASE + i;
       });
       _zTop = Z_BASE + windows.length;
