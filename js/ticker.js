@@ -85,14 +85,14 @@ const Ticker = (() => {
   // ── Formatting helpers ────────────────────────────────────
   function pct(v) {
     const n = Number.parseFloat(v);
-    if (isNaN(n)) return "—";
+    if (Number.isNaN(n)) return "—";
     const sign = n >= 0 ? "+" : "";
     return `${sign}${n.toFixed(2)}%`;
   }
 
   function pctClass(v) {
     const n = Number.parseFloat(v);
-    if (isNaN(n)) return "";
+    if (Number.isNaN(n)) return "";
     return n >= 0 ? "tk-up" : "tk-dn";
   }
 

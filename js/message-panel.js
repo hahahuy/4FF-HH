@@ -134,7 +134,7 @@ const MessagePanel = (() => {
   function resolvePendingCaptcha(raw, ctx) {
     const answer = Number.parseInt(raw.trim(), 10);
 
-    if (isNaN(answer) || answer !== _captchaAnswer) {
+    if (Number.isNaN(answer) || answer !== _captchaAnswer) {
       // Wrong — re-generate
       const a = Math.floor(Math.random() * 9) + 1;
       const b = Math.floor(Math.random() * 9) + 1;

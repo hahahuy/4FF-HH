@@ -25,10 +25,10 @@ async function _ensureNotesDir() {
   const CF_BASE = Config.CF_BASE;
 
   // Create the dir node if it doesn't exist
-  if (!FS["~"]["notes"] || FS["~"]["notes"].__type !== "dir") {
-    FS["~"]["notes"] = { __type: "dir" };
+  if (!FS["~"].notes || FS["~"].notes.__type !== "dir") {
+    FS["~"].notes = { __type: "dir" };
   }
-  const notesDir = FS["~"]["notes"];
+  const notesDir = FS["~"].notes;
   if (notesDir.__populated) return; // already done
 
   try {
@@ -456,14 +456,10 @@ const OwnerCommands = {
             // Remove from in-memory FS if it was previously published
             const prevSrcParts = src.replace(/^~\//, "").split("/").filter(Boolean);
             const prevDir = prevSrcParts.length > 1 ? prevSrcParts[0] : "";
-            if (prevDir === "blog" && FS["~"]["blog"] && FS["~"]["blog"][filename]) {
-              delete FS["~"]["blog"][filename];
-            } else if (
-              prevDir === "projects" &&
-              FS["~"]["projects"] &&
-              FS["~"]["projects"][filename]
-            ) {
-              delete FS["~"]["projects"][filename];
+            if (prevDir === "blog" && FS["~"].blog && FS["~"].blog[filename]) {
+              delete FS["~"].blog[filename];
+            } else if (prevDir === "projects" && FS["~"].projects && FS["~"].projects[filename]) {
+              delete FS["~"].projects[filename];
             } else if (!prevDir && FS["~"][filename]) {
               delete FS["~"][filename];
             }

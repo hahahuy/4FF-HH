@@ -35,8 +35,8 @@ const FsCommands = {
 
       // Inject notes dir for authenticated owner when listing root
       if (isRoot && authed) {
-        if (!FS["~"]["notes"] || FS["~"]["notes"].__type !== "dir") {
-          FS["~"]["notes"] = { __type: "dir" };
+        if (!FS["~"].notes || FS["~"].notes.__type !== "dir") {
+          FS["~"].notes = { __type: "dir" };
         }
       }
 

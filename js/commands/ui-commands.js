@@ -96,19 +96,18 @@ const UiCommands = {
             ),
           ],
         };
-      } else {
-        body.classList.remove("scanlines");
-        try {
-          localStorage.removeItem(Config.STORAGE.SCANLINES);
-        } catch (e) {}
-        return {
-          lines: [
-            line(
-              '<span style="color:var(--color-green)">✓</span> Scanlines <span style="color:var(--color-blue)">disabled</span>.',
-            ),
-          ],
-        };
       }
+      body.classList.remove("scanlines");
+      try {
+        localStorage.removeItem(Config.STORAGE.SCANLINES);
+      } catch (e) {}
+      return {
+        lines: [
+          line(
+            '<span style="color:var(--color-green)">✓</span> Scanlines <span style="color:var(--color-blue)">disabled</span>.',
+          ),
+        ],
+      };
     },
   },
 
@@ -265,10 +264,10 @@ const UiCommands = {
               if (isPdf) {
                 FS["~"][file.name] = { __type: "file", src, mimeType: "application/pdf" };
               } else {
-                if (!FS["~"]["images"] || FS["~"]["images"].__type !== "dir") {
-                  FS["~"]["images"] = { __type: "dir" };
+                if (!FS["~"].images || FS["~"].images.__type !== "dir") {
+                  FS["~"].images = { __type: "dir" };
                 }
-                FS["~"]["images"][file.name] = {
+                FS["~"].images[file.name] = {
                   __type: "file",
                   src,
                   mimeType: file.type || `image/${ext}`,

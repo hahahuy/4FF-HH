@@ -1,0 +1,14 @@
+# Normalise line endings to LF in the repo.
+# This prevents git core.autocrlf=true on Windows from re-introducing
+# CRLF into JS/CSS/JSON/MD files, which breaks the biome formatter check.
+
+* text=auto eol=lf
+
+# Explicitly mark binary formats so git never touches their bytes.
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.svg  text eol=lf
