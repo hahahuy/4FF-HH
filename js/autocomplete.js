@@ -93,6 +93,23 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
     }
   }
 
+  /**
+   * Accept the current ghost-text suggestion (ArrowRight at end of input).
+   * Returns the completed string if a single unambiguous match exists,
+   * otherwise null (caller should not suppress the default ArrowRight).
+   *
+   * @param {string} input
+   * @param {string[]} currentPath
+   * @returns {string|null}
+   */
+  function acceptGhost(input, currentPath) {
+    const { base, token, matches } = getCandidates(input, currentPath);
+    if (matches.length === 1 && (token.length > 0 || getFlagCandidates(input))) {
+      return base + matches[0];
+    }
+    return null;
+  }
+
   // ── Tab trigger ─────────────────────────────────────────
   function trigger(input, currentPath) {
     const { base, token, matches } = getCandidates(input, currentPath);
@@ -139,7 +156,7 @@ function createAutocomplete(inputEl, ghostTextEl, autocompleteEl) {
     hide();
   }
 
-  return { trigger, updateGhost, hide, resetCycle };
+  return { trigger, updateGhost, acceptGhost, hide, resetCycle };
 }
 
 // Export to globalThis for modules loaded via new Function(src)()

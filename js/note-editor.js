@@ -77,8 +77,6 @@ const NoteEditor = (() => {
             `autocapitalize="off" spellcheck="false" ` +
             `placeholder="Start writing Markdown…"></textarea>` +
           `<div class="ne-editor-hint">` +
-            `<span style="color:var(--color-green)">:w</span> save &nbsp;` +
-            `<span style="color:var(--color-red)">:q</span> quit &nbsp;` +
             `<span style="color:var(--text-muted)">Ctrl+S save &nbsp; Esc quit</span>` +
           `</div>` +
         `</div>` +
@@ -235,12 +233,6 @@ const NoteEditor = (() => {
     flashStatus('saved ✓', 'saved');
   }
 
-  // ── Remove last line (for vim command detection) ────────
-  function removeLastLine(str) {
-    const idx = str.lastIndexOf('\n');
-    return idx === -1 ? '' : str.slice(0, idx + 1);
-  }
-
   // ── Attempt quit ───────────────────────────────────────
   function attemptQuit() {
     if (_dirty) {
@@ -315,34 +307,16 @@ const NoteEditor = (() => {
       if (e.key === 'Escape')         { e.preventDefault(); attemptQuit(); return; }
     });
 
-    // Detect vim-style :w :q :q! :wq at end of textarea
+    // Detect content changes → mark dirty / clean
     textarea.addEventListener('input', () => {
-      const val      = textarea.value;
-      const lastLine = val.split('\n').pop();
-
-      if (lastLine === ':w') {
-        textarea.value = removeLastLine(val);
-        saveNote();
-      } else if (lastLine === ':q!') {
-        textarea.value = removeLastLine(val);
-        forceQuit();
-      } else if (lastLine === ':q') {
-        textarea.value = removeLastLine(val);
-        attemptQuit();
-      } else if (lastLine === ':wq') {
-        textarea.value = removeLastLine(val);
-        saveNote().then(() => closeEditor());
-      } else {
-        // Regular edit — mark dirty
-        if (!_dirty && textarea.value !== _savedContent) {
-          _dirty = true;
-          flashStatus('unsaved', 'dirty');
-        } else if (_dirty && textarea.value === _savedContent) {
-          _dirty = false;
-          flashStatus('saved ✓', 'saved');
-        }
-        schedulePreviewUpdate();
+      if (!_dirty && textarea.value !== _savedContent) {
+        _dirty = true;
+        flashStatus('unsaved', 'dirty');
+      } else if (_dirty && textarea.value === _savedContent) {
+        _dirty = false;
+        flashStatus('saved ✓', 'saved');
       }
+      schedulePreviewUpdate();
     });
 
     // Red dot click → close (like macOS)

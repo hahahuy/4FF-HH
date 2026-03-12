@@ -266,6 +266,19 @@ function createTerminal(winEl) {
         ac.trigger(inputEl.value, currentPath);
         break;
       }
+      case 'ArrowRight': {
+        // Accept ghost-text suggestion when cursor is at end of input
+        if (inputEl.selectionStart === inputEl.value.length) {
+          const accepted = ac.acceptGhost(inputEl.value, currentPath);
+          if (accepted) {
+            e.preventDefault();
+            inputEl.value = accepted;
+            ghostTextEl.textContent = '';
+            ac.hide();
+          }
+        }
+        break;
+      }
       case 'c': case 'C': {
         if (e.ctrlKey) {
           e.preventDefault();

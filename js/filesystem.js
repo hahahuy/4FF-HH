@@ -21,21 +21,21 @@ const BASE = (globalThis.BASE = Config.CONTENT_BASE);
 const FS = (globalThis.FS = {
   '~': {
     __type: 'dir',
-    'about.txt': {
+    'about.md': {
       __type: 'file',
       src: '/content/about.md',
     },
-    'skills.txt': {
+    'skills.md': {
       __type: 'file',
       src: '/content/skills.md',
     },
-    'contact.txt': {
+    'contact.md': {
       __type: 'file',
       src: '/content/contact.md',
     },
     'projects': {
       __type: 'dir',
-      'README.txt': {
+      'README.md': {
         __type: 'file',
         src: '/content/projects/README.md',
       },
@@ -147,24 +147,23 @@ async function loadBlogManifest() {
     const posts = await res.json();
 
     // Build index content dynamically from manifest
-    const maxLen = posts.reduce((m, p) => Math.max(m, p.file.replace(/\.md$/, '.txt').length), 0);
+    const maxLen = posts.reduce((m, p) => Math.max(m, p.file.length), 0);
     const indexLines = ['# Blog', '', 'Posts available:', ''];
     posts.forEach(p => {
-      const name = p.file.replace(/\.md$/, '.txt');
+      const name = p.file;
       const pad  = ' '.repeat(Math.max(1, maxLen - name.length + 2));
       indexLines.push(`  ${name}${pad}— ${p.title}  (${p.date})`);
     });
-    indexLines.push('', 'Read a post:  cat blog/<filename>.txt');
+    indexLines.push('', 'Read a post:  cat blog/<filename>.md');
 
-    blogNode['index.txt'] = {
+    blogNode['index.md'] = {
       __type: 'file',
       content: indexLines.join('\n'),
     };
 
-    // Register each post as a .txt file
+    // Register each post as a .md file
     posts.forEach(p => {
-      const name = p.file.replace(/\.md$/, '.txt');
-      blogNode[name] = {
+      blogNode[p.file] = {
         __type: 'file',
         src: `/content/blog/${p.file}`,
       };
@@ -172,7 +171,7 @@ async function loadBlogManifest() {
 
   } catch (err) {
     // Fallback: leave blog dir empty with an error note
-    blogNode['index.txt'] = {
+    blogNode['index.md'] = {
       __type: 'file',
       content: `# Blog\n\nCould not load post list: ${err.message}`,
     };
@@ -203,14 +202,13 @@ async function loadPublishedNotes() {
     data.notes.forEach(n => {
       if (!n.filename || !/^[a-zA-Z0-9_-]+\.md$/.test(n.filename)) return;
       if (typeof n.content !== 'string') return;
-      const txtName = n.filename.replace(/\.md$/, '.txt');
-      const node    = { __type: 'file', content: n.content };
+      const node = { __type: 'file', content: n.content };
       if (n.location === 'blog') {
-        FS['~']['blog'][txtName] = node;
+        FS['~']['blog'][n.filename] = node;
       } else if (n.location === 'projects') {
-        FS['~']['projects'][txtName] = node;
+        FS['~']['projects'][n.filename] = node;
       } else if (n.location === 'root') {
-        FS['~'][txtName] = node;
+        FS['~'][n.filename] = node;
       }
     });
   } catch (e) { /* fail silently — FS still works without published notes */ }

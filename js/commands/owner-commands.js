@@ -253,13 +253,13 @@ const OwnerCommands = {
       const isMd  = /^[a-zA-Z0-9_-]+\.md$/.test(filename);
 
       if (!isMd && !isTxt) {
-        return { error: `mv: source must be a *.md note or *.txt static file` };
+        return { error: `mv: source must be a *.md note or *.md static file` };
       }
 
       // ── Detect if source is a static FS file ──────────────
       const srcFsNode = fsResolve(path, src);
       if (srcFsNode && srcFsNode.node && srcFsNode.node.src) {
-        // Flow B: static FS file (e.g. blog/*.txt) → notes only
+        // Flow B: static FS file (e.g. blog/*.md) → notes only
         const dstClean   = dst.replace(/^~\//, '');
         const dstParts   = dstClean.split('/').filter(Boolean);
         const dstDir     = dstParts.length > 1 ? dstParts[0] : '';
@@ -295,11 +295,10 @@ const OwnerCommands = {
             if (!createRes.ok) throw new Error(createData.error || `HTTP ${createRes.status}`);
 
             if (srcDir === 'blog') {
-              const mdSrcFile = filename.replace(/\.txt$/, '.md');
               await fetch(`${CF_BASE}/blogManifestRemove`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ token: Auth.getToken(), file: mdSrcFile }),
+                body:    JSON.stringify({ token: Auth.getToken(), file: filename }),
               }).catch(() => {});
             }
 
@@ -375,20 +374,19 @@ const OwnerCommands = {
           if (!data.ok) throw new Error(data.error || 'unknown error');
           const isPrivate = newLocation === 'notes';
           const pubPath   = newLocation === 'root'
-            ? `~/${filename.replace(/\.md$/, '.txt')}`
-            : `~/${newLocation}/${filename.replace(/\.md$/, '.txt')}`;
+            ? `~/${filename}`
+            : `~/${newLocation}/${filename}`;
 
           if (isPrivate) {
             // Remove from in-memory FS if it was previously published
             const prevSrcParts = src.replace(/^~\//, '').split('/').filter(Boolean);
             const prevDir      = prevSrcParts.length > 1 ? prevSrcParts[0] : '';
-            const txtName      = filename.replace(/\.md$/, '.txt');
-            if (prevDir === 'blog' && FS['~']['blog'] && FS['~']['blog'][txtName]) {
-              delete FS['~']['blog'][txtName];
-            } else if (prevDir === 'projects' && FS['~']['projects'] && FS['~']['projects'][txtName]) {
-              delete FS['~']['projects'][txtName];
-            } else if (!prevDir && FS['~'][txtName]) {
-              delete FS['~'][txtName];
+            if (prevDir === 'blog' && FS['~']['blog'] && FS['~']['blog'][filename]) {
+              delete FS['~']['blog'][filename];
+            } else if (prevDir === 'projects' && FS['~']['projects'] && FS['~']['projects'][filename]) {
+              delete FS['~']['projects'][filename];
+            } else if (!prevDir && FS['~'][filename]) {
+              delete FS['~'][filename];
             }
           }
 
