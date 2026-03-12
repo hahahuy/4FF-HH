@@ -213,7 +213,7 @@ body {
   flex-shrink: 0;
 }
 
-.dot-red    { background-color: var(--dot-red); }
+.dot-red    { background-color: var(--dot-red); cursor: pointer; }
 .dot-yellow { background-color: var(--dot-yellow); }
 .dot-green  { background-color: var(--dot-green); }
 

@@ -1,7 +1,5 @@
 const Ticker = (() => {
   // ── Config ───────────────────────────────────────────────
-  const DISMISS_KEY = "ticker_dismissed";
-
   const GH_USER = "hahahuy";
   const GH_API = `https://api.github.com/search/commits?q=author:${GH_USER}&per_page=1`;
 
@@ -195,13 +193,6 @@ const Ticker = (() => {
     _track.appendChild(belt);
     _bar.appendChild(_track);
 
-    const close = document.createElement("button");
-    close.id = "ticker-close";
-    close.title = "Dismiss ticker";
-    close.textContent = "×";
-    close.addEventListener("click", dismiss);
-    _bar.appendChild(close);
-
     document.body.insertBefore(_bar, document.body.firstChild);
 
     if (!CSS.supports("selector(body:has(#ticker-bar))")) {
@@ -369,31 +360,9 @@ const Ticker = (() => {
     }
   }
 
-  // ── Dismiss ───────────────────────────────────────────────
-  function dismiss() {
-    try {
-      localStorage.setItem(DISMISS_KEY, "1");
-    } catch (_e) {}
-    _mounted = false;
-    if (_bar) {
-      _bar.style.transition = "opacity 0.2s ease, transform 0.2s ease";
-      _bar.style.opacity = "0";
-      _bar.style.transform = "translateY(-100%)";
-      setTimeout(() => {
-        if (_bar && _bar.parentNode) _bar.remove();
-        _bar = _track = null;
-      }, 230);
-    }
-  }
-
   // ── Init ──────────────────────────────────────────────────
   function init() {
     if (_mounted) return;
-    try {
-      if (localStorage.getItem(DISMISS_KEY) === "1") return;
-    } catch (_e) {
-      return;
-    }
 
     _mounted = true;
     build();

@@ -16,14 +16,14 @@ const EasterEggs = {
       const border = "-".repeat(msg.length + 2);
       return {
         lines: [
-          line(` ${border}`),
-          line(`&lt; ${msgEsc} &gt;`),
-          line(` ${border}`),
-          line("        \\   ^__^"),
-          line("         \\  (oo)\\_______"),
-          line("            (__)\\       )\\/\\"),
-          line("                ||----w |"),
-          line("                ||     ||"),
+          line(` ${border}`, ["pre"]),
+          line(`&lt; ${msgEsc} &gt;`, ["pre"]),
+          line(` ${border}`, ["pre"]),
+          line("        \\   ^__^", ["pre"]),
+          line("         \\  (oo)\\_______", ["pre"]),
+          line("            (__)\\       )\\/\\", ["pre"]),
+          line("                ||----w |", ["pre"]),
+          line("                ||     ||", ["pre"]),
         ],
       };
     },
@@ -184,7 +184,7 @@ const EasterEggs = {
       for (let i = 0; i < maxRows; i++) {
         const art = asciiArt[i] || "                          ";
         const inf = info[i] || "";
-        lines.push(line(`<span style="color:var(--color-blue)">${art}</span>  ${inf}`));
+        lines.push(line(`<span style="color:var(--color-blue)">${art}</span>  ${inf}`, ["pre"]));
       }
       return { lines };
     },

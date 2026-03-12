@@ -337,8 +337,9 @@ function createTerminal(winEl) {
   // Subsequent windows: silent boot, no lines at all.
   const BOOT_LINES = isFirst
     ? [
-        { text: "Welcome to hahahuy's portfolio  v1.0.0", cls: "success" },
-        { text: "Type `init` to start or `help` for available commands.", cls: "" },
+        { text: "ha huy — software engineer & builder", cls: "success" },
+        { text: "I ship products, not just code.", cls: "" },
+        { text: "Try `init` for an overview, or `help` to explore.", cls: "muted" },
         { text: "────────────────────────────────────", cls: "hr" },
       ]
     : [];
@@ -424,6 +425,10 @@ function createTerminal(winEl) {
 
     // Click anywhere in body focuses input
     terminalBody.addEventListener("click", () => inputEl.focus());
+
+    // Red traffic-light dot closes the window (same as `quit`)
+    const dotRed = winEl.querySelector(".dot-red");
+    if (dotRed) dotRed.addEventListener("click", closeWindow);
 
     // Blog manifest + published notes load in parallel (FS is shared across all terminal instances)
     const bootPromises = [];

@@ -90,6 +90,11 @@
   color: var(--text-primary);
 }
 
+/* ASCII / pre-formatted: preserve spaces and indentation exactly */
+.output-line.pre {
+  white-space: pre;
+}
+
 /* Error */
 .output-line.error {
   color: var(--color-red);
