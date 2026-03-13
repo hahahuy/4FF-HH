@@ -36,6 +36,8 @@ function createTerminal(winEl) {
   let historyIndex = -1;
   let tempBuffer = "";
   let currentPath = ["~"];
+  let _authMaskActive = false;
+  let _authRealSuffix = "";
 
   if (isFirst) {
     try {
@@ -230,10 +232,17 @@ function createTerminal(winEl) {
 
   // ── Keyboard handler ──────────────────────────────────────
   function handleKeydown(e) {
+    if (document.body.classList.contains("name-wall-active")) return;
     switch (e.key) {
       case "Enter": {
         e.preventDefault();
-        const raw = inputEl.value.trim();
+        let raw = inputEl.value.trim();
+        if (_authMaskActive && _authRealSuffix) {
+          const prefix = raw.match(/^auth\s+/)?.[0] ?? "auth ";
+          raw = (prefix + _authRealSuffix).trim();
+        }
+        _authMaskActive = false;
+        _authRealSuffix = "";
         ac.hide();
         ghostTextEl.textContent = "";
         if (raw) {
@@ -308,6 +317,8 @@ function createTerminal(winEl) {
           e.preventDefault();
           if (inputEl.value) echoCommand(inputEl.value + "^C");
           inputEl.value = "";
+          _authMaskActive = false;
+          _authRealSuffix = "";
           ac.hide();
           ghostTextEl.textContent = "";
           historyIndex = -1;
@@ -331,6 +342,25 @@ function createTerminal(winEl) {
   }
 
   function handleInput() {
+    if (document.body.classList.contains("name-wall-active")) return;
+
+    const val = inputEl.value;
+    const authPrefix = /^auth\s/;
+
+    if (authPrefix.test(val)) {
+      _authMaskActive = true;
+      const prefix = val.match(/^auth\s+/)[0];
+      const suffix = val.slice(prefix.length);
+      _authRealSuffix = suffix;
+      inputEl.value = prefix + "*".repeat(suffix.length);
+      requestAnimationFrame(() => {
+        inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+      });
+    } else {
+      _authMaskActive = false;
+      _authRealSuffix = "";
+    }
+
     ac.updateGhost(inputEl.value, currentPath);
   }
 
