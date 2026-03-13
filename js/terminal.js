@@ -601,7 +601,7 @@ App._firstTerminal = Terminal; // expose to App namespace for `history` command
 document.addEventListener("DOMContentLoaded", () => Terminal.init());
 
 // Mouse-tracking backdrop highlight
-(function () {
+(() => {
   let _pending = false;
   document.addEventListener("mousemove", (e) => {
     if (_pending) return;
@@ -609,11 +609,11 @@ document.addEventListener("DOMContentLoaded", () => Terminal.init());
     requestAnimationFrame(() => {
       document.documentElement.style.setProperty(
         "--mouse-x",
-        ((e.clientX / window.innerWidth) * 100).toFixed(1) + "%"
+        ((e.clientX / window.innerWidth) * 100).toFixed(1) + "%",
       );
       document.documentElement.style.setProperty(
         "--mouse-y",
-        ((e.clientY / window.innerHeight) * 100).toFixed(1) + "%"
+        ((e.clientY / window.innerHeight) * 100).toFixed(1) + "%",
       );
       _pending = false;
     });
