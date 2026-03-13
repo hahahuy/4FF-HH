@@ -60,7 +60,7 @@ function createTerminal(winEl) {
   function updatePrompt() {
     promptDirEl.textContent = getCwd();
     const userEl = winEl.querySelector(".prompt-user");
-    if (userEl) userEl.textContent = (isFirst && App.visitorName) ? App.visitorName : "visitor";
+    if (userEl) userEl.textContent = isFirst && App.visitorName ? App.visitorName : "visitor";
   }
   function scrollBottom() {
     output.scrollTop = output.scrollHeight;
@@ -88,7 +88,7 @@ function createTerminal(winEl) {
     const div = document.createElement("div");
     div.className = "cmd-echo output-line";
     div.innerHTML =
-      `<span class="echo-prompt"><span class="echo-user">${escHtml((isFirst && App.visitorName) ? App.visitorName : "visitor")}</span>@site:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
+      `<span class="echo-prompt"><span class="echo-user">${escHtml(isFirst && App.visitorName ? App.visitorName : "visitor")}</span>@site:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
       `<span class="echo-cmd">${escHtml(displayCmd)}</span>`;
     output.appendChild(div);
   }
