@@ -59,6 +59,8 @@ function createTerminal(winEl) {
   }
   function updatePrompt() {
     promptDirEl.textContent = getCwd();
+    const userEl = winEl.querySelector(".prompt-user");
+    if (userEl) userEl.textContent = (isFirst && App.visitorName) ? App.visitorName : "visitor";
   }
   function scrollBottom() {
     output.scrollTop = output.scrollHeight;
@@ -86,7 +88,7 @@ function createTerminal(winEl) {
     const div = document.createElement("div");
     div.className = "cmd-echo output-line";
     div.innerHTML =
-      `<span class="echo-prompt">visitor@portfolio:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
+      `<span class="echo-prompt"><span class="echo-user">${escHtml((isFirst && App.visitorName) ? App.visitorName : "visitor")}</span>@site:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
       `<span class="echo-cmd">${escHtml(displayCmd)}</span>`;
     output.appendChild(div);
   }
@@ -335,14 +337,23 @@ function createTerminal(winEl) {
   // ── Boot sequence ─────────────────────────────────────────
   // Original window only: welcome + hint + divider.
   // Subsequent windows: silent boot, no lines at all.
-  const BOOT_LINES = isFirst
-    ? [
-        { text: "ha huy — software engineer & builder", cls: "success" },
-        { text: "I ship products, not just code.", cls: "" },
-        { text: "Try `init` for an overview, or `help` to explore.", cls: "muted" },
+  function getBootLines(name) {
+    if (!isFirst) return [];
+    if (name) {
+      return [
+        { text: `hey ${name} — welcome to ha huy's corner of the internet.`, cls: "success" },
+        { text: "software engineer & builder.", cls: "" },
+        { text: "try `init` for an overview · type `message` to reach me directly.", cls: "muted" },
         { text: "────────────────────────────────────", cls: "hr" },
-      ]
-    : [];
+      ];
+    }
+    return [
+      { text: "ha huy — software engineer & builder", cls: "success" },
+      { text: "I ship products, not just code.", cls: "" },
+      { text: "Try `init` for an overview, or `help` to explore.", cls: "muted" },
+      { text: "────────────────────────────────────", cls: "hr" },
+    ];
+  }
 
   // VIS-1: Typewriter effect — types text char-by-char at ~28ms/char
   function typewriterLine(text, cls) {
@@ -367,12 +378,49 @@ function createTerminal(winEl) {
     });
   }
 
-  function boot() {
+  function boot(name) {
+    const BOOT_LINES = getBootLines(name);
     if (BOOT_LINES.length === 0) return Promise.resolve();
     // Run typewriter lines sequentially
     return BOOT_LINES.reduce((chain, bootLine) => {
       return chain.then(() => typewriterLine(bootLine.text, bootLine.cls));
     }, Promise.resolve()).then(() => new Promise((r) => setTimeout(r, 120)));
+  }
+
+  // ── Name wall ─────────────────────────────────────────────
+  function showNameWall() {
+    return new Promise((resolve) => {
+      const wall = winEl.querySelector("#nameWall");
+      const nameInput = winEl.querySelector("#nameInput");
+      if (!wall) return resolve(null);
+
+      // Check sessionStorage for returning visitors (page refresh)
+      const saved = sessionStorage.getItem(Config.STORAGE.VISITOR_NAME);
+      if (saved) {
+        wall.remove();
+        return resolve(saved);
+      }
+
+      nameInput.focus();
+
+      function submit(name) {
+        wall.remove();
+        const trimmed = name && name.trim() ? name.trim() : null;
+        if (trimmed) sessionStorage.setItem(Config.STORAGE.VISITOR_NAME, trimmed);
+        resolve(trimmed);
+      }
+
+      nameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submit(nameInput.value);
+        }
+        if (e.key === "c" && e.ctrlKey) {
+          e.preventDefault();
+          submit(null);
+        }
+      });
+    });
   }
 
   // ── Init ──────────────────────────────────────────────────
@@ -455,7 +503,13 @@ function createTerminal(winEl) {
     }
     await Promise.all(bootPromises);
 
-    await boot();
+    let visitorName = null;
+    if (isFirst) {
+      visitorName = await showNameWall();
+      App.visitorName = visitorName || null;
+    }
+
+    await boot(visitorName);
     updatePrompt();
     inputEl.focus();
 

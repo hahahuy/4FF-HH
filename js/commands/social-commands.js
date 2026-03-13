@@ -4,6 +4,22 @@ const SocialCommands = {
     desc: "Send me a message  (message --name <you> for live chat)",
     usage: "message [--name <name> | --stop | <content>]",
     exec(args, path, ctx, { text, esc }) {
+      // Named visitor: message with no args → auto-open chat
+      if (!args.length && globalThis.App?.visitorName) {
+        const name = App.visitorName;
+        MessagePanel.startChat(name, ctx).then((result) => {
+          if (result) {
+            if (result.error) {
+              ctx.appendLine(result.error, ["error"]);
+            } else if (result.lines) {
+              result.lines.forEach((l) => ctx.appendHTML(l.html || "", l.classes || []));
+            }
+            ctx.scrollBottom();
+          }
+        });
+        return { lines: [text(`Opening chat as ${name}…`, ["muted"])] };
+      }
+
       // No arguments — show usage + last used name hint
       if (!args.length) {
         const lastName = MessagePanel.getLastName ? MessagePanel.getLastName() : null;

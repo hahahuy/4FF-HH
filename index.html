@@ -103,12 +103,24 @@
     <!-- Terminal body -->
     <div class="terminal-body" id="terminalBody">
 
+      <!-- Name wall overlay (shown before boot) -->
+      <div id="nameWall" class="name-wall">
+        <div class="name-wall-inner">
+          <div class="name-wall-title">Who's visiting?</div>
+          <div class="name-wall-row">
+            <span class="name-wall-prompt">Input your name: </span>
+            <input id="nameInput" class="name-wall-input" autocomplete="off" spellcheck="false" autofocus />
+          </div>
+          <div class="name-wall-hint">[Enter] to confirm · [Ctrl+C] to skip</div>
+        </div>
+      </div>
+
       <!-- Output area -->
       <div class="output" id="output" aria-live="polite" aria-label="Terminal output"></div>
 
       <!-- Input row -->
       <div class="input-row" id="inputRow">
-        <span class="prompt" id="promptLabel">visitor@portfolio:<span class="prompt-dir" id="promptDir">~</span>$&nbsp;</span>
+        <span class="prompt" id="promptLabel"><span class="prompt-user">visitor</span>@site:<span class="prompt-dir" id="promptDir">~</span>$&nbsp;</span>
         <div class="input-wrapper">
           <input
             class="terminal-input"

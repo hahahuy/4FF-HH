@@ -316,3 +316,62 @@ body.scanlines .terminal-body::after {
   .cat-image { max-height: 280px; }
   .cat-pdf   { min-height: 320px; max-height: 55vh; }
 }
+
+/* ── Name wall overlay ────────────────────────────────────── */
+.name-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg-terminal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.name-wall-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+}
+
+.name-wall-title {
+  color: var(--color-green);
+  font-size: var(--font-size);
+  font-weight: 500;
+}
+
+.name-wall-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.name-wall-prompt {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.name-wall-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  caret-color: var(--color-blue);
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.name-wall-hint {
+  color: var(--text-dim);
+  font-size: calc(var(--font-size) * 0.85);
+}
+

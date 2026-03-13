@@ -13,6 +13,7 @@ const Config = (globalThis.Config = {
     RATE: "mp_send_times",
     LAST_NAME: "mp_last_name",
     TIPS: "tips_dismissed",
+    VISITOR_NAME: "visitor_name",
   },
 
   // Base path for fetching content.
