@@ -147,7 +147,7 @@
 }
 
 .ne-preview {
-  padding: 14px 18px;
+  padding: 14px 18px 14px 24px;
   min-height: 100%;
   box-sizing: border-box;
 }

@@ -116,6 +116,14 @@
   font-weight: 500;
 }
 
+/* Clickable help items */
+.help-item { cursor: pointer; }
+.help-item:hover { color: var(--color-blue); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Owner command color */
+.cmd-owner { color: var(--color-orange); }
+.cmd-owner:hover { color: var(--color-red); }
+
 /* Directory entries in ls */
 .ls-dir {
   color: var(--color-green);

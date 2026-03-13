@@ -14,6 +14,7 @@ const Config = (globalThis.Config = {
     LAST_NAME: "mp_last_name",
     TIPS: "tips_dismissed",
     VISITOR_NAME: "visitor_name",
+    MOUSE_THEME: "term_mouse_theme",
   },
 
   // Base path for fetching content.

@@ -24,6 +24,14 @@ const SystemCommands = {
         ["init", "Open portfolio overview panels  (init --stop to close)"],
         ["message", "Send a message  (--name <you> for live chat, --stop to close)"],
       ];
+      const OWNER_CMDS = [
+        ["note", "Private Markdown notes  (note add | cat | rm)"],
+        ["mv", "Move note between locations  (mv note/f.md blog/f.md)"],
+        ["upload", "Upload a file to the portfolio"],
+        ["download", "Download a file  (download <path>)"],
+        ["export", "Download this session as a .txt file"],
+        ["auth logout", "End owner session"],
+      ];
       const lines = [
         line('<span class="hr">────────────────────────────────────</span>'),
         text("Available commands:", []),
@@ -32,12 +40,28 @@ const SystemCommands = {
       cmds.forEach(([name, desc]) => {
         lines.push(
           line(
-            `  <span class="cmd-name">${esc(name)}</span>` +
+            `  <span class="cmd-name help-item" data-cmd="${esc(name)}">${esc(name)}</span>` +
               `<span class="muted" style="color:var(--text-muted)"> — ${esc(desc)}</span>`,
           ),
         );
       });
       lines.push(line('<span class="hr">────────────────────────────────────</span>'));
+
+      // Owner commands section (only when authenticated)
+      if (typeof Auth !== "undefined" && Auth.isAuthenticated()) {
+        lines.push(line('<span class="hr">────────────────────────────────────</span>'));
+        lines.push(text("Owner commands:", []));
+        OWNER_CMDS.forEach(([name, desc]) => {
+          lines.push(
+            line(
+              `  <span class="cmd-name cmd-owner help-item" data-cmd="${esc(name)}">${esc(name)}</span>` +
+                `<span class="muted" style="color:var(--text-muted)"> — ${esc(desc)}</span>`,
+            ),
+          );
+        });
+        lines.push(line('<span class="hr">────────────────────────────────────</span>'));
+      }
+
       lines.push(text("Tip: Press Tab to autocomplete, ↑/↓ for history.", ["muted"]));
       return { lines };
     },

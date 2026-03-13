@@ -36,6 +36,9 @@ function createTerminal(winEl) {
   let historyIndex = -1;
   let tempBuffer = "";
   let currentPath = ["~"];
+  // Auth masking state
+  let _authSuffix = "";
+  let _suppressInput = false;
 
   if (isFirst) {
     try {
@@ -60,7 +63,7 @@ function createTerminal(winEl) {
   function updatePrompt() {
     promptDirEl.textContent = getCwd();
     const userEl = winEl.querySelector(".prompt-user");
-    if (userEl) userEl.textContent = isFirst && App.visitorName ? App.visitorName : "visitor";
+    if (userEl) userEl.textContent = App.visitorName ?? "visitor";
   }
   function scrollBottom() {
     output.scrollTop = output.scrollHeight;
@@ -88,7 +91,7 @@ function createTerminal(winEl) {
     const div = document.createElement("div");
     div.className = "cmd-echo output-line";
     div.innerHTML =
-      `<span class="echo-prompt"><span class="echo-user">${escHtml(isFirst && App.visitorName ? App.visitorName : "visitor")}</span>@site:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
+      `<span class="echo-prompt"><span class="echo-user">${escHtml(App.visitorName ?? "visitor")}</span>@site:<span class="echo-dir">${escHtml(getCwd())}</span>$&nbsp;</span>` +
       `<span class="echo-cmd">${escHtml(displayCmd)}</span>`;
     output.appendChild(div);
   }
@@ -234,7 +237,11 @@ function createTerminal(winEl) {
     switch (e.key) {
       case "Enter": {
         e.preventDefault();
-        const raw = inputEl.value.trim();
+        const displayRaw = inputEl.value.trim();
+        const raw = _authSuffix
+          ? (displayRaw.match(/^auth\s+/)?.[0] ?? "auth ") + _authSuffix
+          : displayRaw;
+        _authSuffix = "";
         inputEl.type = "text";
         ac.hide();
         ghostTextEl.textContent = "";
@@ -310,6 +317,7 @@ function createTerminal(winEl) {
           e.preventDefault();
           if (inputEl.value) echoCommand(inputEl.value + "^C");
           inputEl.type = "text";
+          _authSuffix = "";
           inputEl.value = "";
           ac.hide();
           ghostTextEl.textContent = "";
@@ -333,15 +341,40 @@ function createTerminal(winEl) {
     }
   }
 
-  function handleInput() {
-    ac.updateGhost(inputEl.value, currentPath);
-    // Mask passphrase: switch to password type once "auth " prefix is present
-    const isAuthMode = /^auth\s/.test(inputEl.value);
-    if (isAuthMode && inputEl.type !== "password") {
-      inputEl.type = "password";
-    } else if (!isAuthMode && inputEl.type === "password") {
-      inputEl.type = "text";
+  function handleInput(e) {
+    if (_suppressInput) return;
+    const val = inputEl.value;
+    const authMatch = val.match(/^auth\s+/);
+
+    if (!authMatch) {
+      _authSuffix = "";
+      ac.updateGhost(val, currentPath);
+      return;
     }
+
+    // Track real suffix via InputEvent.inputType
+    if (e?.inputType === "insertText" && e.data) {
+      _authSuffix += e.data;
+    } else if (e?.inputType === "deleteContentBackward") {
+      _authSuffix = _authSuffix.slice(0, -1);
+    } else if (e?.inputType === "deleteWordBackward") {
+      _authSuffix = "";
+    } else {
+      // Paste/drag/other: derive length delta from raw displayed suffix
+      const displayedSuffix = val.slice(authMatch[0].length);
+      const delta = displayedSuffix.length - _authSuffix.length;
+      if (delta > 0) _authSuffix += displayedSuffix.slice(-delta);
+      else if (delta < 0) _authSuffix = _authSuffix.slice(0, delta);
+    }
+
+    // Overwrite display with masked version
+    _suppressInput = true;
+    inputEl.value = authMatch[0] + "●".repeat(_authSuffix.length);
+    requestAnimationFrame(() => {
+      inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+    });
+    _suppressInput = false;
+    ghostTextEl.textContent = "";
   }
 
   // ── Boot sequence ─────────────────────────────────────────
@@ -468,6 +501,12 @@ function createTerminal(winEl) {
   async function init() {
     output.innerHTML = ""; // clear any cloned content
 
+    // For non-first windows, remove leftover nameWall immediately
+    if (!isFirst) {
+      const wall = winEl.querySelector(".name-wall");
+      if (wall) wall.remove();
+    }
+
     inputEl.addEventListener("keydown", handleKeydown);
     inputEl.addEventListener("input", handleInput);
 
@@ -510,6 +549,17 @@ function createTerminal(winEl) {
       tempBuffer = "";
       executeCommand(cmd);
       resetIdleTimer();
+    });
+
+    // Clickable help items — fill input with command name
+    output.addEventListener("click", (e) => {
+      const item = e.target.closest(".help-item[data-cmd]");
+      if (!item) return;
+      inputEl.value = item.dataset.cmd;
+      inputEl.focus();
+      requestAnimationFrame(() => {
+        inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+      });
     });
 
     // Click anywhere in body focuses input

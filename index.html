@@ -36,6 +36,13 @@
           document.body.classList.add('scanlines');
         });
       }
+      // Restore mouse theme class
+      var mouseTheme = localStorage.getItem('term_mouse_theme');
+      if (mouseTheme && mouseTheme !== 'default') {
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.classList.add('mouse-' + mouseTheme);
+        });
+      }
     })();
   </script>
 

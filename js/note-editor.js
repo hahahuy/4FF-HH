@@ -89,9 +89,9 @@ const NoteEditor = (() => {
       return;
     }
 
-    // Desktop / tablet: 85% viewport, centered
-    const w = Math.min(Math.round(vw * 0.88), 1400);
-    const h = Math.min(Math.round(vh * 0.88), 900);
+    // Desktop / tablet: larger editor
+    const w = Math.min(Math.round(vw * 0.94), 1600);
+    const h = Math.min(Math.round(vh * 0.93), 1100);
     const l = Math.round((vw - w) / 2);
     const t = Math.round((vh - h) / 2);
 
@@ -99,7 +99,7 @@ const NoteEditor = (() => {
 
     // Shrink caller terminal to a small bottom strip
     if (_callerWin) {
-      const STRIP_H = 160;
+      const STRIP_H = 180;
       _callerWin.style.cssText =
         `position:fixed;left:${GAP}px;bottom:${GAP}px;top:auto;` +
         `width:${w * 0.45}px;height:${STRIP_H}px;`;

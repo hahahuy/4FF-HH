@@ -43,7 +43,7 @@ const FS = (globalThis.FS = {
       __type: "dir",
       // Populated at runtime by loadBlogManifest()
     },
-    images: {
+    image: {
       __type: "dir",
       // Populated at runtime by loadUploadedImages()
     },
@@ -261,7 +261,7 @@ function fsMimeType(filename, node) {
  * Manifest format: [{ "name": "photo.png", "mimeType": "image/png" }, ...]
  */
 async function loadUploadedImages() {
-  const imagesNode = FS["~"].images;
+  const imagesNode = FS["~"].image;
   try {
     const res = await fetch(`${BASE}/content/images/manifest.json`);
     if (!res.ok) return; // 404 = no images yet — silent fallback

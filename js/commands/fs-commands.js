@@ -2,7 +2,33 @@
 // line(), text(), esc() are provided by the assembler scope.
 
 // Directories that require authentication to be visible in ls ~/
-const AUTH_GATED_DIRS = new Set(["notes", "images"]);
+const AUTH_GATED_DIRS = new Set(["note", "image"]);
+
+// ── populateNoteDir ─────────────────────────────────────────
+// Fetches notes from CF and populates FS["~"].note with stub nodes.
+// Called by ls when listing ~/note while authenticated.
+async function populateNoteDir(ctx) {
+  const CF_BASE = Config.CF_BASE;
+  if (!FS["~"].note || FS["~"].note.__type !== "dir") {
+    FS["~"].note = { __type: "dir" };
+  }
+  const noteDir = FS["~"].note;
+  if (noteDir.__populated) return;
+
+  try {
+    const data = await cfPost(`${CF_BASE}/notesList`, { token: Auth.getToken() });
+    if (!data.ok || !Array.isArray(data.notes)) return;
+    data.notes.forEach((n) => {
+      if (!n.filename || !/^[a-zA-Z0-9_-]+\.md$/.test(n.filename)) return;
+      if (!noteDir[n.filename]) {
+        noteDir[n.filename] = { __type: "file", content: "", __isNote: true };
+      }
+    });
+    noteDir.__populated = true;
+  } catch (e) {
+    if (ctx) ctx.appendLine(`ls: could not load notes — ${e.message}`, ["error"]);
+  }
+}
 
 const FsCommands = {
   // ── ls ────────────────────────────────────────────────────
@@ -35,9 +61,45 @@ const FsCommands = {
 
       // Inject notes dir for authenticated owner when listing root
       if (isRoot && authed) {
-        if (!FS["~"].notes || FS["~"].notes.__type !== "dir") {
-          FS["~"].notes = { __type: "dir" };
+        if (!FS["~"].note || FS["~"].note.__type !== "dir") {
+          FS["~"].note = { __type: "dir" };
         }
+      }
+
+      // If listing ~/note while authenticated, trigger async populate as side-effect
+      const isNoteDir =
+        authed &&
+        resolved.path.length === 2 &&
+        resolved.path[0] === "~" &&
+        resolved.path[1] === "note";
+      if (isNoteDir && !(node.__populated)) {
+        // Populate asynchronously and re-render after
+        populateNoteDir(ctx).then(() => {
+          // After population, re-run ls to show updated entries
+          const entries = fsListDir(node);
+          if (entries.length === 0) {
+            ctx.appendLine("(empty directory)", ["muted"]);
+          } else {
+            let g = '<div class="ls-grid">';
+            entries.forEach((e) => {
+              const isDir = e.type === "dir";
+              const cls = isDir ? "ls-dir" : "ls-file";
+              const isGated = isDir && AUTH_GATED_DIRS.has(e.name);
+              const label = isGated ? `${e.name}🔒` : e.name;
+              const suffix = isDir ? "/" : "";
+              const relBase = target ? `${target}/${e.name}` : e.name;
+              const cmd = isDir ? `cd ${relBase}` : `cat ${relBase}`;
+              const shareUrl = `${location.origin}${location.pathname}#cmd=${encodeURIComponent(cmd)}`;
+              g +=
+                `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" ` +
+                `title="click to run: ${esc(cmd)} | link: ${esc(shareUrl)}">${esc(label)}${suffix}</span>`;
+            });
+            g += "</div>";
+            ctx.appendHTML(g);
+          }
+          ctx.scrollBottom();
+        });
+        return { lines: [text("Loading notes…", ["muted"])] };
       }
 
       let entries = fsListDir(node);

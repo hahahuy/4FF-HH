@@ -17,18 +17,18 @@ function _resolveSiteFile(filename) {
 }
 
 // ── _ensureNotesDir() ──────────────────────────────────────
-// Ensures FS['~']['notes'] exists and is populated with stub nodes
-// for each note in RTDB (used by ls notes/ for the authenticated owner).
+// Ensures FS['~']['note'] exists and is populated with stub nodes
+// for each note in RTDB (used by ls note/ for the authenticated owner).
 // Guards against duplicate CF calls with __populated flag.
 // Flag is only set on success — failed fetches allow retry on next call.
 async function _ensureNotesDir() {
   const CF_BASE = Config.CF_BASE;
 
   // Create the dir node if it doesn't exist
-  if (!FS["~"].notes || FS["~"].notes.__type !== "dir") {
-    FS["~"].notes = { __type: "dir" };
+  if (!FS["~"].note || FS["~"].note.__type !== "dir") {
+    FS["~"].note = { __type: "dir" };
   }
-  const notesDir = FS["~"].notes;
+  const notesDir = FS["~"].note;
   if (notesDir.__populated) return; // already done
 
   try {
@@ -58,7 +58,7 @@ const OwnerCommands = {
         Auth.clearSession();
         // If currently inside a private directory, auto-navigate to home
         // so the user isn't stranded in a dir they can no longer access.
-        const PRIVATE_DIRS = ["notes", "images"];
+        const PRIVATE_DIRS = ["note", "image"];
         const isInPrivate = path.length >= 2 && PRIVATE_DIRS.includes(path[1]);
         const result = { lines: [text("Logged out.", ["muted"])] };
         if (isInPrivate) {
@@ -125,9 +125,6 @@ const OwnerCommands = {
             ),
             line('<span class="hr">────────────────────────────────────</span>'),
             line(
-              `  <span style="color:var(--color-blue)">note ls</span><span style="color:var(--text-muted)">                        — list all notes (with location)</span>`,
-            ),
-            line(
               `  <span style="color:var(--color-blue)">note add &lt;file.md&gt;</span><span style="color:var(--text-muted)">        — create new note</span>`,
             ),
             line(
@@ -142,21 +139,24 @@ const OwnerCommands = {
             line(
               `  <span style="color:var(--color-blue)">note rm  &lt;file.md&gt;</span><span style="color:var(--text-muted)">        — delete a note</span>`,
             ),
+            line(
+              `  <span style="color:var(--color-blue)">ls note/</span><span style="color:var(--text-muted)">                       — list all notes</span>`,
+            ),
             line('<span class="hr">────────────────────────────────────</span>'),
             line(
               '<strong style="color:var(--text-primary)">mv</strong> — Move note between locations (visibility)',
             ),
             line(
-              `  <span style="color:var(--color-blue)">mv notes/file.md blog/file.md</span><span style="color:var(--text-muted)">     — publish to blog</span>`,
+              `  <span style="color:var(--color-blue)">mv note/file.md blog/file.md</span><span style="color:var(--text-muted)">     — publish to blog</span>`,
             ),
             line(
-              `  <span style="color:var(--color-blue)">mv notes/file.md projects/file.md</span><span style="color:var(--text-muted)"> — publish to projects</span>`,
+              `  <span style="color:var(--color-blue)">mv note/file.md projects/file.md</span><span style="color:var(--text-muted)"> — publish to projects</span>`,
             ),
             line(
-              `  <span style="color:var(--color-blue)">mv notes/file.md file.md</span><span style="color:var(--text-muted)">          — publish to root (~)</span>`,
+              `  <span style="color:var(--color-blue)">mv note/file.md file.md</span><span style="color:var(--text-muted)">          — publish to root (~)</span>`,
             ),
             line(
-              `  <span style="color:var(--color-blue)">mv blog/file.md notes/file.md</span><span style="color:var(--text-muted)">     — make private again</span>`,
+              `  <span style="color:var(--color-blue)">mv blog/file.md note/file.md</span><span style="color:var(--text-muted)">     — make private again</span>`,
             ),
             line('<span class="hr">────────────────────────────────────</span>'),
             line(
@@ -176,53 +176,6 @@ const OwnerCommands = {
             ),
           ],
         };
-      }
-
-      // ── note ls ───────────────────────────────────────────
-      if (sub === "ls") {
-        ctx.appendLine("Loading notes…", ["muted"]);
-        ctx.scrollBottom();
-
-        fetch(`${CF_BASE}/notesList`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: Auth.getToken() }),
-        })
-          .then((r) => r.json())
-          .then((data) => {
-            if (!data.ok) throw new Error(data.error || "unknown error");
-
-            if (!data.notes || !data.notes.length) {
-              ctx.appendLine("No notes yet. Create one: note add <filename>.md", ["muted"]);
-            } else {
-              ctx.appendHTML(
-                '<span style="color:var(--text-muted)">─── notes ───────────────────────────────</span>',
-                ["output-line"],
-              );
-              data.notes.forEach((n) => {
-                const date = new Date(n.updatedAt || 0).toLocaleDateString();
-                const loc = n.location || "notes";
-                const locTag =
-                  loc !== "notes"
-                    ? `  <span style="color:var(--color-green);font-size:0.85em">[${esc(loc)}]</span>`
-                    : "";
-                ctx.appendHTML(
-                  `<span style="color:var(--color-blue)">${esc(n.filename)}</span>` +
-                    `  <span style="color:var(--text-muted)">${date}</span>${locTag}` +
-                    (n.preview
-                      ? `<br><span style="color:var(--text-dim)">${esc(n.preview)}…</span>`
-                      : ""),
-                  ["output-line"],
-                );
-              });
-            }
-            ctx.scrollBottom();
-          })
-          .catch((e) => {
-            ctx.appendLine(`note ls: ${e.message}`, ["error"]);
-            ctx.scrollBottom();
-          });
-        return null;
       }
 
       // ── note add <filename> ───────────────────────────────
@@ -316,7 +269,7 @@ const OwnerCommands = {
         };
       }
 
-      const src = args[0],
+      let src = args[0],
         dst = args[1];
       if (!src || !dst) {
         return {
@@ -337,6 +290,11 @@ const OwnerCommands = {
       const srcParts = srcClean.split("/").filter(Boolean);
       const filename = srcParts[srcParts.length - 1];
 
+      // Normalize short /dir form → dir (e.g. "/note" → "note", "/blog" → "blog")
+      if (dst.startsWith("/") && !dst.startsWith("~/")) {
+        dst = dst.slice(1);
+      }
+
       const isTxt = /^[a-zA-Z0-9_-]+\.txt$/.test(filename);
       const isMd = /^[a-zA-Z0-9_-]+\.md$/.test(filename);
 
@@ -355,8 +313,8 @@ const OwnerCommands = {
         const mdFilename =
           dstFile && /\.md$/.test(dstFile) ? dstFile : filename.replace(/\.txt$/, ".md");
 
-        if (dstDir !== "notes") {
-          return { error: `mv: static files can only be moved to notes/ (to privatise them)` };
+        if (dstDir !== "note") {
+          return { error: `mv: static files can only be moved to note/ (to privatise them)` };
         }
         if (!/^[a-zA-Z0-9_-]+\.md$/.test(mdFilename) || mdFilename.length > 64) {
           return { error: `mv: invalid destination filename '${mdFilename}'` };
@@ -377,7 +335,7 @@ const OwnerCommands = {
                 action: "create",
                 filename: mdFilename,
                 content,
-                location: "notes",
+                location: "note",
               }),
             });
             const createData = await createRes.json().catch(() => ({}));
@@ -399,7 +357,7 @@ const OwnerCommands = {
             ctx.appendHTML(
               `<span style="color:var(--color-green)">✓</span> ` +
                 `<span style="color:var(--color-blue)">${esc(src)}</span> → ` +
-                `<strong>~/notes/${esc(mdFilename)} (private)</strong>` +
+                `<strong>~/note/${esc(mdFilename)} (private)</strong>` +
                 `<br><span style="color:var(--text-muted)">Reload page for visitors to see the change.</span>`,
               ["output-line"],
             );
@@ -429,7 +387,7 @@ const OwnerCommands = {
       }
 
       const LOCATION_MAP = {
-        notes: "notes",
+        note: "note",
         blog: "blog",
         projects: "projects",
         "": "root",
@@ -445,7 +403,7 @@ const OwnerCommands = {
       const newLocation = LOCATION_MAP[rawDir];
       if (newLocation === undefined) {
         return {
-          error: `mv: unknown destination dir '${rawDir}'. Valid: notes, blog, projects, ~`,
+          error: `mv: unknown destination dir '${rawDir}'. Valid: note, blog, projects, ~`,
         };
       }
 
@@ -460,9 +418,8 @@ const OwnerCommands = {
         .then((r) => r.json())
         .then((data) => {
           if (!data.ok) throw new Error(data.error || "unknown error");
-          const isPrivate = newLocation === "notes";
+          const isPrivate = newLocation === "note";
           const pubPath = newLocation === "root" ? `~/${filename}` : `~/${newLocation}/${filename}`;
-
           if (isPrivate) {
             // Remove from in-memory FS if it was previously published
             const prevSrcParts = src.replace(/^~\//, "").split("/").filter(Boolean);
@@ -479,7 +436,7 @@ const OwnerCommands = {
           ctx.appendHTML(
             `<span style="color:var(--color-green)">✓</span> ` +
               `<span style="color:var(--color-blue)">${esc(filename)}</span> → ` +
-              `<strong>${isPrivate ? "~/notes/ (private)" : `${esc(pubPath)} (public)`}</strong>` +
+              `<strong>${isPrivate ? "~/note/ (private)" : `${esc(pubPath)} (public)`}</strong>` +
               (isPrivate
                 ? ""
                 : `<br><span style="color:var(--text-muted)">Visitors will see it after a page reload.</span>`),

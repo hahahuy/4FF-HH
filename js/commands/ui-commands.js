@@ -28,6 +28,57 @@ const UiCommands = {
     usage: "theme <name>",
     exec(args, path, ctx, { line, text, esc }) {
       const THEMES = ["default", "dracula", "solarized", "light"];
+      const MOUSE_THEMES = ["default", "comet", "halo", "aurora", "off"];
+
+      // ── theme --mouse handling ────────────────────────────
+      if (args[0] === "--mouse") {
+        const mName = (args[1] || "").toLowerCase();
+
+        if (!mName || mName === "list") {
+          const currentMouse = localStorage.getItem(Config.STORAGE.MOUSE_THEME) || "default";
+          return {
+            lines: [
+              text("Mouse theme variants:", []),
+              ...MOUSE_THEMES.map((t) =>
+                line(
+                  `  <span class="${t === currentMouse ? "cmd-name" : ""}" ` +
+                    `style="color:${t === currentMouse ? "var(--color-green)" : "var(--text-primary)"}">${esc(t)}</span>` +
+                    (t === currentMouse
+                      ? ' <span style="color:var(--text-muted)">(active)</span>'
+                      : ""),
+                ),
+              ),
+              text("Usage: theme --mouse <name>", ["muted"]),
+            ],
+          };
+        }
+
+        if (!MOUSE_THEMES.includes(mName)) {
+          return {
+            error: `theme: unknown mouse theme '${mName}'. Run 'theme --mouse list' to see options.`,
+          };
+        }
+
+        // Remove existing mouse-* class and apply new one
+        document.body.classList.forEach((cls) => {
+          if (cls.startsWith("mouse-")) document.body.classList.remove(cls);
+        });
+        if (mName !== "default") {
+          document.body.classList.add(`mouse-${mName}`);
+        }
+        try {
+          localStorage.setItem(Config.STORAGE.MOUSE_THEME, mName);
+        } catch (e) {}
+
+        return {
+          lines: [
+            line(
+              `<span style="color:var(--color-green)">✓</span> Mouse theme set to <span style="color:var(--color-blue)">${esc(mName)}</span>`,
+            ),
+          ],
+        };
+      }
+
       const name = (args[0] || "").toLowerCase();
 
       if (!name || name === "list") {
@@ -265,10 +316,10 @@ const UiCommands = {
               if (isPdf) {
                 FS["~"][file.name] = { __type: "file", src, mimeType: "application/pdf" };
               } else {
-                if (!FS["~"].images || FS["~"].images.__type !== "dir") {
-                  FS["~"].images = { __type: "dir" };
+                if (!FS["~"].image || FS["~"].image.__type !== "dir") {
+                  FS["~"].image = { __type: "dir" };
                 }
-                FS["~"].images[file.name] = {
+                FS["~"].image[file.name] = {
                   __type: "file",
                   src,
                   mimeType: file.type || MIME_BY_EXT[ext] || `image/${ext}`,
@@ -278,7 +329,7 @@ const UiCommands = {
               ctx.appendHTML(
                 `<span style="color:var(--color-green)">✓</span> ` +
                   `<span style="color:var(--color-blue)">${esc(file.name)}</span> uploaded. ` +
-                  `Run <span style="color:var(--color-blue)">cat ${isPdf ? esc(file.name) : `images/${esc(file.name)}`}</span> to view.`,
+                  `Run <span style="color:var(--color-blue)">cat ${isPdf ? esc(file.name) : `image/${esc(file.name)}`}</span> to view.`,
                 ["output-line"],
               );
               ctx.scrollBottom();

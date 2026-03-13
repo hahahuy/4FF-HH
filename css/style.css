@@ -140,17 +140,33 @@ body {
 .backdrop {
   position: fixed;
   inset: 0;
-  background: radial-gradient(
-    ellipse 70% 40% at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(88, 166, 255, 0.09) 0%,
-    rgba(126, 231, 135, 0.04) 40%,
-    rgba(210, 168, 255, 0.03) 65%,
-    transparent 85%
-  );
-  transition: background 0.08s linear;
+  background:
+    radial-gradient(circle 22% at var(--mouse-x,50%) var(--mouse-y,50%),
+      rgba(88,166,255,0.14) 0%, rgba(88,166,255,0.04) 55%, transparent 75%),
+    radial-gradient(circle 46% at calc(var(--mouse-x,50%) - 5%) calc(var(--mouse-y,50%) + 9%),
+      rgba(210,168,255,0.06) 0%, transparent 65%),
+    radial-gradient(circle 72% at calc(var(--mouse-x,50%) + 8%) calc(var(--mouse-y,50%) - 6%),
+      rgba(126,231,135,0.025) 0%, transparent 80%);
+  transition: background 0.06s linear;
   pointer-events: none;
   z-index: 0;
 }
+
+/* ── Mouse theme variants ─────────────────────────────────── */
+body.mouse-comet .backdrop {
+  background: radial-gradient(circle 16% at var(--mouse-x,50%) var(--mouse-y,50%),
+    rgba(88,166,255,0.22) 0%, rgba(88,166,255,0.06) 50%, transparent 72%);
+}
+body.mouse-halo .backdrop {
+  background: radial-gradient(ellipse 65% 55% at var(--mouse-x,50%) var(--mouse-y,50%),
+    rgba(88,166,255,0.07) 0%, rgba(210,168,255,0.04) 55%, transparent 82%);
+}
+body.mouse-aurora .backdrop {
+  background: radial-gradient(ellipse 70% 40% at var(--mouse-x,50%) var(--mouse-y,50%),
+    rgba(88,166,255,0.09) 0%, rgba(126,231,135,0.04) 40%,
+    rgba(210,168,255,0.03) 65%, transparent 85%);
+}
+body.mouse-off .backdrop { background: none; }
 
 /* ── Terminal Window ──────────────────────────────────────── */
 .terminal-window {
