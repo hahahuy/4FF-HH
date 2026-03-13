@@ -405,7 +405,7 @@ function createTerminal(winEl) {
 
       function submit(name) {
         wall.remove();
-        const trimmed = name && name.trim() ? name.trim() : null;
+        const trimmed = name && name.trim() ? name.trim().replace(/\s+/g, "-") : null;
         if (trimmed) sessionStorage.setItem(Config.STORAGE.VISITOR_NAME, trimmed);
         resolve(trimmed);
       }
