@@ -340,7 +340,7 @@ body.scanlines .terminal-body::after {
 
 .name-wall-title {
   color: var(--color-green);
-  font-size: var(--font-size);
+  font-size: 1.4rem;
   font-weight: 500;
 }
 
@@ -348,6 +348,7 @@ body.scanlines .terminal-body::after {
   display: flex;
   align-items: center;
   gap: 0;
+  font-size: 1.15rem;
 }
 
 .name-wall-prompt {
@@ -362,7 +363,7 @@ body.scanlines .terminal-body::after {
   outline: none;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: var(--font-size);
+  font-size: inherit;
   line-height: var(--line-height);
   caret-color: var(--color-blue);
   padding: 0;
@@ -373,5 +374,33 @@ body.scanlines .terminal-body::after {
 .name-wall-hint {
   color: var(--text-dim);
   font-size: calc(var(--font-size) * 0.85);
+}
+
+/* Lock all interaction while name wall is shown */
+body.name-wall-active * {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Re-enable wall itself */
+body.name-wall-active .name-wall,
+body.name-wall-active .name-wall * {
+  pointer-events: auto !important;
+  cursor: auto !important;
+}
+
+body.name-wall-active .name-wall-input {
+  cursor: text !important;
+}
+
+/* Red close button hover glow */
+.dot-red {
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.dot-red:hover {
+  filter: brightness(1.35);
+  box-shadow: 0 0 7px 2px rgba(255, 95, 86, 0.55);
 }
 

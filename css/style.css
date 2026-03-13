@@ -140,8 +140,12 @@ body {
 .backdrop {
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(88, 166, 255, 0.04) 0%, transparent 70%);
+  background: radial-gradient(
+    ellipse 55% 45% at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(88, 166, 255, 0.055) 0%,
+    transparent 70%
+  );
+  transition: background 0.1s ease;
   pointer-events: none;
   z-index: 0;
 }

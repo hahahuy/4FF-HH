@@ -166,6 +166,7 @@ const ContextMenu = (() => {
     }
     // Right-click on background (not on a terminal window)
     document.addEventListener("contextmenu", (e) => {
+      if (document.body.classList.contains("name-wall-active")) return;
       // Only intercept clicks on the background, not inside terminal windows
       if (e.target.closest(".terminal-window")) return;
 

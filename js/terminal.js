@@ -401,9 +401,11 @@ function createTerminal(winEl) {
         return resolve(saved);
       }
 
+      document.body.classList.add("name-wall-active");
       nameInput.focus();
 
       function submit(name) {
+        document.body.classList.remove("name-wall-active");
         wall.remove();
         const trimmed = name && name.trim() ? name.trim().replace(/\s+/g, "-") : null;
         if (trimmed) sessionStorage.setItem(Config.STORAGE.VISITOR_NAME, trimmed);
@@ -597,6 +599,26 @@ function createTerminal(winEl) {
 const Terminal = createTerminal(document.getElementById("terminalWindow"));
 App._firstTerminal = Terminal; // expose to App namespace for `history` command
 document.addEventListener("DOMContentLoaded", () => Terminal.init());
+
+// Mouse-tracking backdrop highlight
+(function () {
+  let _pending = false;
+  document.addEventListener("mousemove", (e) => {
+    if (_pending) return;
+    _pending = true;
+    requestAnimationFrame(() => {
+      document.documentElement.style.setProperty(
+        "--mouse-x",
+        ((e.clientX / window.innerWidth) * 100).toFixed(1) + "%"
+      );
+      document.documentElement.style.setProperty(
+        "--mouse-y",
+        ((e.clientY / window.innerHeight) * 100).toFixed(1) + "%"
+      );
+      _pending = false;
+    });
+  });
+})();
 
 // Export to globalThis for modules loaded via new Function(src)()
 globalThis.createTerminal = createTerminal;
