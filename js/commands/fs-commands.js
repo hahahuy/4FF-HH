@@ -72,7 +72,7 @@ const FsCommands = {
         resolved.path.length === 2 &&
         resolved.path[0] === "~" &&
         resolved.path[1] === "note";
-      if (isNoteDir && !(node.__populated)) {
+      if (isNoteDir && !node.__populated) {
         // Populate asynchronously and re-render after
         populateNoteDir(ctx).then(() => {
           // After population, re-run ls to show updated entries
