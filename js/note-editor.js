@@ -128,6 +128,7 @@ const NoteEditor = (() => {
     });
     _previewEl.innerHTML = "";
     _previewEl.appendChild(wrapper);
+    renderMermaid(wrapper);
   }
 
   function schedulePreviewUpdate() {

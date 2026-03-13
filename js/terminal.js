@@ -36,8 +36,6 @@ function createTerminal(winEl) {
   let historyIndex = -1;
   let tempBuffer = "";
   let currentPath = ["~"];
-  let _authMaskActive = false;
-  let _authRealSuffix = "";
 
   if (isFirst) {
     try {
@@ -108,6 +106,7 @@ function createTerminal(winEl) {
       a.rel = "noopener noreferrer";
     });
     output.appendChild(div);
+    renderMermaid(div).then(() => scrollBottom());
     scrollBottom();
   }
 
@@ -232,17 +231,11 @@ function createTerminal(winEl) {
 
   // ── Keyboard handler ──────────────────────────────────────
   function handleKeydown(e) {
-    if (document.body.classList.contains("name-wall-active")) return;
     switch (e.key) {
       case "Enter": {
         e.preventDefault();
-        let raw = inputEl.value.trim();
-        if (_authMaskActive && _authRealSuffix) {
-          const prefix = raw.match(/^auth\s+/)?.[0] ?? "auth ";
-          raw = (prefix + _authRealSuffix).trim();
-        }
-        _authMaskActive = false;
-        _authRealSuffix = "";
+        const raw = inputEl.value.trim();
+        inputEl.type = "text";
         ac.hide();
         ghostTextEl.textContent = "";
         if (raw) {
@@ -316,9 +309,8 @@ function createTerminal(winEl) {
         if (e.ctrlKey) {
           e.preventDefault();
           if (inputEl.value) echoCommand(inputEl.value + "^C");
+          inputEl.type = "text";
           inputEl.value = "";
-          _authMaskActive = false;
-          _authRealSuffix = "";
           ac.hide();
           ghostTextEl.textContent = "";
           historyIndex = -1;
@@ -342,26 +334,14 @@ function createTerminal(winEl) {
   }
 
   function handleInput() {
-    if (document.body.classList.contains("name-wall-active")) return;
-
-    const val = inputEl.value;
-    const authPrefix = /^auth\s/;
-
-    if (authPrefix.test(val)) {
-      _authMaskActive = true;
-      const prefix = val.match(/^auth\s+/)[0];
-      const suffix = val.slice(prefix.length);
-      _authRealSuffix = suffix;
-      inputEl.value = prefix + "*".repeat(suffix.length);
-      requestAnimationFrame(() => {
-        inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
-      });
-    } else {
-      _authMaskActive = false;
-      _authRealSuffix = "";
-    }
-
     ac.updateGhost(inputEl.value, currentPath);
+    // Mask passphrase: switch to password type once "auth " prefix is present
+    const isAuthMode = /^auth\s/.test(inputEl.value);
+    if (isAuthMode && inputEl.type !== "password") {
+      inputEl.type = "password";
+    } else if (!isAuthMode && inputEl.type === "password") {
+      inputEl.type = "text";
+    }
   }
 
   // ── Boot sequence ─────────────────────────────────────────
@@ -432,9 +412,38 @@ function createTerminal(winEl) {
       }
 
       document.body.classList.add("name-wall-active");
+
+      // Hard-block all keyboard events that leak outside the wall
+      function wallKeyCapture(e) {
+        if (!wall.contains(e.target)) e.stopImmediatePropagation();
+      }
+      document.addEventListener("keydown", wallKeyCapture, true);
+      document.addEventListener("keyup", wallKeyCapture, true);
+      document.addEventListener("keypress", wallKeyCapture, true);
+
+      // Trap focus inside the wall so Tab can't escape
+      function wallFocusTrap(e) {
+        if (!wall.contains(e.target)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          nameInput.focus();
+        }
+      }
+      document.addEventListener("focusin", wallFocusTrap, true);
+
+      // Set terminal input inert so it can't receive focus at all
+      inputEl.setAttribute("tabindex", "-1");
+      inputEl.setAttribute("inert", "");
+
       nameInput.focus();
 
       function submit(name) {
+        document.removeEventListener("keydown", wallKeyCapture, true);
+        document.removeEventListener("keyup", wallKeyCapture, true);
+        document.removeEventListener("keypress", wallKeyCapture, true);
+        document.removeEventListener("focusin", wallFocusTrap, true);
+        inputEl.removeAttribute("inert");
+        inputEl.removeAttribute("tabindex");
         document.body.classList.remove("name-wall-active");
         wall.remove();
         const trimmed = name && name.trim() ? name.trim().replace(/\s+/g, "-") : null;

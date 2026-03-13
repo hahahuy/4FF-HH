@@ -140,24 +140,14 @@ body {
 .backdrop {
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(
-      circle 38% at var(--mouse-x, 50%) var(--mouse-y, 50%),
-      rgba(88, 166, 255, 0.08) 0%,
-      rgba(88, 166, 255, 0.03) 45%,
-      transparent 70%
-    ),
-    radial-gradient(
-      circle 55% at calc(var(--mouse-x, 50%) - 6%) calc(var(--mouse-y, 50%) + 8%),
-      rgba(130, 80, 255, 0.045) 0%,
-      transparent 65%
-    ),
-    radial-gradient(
-      circle 28% at calc(var(--mouse-x, 50%) + 10%) calc(var(--mouse-y, 50%) - 7%),
-      rgba(255, 150, 80, 0.03) 0%,
-      transparent 60%
-    );
-  transition: background 0.15s ease;
+  background: radial-gradient(
+    ellipse 70% 40% at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(88, 166, 255, 0.09) 0%,
+    rgba(126, 231, 135, 0.04) 40%,
+    rgba(210, 168, 255, 0.03) 65%,
+    transparent 85%
+  );
+  transition: background 0.08s linear;
   pointer-events: none;
   z-index: 0;
 }

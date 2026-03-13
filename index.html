@@ -75,6 +75,15 @@
           integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7"
           crossorigin="anonymous"></script>
 
+  <!-- mermaid.js (CDN) — diagram rendering for ```mermaid blocks -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
+          crossorigin="anonymous"></script>
+  <script>
+    if (typeof mermaid !== 'undefined') {
+      mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+    }
+  </script>
+
   <!-- Firebase (CDN — compat build for simple firebase.initializeApp() usage) -->
   <!-- SEC-3: SRI hashes pinned to firebasejs/10.12.2 -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"

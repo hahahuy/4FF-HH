@@ -393,6 +393,12 @@ body.name-wall-active .name-wall-input {
   cursor: text !important;
 }
 
+/* Visually mute the terminal content under the wall */
+body.name-wall-active .terminal-body > :not(.name-wall) {
+  opacity: 0.18;
+  user-select: none;
+}
+
 /* Red close button hover glow */
 .dot-red {
   transition: filter 0.15s ease, box-shadow 0.15s ease;

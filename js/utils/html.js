@@ -38,3 +38,36 @@ function sanitiseHtml(el) {
 // Export to globalThis for modules loaded via new Function(src)()
 globalThis.escHtml = escHtml;
 globalThis.sanitiseHtml = sanitiseHtml;
+
+/**
+ * Render all ```mermaid fenced blocks inside an already-sanitised .md-render
+ * container.  Must be called after sanitiseHtml().
+ *
+ * marked.js turns ```mermaid into <pre><code class="language-mermaid">…</code></pre>.
+ * We replace each such block with an <svg> produced by mermaid.render().
+ *
+ * @param {Element} el  — the .md-render container
+ */
+async function renderMermaid(el) {
+  if (typeof mermaid === "undefined") return;
+  const blocks = el.querySelectorAll("code.language-mermaid");
+  if (!blocks.length) return;
+  let idx = 0;
+  for (const code of blocks) {
+    const pre = code.parentElement;
+    if (!pre) continue;
+    const source = code.textContent || "";
+    const id = `mermaid-${Date.now()}-${idx++}`;
+    try {
+      const { svg } = await mermaid.render(id, source);
+      const wrap = document.createElement("div");
+      wrap.className = "mermaid-diagram";
+      wrap.innerHTML = svg;
+      pre.replaceWith(wrap);
+    } catch (_) {
+      // Leave the raw pre/code block if rendering fails
+    }
+  }
+}
+
+globalThis.renderMermaid = renderMermaid;

@@ -46,6 +46,7 @@ const InitPanels = (() => {
       a.rel = "noopener noreferrer";
     });
     outputEl.appendChild(div);
+    renderMermaid(div);
   }
 
   function appendProfileImg(outputEl) {

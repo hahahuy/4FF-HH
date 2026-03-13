@@ -147,3 +147,22 @@
   color: var(--color-purple);
   font-style: italic;
 }
+
+/* ── Mermaid diagrams ─────────────────────────────────────── */
+.mermaid-diagram {
+  margin: 10px 0;
+  padding: 14px 10px;
+  background-color: rgba(22, 27, 34, 0.7);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow-x: auto;
+  text-align: center;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
