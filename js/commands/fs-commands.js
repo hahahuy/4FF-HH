@@ -46,7 +46,7 @@ const FsCommands = {
       const { node } = resolved;
 
       if (node.__type === "file") {
-        const cmd = `cat ${args[0]}`;
+        const cmd = args[0] === "transformers.py" ? "transformers.py" : `cat ${args[0]}`;
         return {
           lines: [
             line(
@@ -88,7 +88,11 @@ const FsCommands = {
               const label = isGated ? `${e.name}🔒` : e.name;
               const suffix = isDir ? "/" : "";
               const relBase = target ? `${target}/${e.name}` : e.name;
-              const cmd = isDir ? `cd ${relBase}` : `cat ${relBase}`;
+              const cmd = isDir
+                ? `cd ${relBase}`
+                : e.name === "transformers.py"
+                  ? "transformers.py"
+                  : `cat ${relBase}`;
               const shareUrl = `${location.origin}${location.pathname}#cmd=${encodeURIComponent(cmd)}`;
               g +=
                 `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" ` +
@@ -127,7 +131,7 @@ const FsCommands = {
           cmd = `cd ${relBase}`;
         } else {
           const relBase = target ? `${target}/${e.name}` : e.name;
-          cmd = `cat ${relBase}`;
+          cmd = e.name === "transformers.py" ? "transformers.py" : `cat ${relBase}`;
         }
         const shareUrl = `${location.origin}${location.pathname}#cmd=${encodeURIComponent(cmd)}`;
         gridHtml +=

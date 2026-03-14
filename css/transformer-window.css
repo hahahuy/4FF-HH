@@ -32,14 +32,12 @@
   gap: 6px;
 }
 
-.tw-model-label {
-  margin-left: auto;
+.tw-quota {
   font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text-dim);
   flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 6px;
 }
 
 /* ── Body ─────────────────────────────────────────────────── */

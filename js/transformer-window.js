@@ -4,6 +4,7 @@ const TransformerWindow = (() => {
   let _win = null;
   let _outputEl = null;
   let _inputEl = null;
+  let _quotaEl = null;
   let _onClose = null;
 
   // ── Spinner frames ─────────────────────────────────────
@@ -19,7 +20,6 @@ const TransformerWindow = (() => {
       `<span class="dot dot-yellow"></span>` +
       `<span class="dot dot-green"></span>` +
       `<span class="titlebar-label">transformers.py</span>` +
-      `<span class="tw-model-label">oracle v0.2 · Llama-3.2-3B</span>` +
       `</div>` +
       `<div class="tw-body">` +
       `<div class="tw-output"></div>` +
@@ -27,6 +27,7 @@ const TransformerWindow = (() => {
       `<span class="tw-prompt">›&nbsp;</span>` +
       `<input class="tw-input terminal-input" type="text" ` +
       `autocomplete="off" placeholder="Ask me anything about Ha Huy…" />` +
+      `<span class="tw-quota"></span>` +
       `</div>` +
       `</div>`;
     return win;
@@ -157,6 +158,9 @@ const TransformerWindow = (() => {
           );
           appendMarkdown(answer);
         }
+        if (data.requestsLeft !== null && data.requestsLeft !== undefined) {
+          if (_quotaEl) _quotaEl.textContent = `${data.requestsLeft} left`;
+        }
       })
       .catch((e) => {
         clearInterval(_spin);
@@ -188,6 +192,17 @@ const TransformerWindow = (() => {
 
     _outputEl = _win.querySelector(".tw-output");
     _inputEl = _win.querySelector(".tw-input");
+    _quotaEl = _win.querySelector(".tw-quota");
+
+    // Welcome message
+    appendHTML(
+      `<span style="color:var(--color-green);font-weight:700">oracle</span>` +
+        `<span style="color:var(--text-muted)"> › </span>` +
+        `Hi, I'm Oracle — Ha Huy's friend who he deployed alongside this site. ` +
+        `I know him pretty well, so I can tell you about his work, skills, projects, ` +
+        `or just help you find your way around. ` +
+        `<span style="color:var(--text-muted)">What would you like to know?</span>`,
+    );
 
     // Position relative to caller window
     const callerWin = ctx ? ctx.winEl : null;
@@ -239,6 +254,7 @@ const TransformerWindow = (() => {
     _win = null;
     _outputEl = null;
     _inputEl = null;
+    _quotaEl = null;
     _onClose = null;
 
     if (win) {

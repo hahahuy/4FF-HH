@@ -172,6 +172,24 @@ async function isRateLimited(namespace, ip, maxCount, windowMs) {
   return false;
 }
 
+// Returns { limited, remaining } instead of boolean
+async function checkRateLimit(namespace, ip, maxCount, windowMs) {
+  const ipHash = sha256hex(ip).slice(0, 16);
+  const rlRef  = db.ref(`rate_limits/${namespace}/${ipHash}`);
+  const rlSnap = await rlRef.once('value');
+  const rlData = rlSnap.val() || { count: 0, window_start: 0 };
+  const now    = Date.now();
+  if (now - rlData.window_start < windowMs) {
+    if (rlData.count >= maxCount) return { limited: true, remaining: 0 };
+    const newCount = rlData.count + 1;
+    await rlRef.update({ count: newCount });
+    return { limited: false, remaining: maxCount - newCount };
+  } else {
+    await rlRef.set({ count: 1, window_start: now });
+    return { limited: false, remaining: maxCount - 1 };
+  }
+}
+
 // ── RTDB key encoder ────────────────────────────────────────
 // Firebase RTDB keys cannot contain "." so "test.md" → "test_dot_md"
 function toRtdbKey(filename) {
@@ -943,6 +961,7 @@ function buildPrompt(P) {
     `Frontend: ${P.skills.frontend.join(', ')}`,
     `Backend: ${P.skills.backend.join(', ')}`,
     `Tools: ${P.skills.tools.join(', ')}`,
+    `Engineering: ${P.skills.engineering.join(', ')}`,
   ].join('\n');
   const projects = P.projects.map(pr =>
     `- **${pr.name}**: ${pr.description} Stack: ${pr.stack.join(', ')}`
@@ -950,7 +969,11 @@ function buildPrompt(P) {
   const offEx = P.guardrail.offTopicExamples.map(q => `Q: "${q}" → refuse`).join('\n');
   const onEx  = P.guardrail.onTopicExamples.map(q  => `Q: "${q}" → answer`).join('\n');
 
-  return `You are the AI oracle for Ha Huy's terminal portfolio (${P.site.url}).
+  return `You are Oracle — a guide for Ha Huy's terminal portfolio (${P.site.url}).
+Ha Huy built and deployed you. You know him well — his work, his skills, his projects, his personality. You're here to help visitors understand Ha Huy and navigate this site.
+
+You are NOT a general-purpose assistant. You have exactly one purpose: help visitors learn about Ha Huy and his portfolio.
+
 You ONLY answer questions in these topics:
 ${topics}
 
@@ -1007,11 +1030,13 @@ exports.aiAsk = functions
     // ── Tiered rate limit ────────────────────────────────────
     // Owner (valid session token) → no rate limit
     // Guest → 30 req / hour / IP
+    let requestsLeft = null; // null = unlimited (owner)
     const isOwner = token ? (await validateSessionToken(token)).valid : false;
     if (!isOwner) {
       const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || 'unknown';
-      if (await isRateLimited('aiAsk', ip, 30, 60 * 60 * 1000))
-        return res.status(429).json({ error: 'Rate limit reached — try again in an hour.' });
+      const { limited, remaining } = await checkRateLimit('aiAsk', ip, 30, 60 * 60 * 1000);
+      if (limited) return res.status(429).json({ error: 'Rate limit reached — try again in an hour.' });
+      requestsLeft = remaining;
     }
 
     const hfKey = process.env.HF_API_KEY;
@@ -1042,7 +1067,7 @@ exports.aiAsk = functions
       const data   = await hfRes.json();
       const answer = (data.choices?.[0]?.message?.content || '').trim();
       if (!answer) return res.status(502).json({ error: 'Oracle returned an empty response.' });
-      return res.status(200).json({ answer });
+      return res.status(200).json({ answer, requestsLeft });
     } catch (e) {
       console.error(`aiAsk: ${e.message}`);
       return res.status(500).json({ error: 'Oracle is offline. Try again later.' });

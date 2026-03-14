@@ -1,47 +1,40 @@
 {
-  "bio": "hahahuy is a developer, builder, and occasional over-engineer. Passionate about crafting tools that feel right: fast, elegant, purposeful. Currently learning Assembly & Rust. Interested in Drone engineering. Drinks too much coffee.",
+  "bio": "Ha Huy is an Electrical Engineering student (minor: Space Engineering, graduating 2026) and a working Quantum Engineer at Citynow. He started as a curious generalist — drawing from IoT, full-stack dev, machine learning, CFD, rocket science, satellite tech, and cosmology — then goes depth-first on whatever helps his current work or feeds the next project. Drinks too much coffee.",
   "whatHeDoes": [
-    "Full-stack development — database schemas to pixel-perfect UIs",
-    "Developer tooling — CLIs, automation, workflow optimization",
-    "Open source contributions"
+    "Quantum engineering — quantum circuits, optimization, and research at Citynow",
+    "Full-stack development — from database schemas to pixel-perfect UIs and CLI tooling",
+    "ML/AI — neural network design, LLM training and optimization (AIMO3 side project)",
+    "Simulation — drone flight dynamics, CFD, and spacecraft engineering concepts"
   ],
   "skills": {
-    "languages": [
-      "JavaScript (proficient)",
-      "HTML/CSS (daily driver)",
-      "Python (proficient)",
-      "C++ (improving)",
-      "Assembly (improving)"
-    ],
-    "mlAI": [
-      "Neural network architecture design",
-      "LLM optimization and deployment",
-      "Python, C++"
-    ],
-    "quantum": [
-      "Qiskit, Cirq, Braket",
-      "Quantum ML (qiskit-machine-learning)",
-      "Circuit optimization, error handling"
-    ],
-    "frontend": [
-      "Vanilla JS (DOM, Fetch, Web APIs)",
-      "React / Next.js",
-      "CSS (BEM, custom properties)",
-      "Accessibility & performance"
-    ],
-    "backend": [
-      "Node.js / Express",
-      "REST API / FastAPI",
-      "PostgreSQL, SQLite",
-      "Docker, CI/CD"
-    ],
-    "tools": ["Git", "GitHub Actions", "VS Code", "Vim", "Linux CLI"]
+    "languages": ["JavaScript (proficient)", "HTML/CSS (daily driver)", "Python (proficient)", "C++ (improving)", "Assembly (improving)"],
+    "mlAI": ["Neural network architecture design", "LLM training and optimization", "AIMO3 — personal AI training project", "Python, C++"],
+    "quantum": ["Quantum Engineer at Citynow", "Qiskit, Cirq, Braket", "Quantum ML (qiskit-machine-learning)", "Circuit optimization and error handling"],
+    "frontend": ["Vanilla JS (DOM, Fetch, Web APIs)", "React / Next.js", "CSS (BEM, custom properties)", "Accessibility & performance"],
+    "backend": ["Node.js / Express", "REST API / FastAPI", "PostgreSQL, SQLite", "Docker, CI/CD"],
+    "tools": ["Git", "GitHub Actions", "VS Code", "Vim", "Linux CLI"],
+    "engineering": ["Electrical Engineering (degree in progress)", "IoT systems", "Drone simulation", "CFD (Computational Fluid Dynamics)", "Space engineering fundamentals"]
   },
   "projects": [
     {
       "name": "4FF-HH — This Portfolio",
-      "description": "CLI-style personal portfolio. Vanilla HTML/CSS/JS, zero runtime npm deps, Vite build, virtual filesystem (cat/ls/cd/grep), draggable window, GitHub Pages deploy via GitHub Actions.",
+      "description": "CLI-style personal portfolio. Vanilla HTML/CSS/JS, zero runtime npm deps, Vite build, virtual filesystem (cat/ls/cd/grep), draggable terminal window, GitHub Pages deploy via GitHub Actions.",
       "stack": ["HTML", "CSS", "JavaScript", "Vite", "Firebase Cloud Functions", "GitHub Pages"]
+    },
+    {
+      "name": "AIMO3 — AI training project",
+      "description": "Personal side project: training and optimizing a custom AI/LLM model. Ongoing.",
+      "stack": ["Python", "LLM tooling"]
+    },
+    {
+      "name": "Drone Simulation",
+      "description": "Simulation project exploring drone flight dynamics and CFD for engineering coursework and personal interest.",
+      "stack": ["Python", "simulation tools"]
+    },
+    {
+      "name": "CLI dev tool (Citynow)",
+      "description": "Internal CLI tool for Citynow's product workflows, built to improve team automation.",
+      "stack": ["Node.js", "Python"]
     }
   ],
   "site": {
@@ -62,22 +55,25 @@
   },
   "guardrail": {
     "allowedTopics": [
-      "Ha Huy — who he is, background, interests, personality",
-      "This website — how it was built, stack, architecture, features",
-      "Ha Huy's knowledge — math, engineering, tech stack, skills",
-      "How to navigate or learn from this site"
+      "Ha Huy — who he is, background, personality, education, work style",
+      "Ha Huy's career — Quantum Engineer at Citynow, EE student, projects, goals",
+      "Ha Huy's skills and knowledge — quantum, ML/AI, full-stack, EE, simulation, CFD",
+      "This website — how it works, the stack, architecture, features, how to navigate"
     ],
-    "refusalMessage": "I only answer questions about Ha Huy and his work. Try: 'who is Ha Huy?', 'what stack is this site?', or 'what does Ha Huy know about ML?'",
+    "refusalMessage": "I only answer questions about Ha Huy and his work. Try: 'who is Ha Huy?', 'what does he do at Citynow?', 'what stack is this site?', or 'tell me about his AI projects'.",
     "offTopicExamples": [
       "What is the weather in Hanoi?",
       "Write me a Python sorting algorithm.",
       "Who is Elon Musk?",
+      "Explain quantum computing in general.",
       "What is 2+2?"
     ],
     "onTopicExamples": [
       "What languages does Ha Huy know?",
       "How does this terminal work?",
       "What is Ha Huy's ML background?",
+      "What does he do at Citynow?",
+      "What is AIMO3?",
       "What is the ticker bar?"
     ]
   }
