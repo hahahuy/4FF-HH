@@ -18,7 +18,7 @@ const MessagePanel = (() => {
   // ── Input validation constants ─────────────────────────────
   const MAX_CONTENT_LEN = 500;
   const MAX_NAME_LEN = 32;
-  const NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+  const NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
   const RESERVED_NAMES = new Set(["admin", "test", "null", "undefined"]);
 
   // ── State ─────────────────────────────────────────────────
@@ -102,7 +102,7 @@ const MessagePanel = (() => {
       return `Name too long. Max ${MAX_NAME_LEN} characters.`;
     }
     if (!NAME_PATTERN.test(name)) {
-      return "Name may only contain letters, numbers, hyphens, and underscores.";
+      return "Name must start with a letter or digit. Allowed characters: letters, numbers, dots (.), hyphens (-), underscores (_).";
     }
     if (RESERVED_NAMES.has(name.toLowerCase())) {
       return `"${name}" is a reserved name. Please choose another.`;
@@ -208,6 +208,15 @@ const MessagePanel = (() => {
     });
 
     return panel;
+  }
+
+  // ── Wire red dot → message --stop ─────────────────────────
+  function wireRedDot(panel, ctx) {
+    panel.querySelector(".dot-red").addEventListener("click", () => {
+      const result = stop(ctx);
+      ctx.appendHTML(result.lines[0].html, result.lines[0].classes);
+      ctx.scrollBottom();
+    });
   }
 
   // ── Render a single message bubble ────────────────────────
@@ -447,6 +456,7 @@ const MessagePanel = (() => {
     _logEl = _chatPanel.querySelector(".mp-log");
 
     wireInput(_chatPanel);
+    wireRedDot(_chatPanel, ctx);
     attachListener(name);
 
     // Save name for next time (2c)

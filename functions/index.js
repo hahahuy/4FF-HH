@@ -1130,15 +1130,21 @@ exports.aiStatus = functions.region(REGION).https.onRequest(async (req, res) => 
 
   try {
     const statusRes = await fetch(
-      `https://api.together.xyz/v1/models/${encodeURIComponent(MODEL)}`,
+      'https://api.together.xyz/v1/models',
       { headers: { 'Authorization': `Bearer ${togetherKey}` } },
     );
-    if (statusRes.ok) {
+    if (!statusRes.ok) {
+      const body = await statusRes.text();
+      console.warn(`aiStatus: Together ${statusRes.status} — ${body.slice(0, 200)}`);
+      return res.status(200).json({ online: false, model: MODEL, reason: `together_${statusRes.status}` });
+    }
+    const models = await statusRes.json();
+    const found = Array.isArray(models) && models.some((m) => m.id === MODEL);
+    if (found) {
       return res.status(200).json({ online: true, model: MODEL });
     }
-    const body = await statusRes.text();
-    console.warn(`aiStatus: Together ${statusRes.status} — ${body.slice(0, 200)}`);
-    return res.status(200).json({ online: false, model: MODEL, reason: `together_${statusRes.status}` });
+    console.warn(`aiStatus: model ${MODEL} not found in Together model list`);
+    return res.status(200).json({ online: false, model: MODEL, reason: 'model_not_found' });
   } catch (e) {
     console.error(`aiStatus: ${e.message}`);
     return res.status(200).json({ online: false, model: MODEL, reason: 'network' });

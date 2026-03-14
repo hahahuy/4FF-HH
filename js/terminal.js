@@ -527,6 +527,9 @@ function createTerminal(winEl) {
 
       nameInput.focus();
 
+      const hintEl = wall.querySelector(".name-wall-hint");
+      const NAME_WALL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+
       function submit(name) {
         document.removeEventListener("keydown", wallKeyCapture, true);
         document.removeEventListener("keyup", wallKeyCapture, true);
@@ -544,7 +547,17 @@ function createTerminal(winEl) {
       nameInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          submit(nameInput.value);
+          const raw = nameInput.value.trim();
+          if (raw && !NAME_WALL_PATTERN.test(raw)) {
+            hintEl.textContent =
+              "Must start with a letter or digit. Allowed: letters, numbers, . - _";
+            hintEl.style.color = "var(--color-red, #ff5f56)";
+            nameInput.select();
+            return;
+          }
+          hintEl.textContent = "[Enter] to confirm · [Ctrl+C] to skip";
+          hintEl.style.color = "";
+          submit(raw || null);
         }
         if (e.key === "c" && e.ctrlKey) {
           e.preventDefault();

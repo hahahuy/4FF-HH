@@ -51,14 +51,14 @@ def validate_content(content):
     return None
 
 def validate_name(name):
-    NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
+    NAME_PATTERN = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$')
     RESERVED = {"admin", "test", "null", "undefined"}
     if not name or not name.strip():
         return "Name cannot be empty."
     if len(name) > 32:
         return "Name too long. Max 32 characters."
     if not NAME_PATTERN.match(name):
-        return "Name may only contain letters, numbers, hyphens, and underscores."
+        return "Name must start with a letter or digit. Allowed characters: letters, numbers, dots (.), hyphens (-), underscores (_)."
     if name.lower() in RESERVED:
         return f'"{name}" is a reserved name. Please choose another.'
     return None
@@ -208,7 +208,16 @@ assert_t("validateName: 33-char name fails", vn_33)
 
 def vn_valid():
     assert validate_name("Hello_World-123") is None
-assert_t("validateName: alphanumeric + _ - passes", vn_valid)
+    assert validate_name("john.doe") is None
+assert_t("validateName: alphanumeric + _ - . passes", vn_valid)
+
+def vn_dot_start():
+    assert validate_name(".dotstart") is not None, "dot-start should be rejected"
+assert_t("validateName: dot-start fails", vn_dot_start)
+
+def vn_dash_start():
+    assert validate_name("-dashstart") is not None, "dash-start should be rejected"
+assert_t("validateName: dash-start fails", vn_dash_start)
 
 def vn_slash():
     assert validate_name("bad/name") is not None, "slash should be rejected"
