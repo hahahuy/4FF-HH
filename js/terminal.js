@@ -390,35 +390,64 @@ function createTerminal(winEl) {
   }
 
   // ── Boot sequence ─────────────────────────────────────────
-  // Original window only: ASCII logo (instant) + 3 hint lines typewritten.
-  // Subsequent windows: silent boot, no lines at all.
+  // Original window only: ASCII logo (instant, side-by-side with intro text)
+  // + 2 typewritten hint lines + HR divider.
+  // Subsequent windows: silent boot.
 
-  const ASCII_LOGO_HTML =
-    `<span style="color:var(--color-green)">` +
-    `██╗  ██╗██╗  ██╗\n` +
-    `██║  ██║██║  ██║\n` +
-    `███████║███████║\n` +
-    `██╔══██║██╔══██║\n` +
-    `██║  ██║██║  ██║\n` +
-    `╚═╝  ╚═╝╚═╝  ╚═╝` +
-    `</span>` +
-    `<span style="color:var(--text-muted)">   hahuy.site</span>`;
+  function buildBootArtHTML(name) {
+    const artLines = [
+      "██╗  ██╗██╗  ██╗",
+      "██║  ██║██║  ██║",
+      "███████║███████║",
+      "██╔══██║██╔══██║",
+      "██║  ██║██║  ██║",
+      "╚═╝  ╚═╝╚═╝  ╚═╝",
+    ];
+    const greeting = name ? `hey ${name} — welcome.` : `hey — welcome.`;
+    const infoLines = [
+      `<span style="color:var(--color-green);font-weight:700">ha huy</span><span style="color:var(--text-muted)">@hahuy.site</span>`,
+      `<span style="color:var(--text-muted)">──────────────────</span>`,
+      `<span style="color:var(--color-green)">role</span>    <span style="color:var(--text-primary)">quantum engineer · builder</span>`,
+      `<span style="color:var(--color-green)">focus</span>   <span style="color:var(--text-primary)">products that ship</span>`,
+      `<span style="color:var(--color-green)">stack</span>   <span style="color:var(--text-primary)">JS · Python · Firebase</span>`,
+      `<span style="color:var(--color-green)">msg</span>     <span style="color:var(--text-muted)">${greeting}</span>`,
+    ];
+    const rows = Math.max(artLines.length, infoLines.length);
+    let rowsHtml = "";
+    for (let i = 0; i < rows; i++) {
+      const art = artLines[i] ?? "";
+      const info = infoLines[i] ?? "";
+      rowsHtml +=
+        `<div class="boot-art-row">` +
+        `<span class="boot-art-col-art" style="color:var(--color-green)">${art}</span>` +
+        `<span class="boot-art-col-info">${info}</span>` +
+        `</div>`;
+    }
+    return rowsHtml;
+  }
 
-  function getBootLines(name) {
+  function getBootLines() {
     if (!isFirst) return [];
-    const greeting = name ? `hey ${name} — welcome.` : `quantum engineer · builder · tinkerer.`;
     return [
-      { text: greeting, cls: "success" },
       {
-        text: "try `init` for an overview · `help` for all commands · `transformers.py` to talk to my oracle.",
+        text: "try `init` for an overview · `help` for all commands · `transformers.py` for my oracle.",
         cls: "muted",
+        postHtml:
+          `try ` +
+          `<span class="boot-cmd" data-cmd="init" style="color:var(--color-green);cursor:pointer">\`init\`</span>` +
+          ` for an overview · ` +
+          `<span class="boot-cmd" data-cmd="help" style="color:var(--color-green);cursor:pointer">\`help\`</span>` +
+          ` for all commands · ` +
+          `<span class="boot-cmd" data-cmd="transformers.py" style="color:var(--color-green);cursor:pointer">\`transformers.py\`</span>` +
+          ` for my oracle.`,
       },
       { text: "────────────────────────────────────", cls: "hr" },
     ];
   }
 
-  // VIS-1: Typewriter effect — types text char-by-char at ~28ms/char
-  function typewriterLine(text, cls) {
+  // VIS-1: Typewriter effect — types text char-by-char at ~28ms/char.
+  // If l.postHtml is set, swaps innerHTML after typing finishes.
+  function typewriterLine(text, cls, postHtml) {
     return new Promise((resolve) => {
       const div = document.createElement("div");
       div.className = `output-line boot-line ${cls} typing`;
@@ -433,6 +462,7 @@ function createTerminal(winEl) {
           setTimeout(tick, 28);
         } else {
           div.classList.remove("typing");
+          if (postHtml) div.innerHTML = postHtml;
           resolve();
         }
       }
@@ -442,17 +472,16 @@ function createTerminal(winEl) {
 
   async function boot(name) {
     if (!isFirst) return;
-    // 1. Instant ASCII art block
+    // 1. Instant ASCII art block (side-by-side with intro info)
     const artDiv = document.createElement("div");
     artDiv.className = "output-line boot-art";
-    artDiv.style.whiteSpace = "pre";
-    artDiv.innerHTML = ASCII_LOGO_HTML;
+    artDiv.innerHTML = buildBootArtHTML(name);
     output.appendChild(artDiv);
     scrollBottom();
     // 2. Typewriter hint lines
-    const lines = getBootLines(name);
+    const lines = getBootLines();
     await lines.reduce(
-      (chain, l) => chain.then(() => typewriterLine(l.text, l.cls)),
+      (chain, l) => chain.then(() => typewriterLine(l.text, l.cls, l.postHtml)),
       Promise.resolve(),
     );
     await new Promise((r) => setTimeout(r, 120));
@@ -563,6 +592,29 @@ function createTerminal(winEl) {
           });
         })
         .catch(() => {});
+    });
+
+    // Clickable boot hint commands — run command directly
+    output.addEventListener("click", (e) => {
+      const item = e.target.closest(".boot-cmd[data-cmd]");
+      if (!item) return;
+      const cmd = item.dataset.cmd;
+      inputEl.value = "";
+      echoCommand(cmd);
+      commandHistory.unshift(cmd);
+      if (commandHistory.length > Config.MAX_HISTORY) commandHistory.pop();
+      if (isFirst) {
+        try {
+          localStorage.setItem(
+            HIST_KEY,
+            JSON.stringify(commandHistory.slice(0, Config.MAX_HISTORY)),
+          );
+        } catch (e) {}
+      }
+      historyIndex = -1;
+      tempBuffer = "";
+      executeCommand(cmd);
+      resetIdleTimer();
     });
 
     // Clickable ls items

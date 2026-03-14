@@ -180,6 +180,38 @@
   opacity: 0;
 }
 
+/* Boot ASCII art: side-by-side layout */
+.boot-art {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 4px;
+  animation: fadeInLine 0.15s ease forwards;
+  opacity: 0;
+}
+
+.boot-art-row {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.4;
+}
+
+.boot-art-col-art {
+  font-family: var(--font-mono, monospace);
+  white-space: pre;
+  min-width: 20ch;
+  flex-shrink: 0;
+}
+
+.boot-art-col-info {
+  padding-left: 2ch;
+  white-space: nowrap;
+}
+
+.boot-cmd:hover {
+  text-decoration: underline;
+}
+
 /* VIS-1: Typewriter blinking cursor on the active boot line */
 .boot-line.typing::after {
   content: '▋';

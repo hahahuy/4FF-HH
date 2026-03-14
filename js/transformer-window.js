@@ -5,6 +5,7 @@ const TransformerWindow = (() => {
   let _outputEl = null;
   let _inputEl = null;
   let _quotaEl = null;
+  let _statusEl = null;
   let _onClose = null;
   let _upgradeShown = false;
 
@@ -21,6 +22,7 @@ const TransformerWindow = (() => {
       `<span class="dot dot-yellow"></span>` +
       `<span class="dot dot-green"></span>` +
       `<span class="titlebar-label">transformers.py</span>` +
+      `<span class="tw-status-dot tw-status-checking" title="Checking oracle…"></span>` +
       `</div>` +
       `<div class="tw-body">` +
       `<div class="tw-output"></div>` +
@@ -237,6 +239,39 @@ const TransformerWindow = (() => {
     appendLine("oracle: quota stays at 15/hour. Come back later to upgrade.", ["muted"]);
   }
 
+  // ── Oracle status check ────────────────────────────────────
+  function checkOracleStatus() {
+    cfPost(Config.CF_BASE + "/aiStatus", {})
+      .then((data) => {
+        if (!_active || !_statusEl) return;
+        if (data.online) {
+          _statusEl.className = "tw-status-dot tw-status-online";
+          _statusEl.title = "Oracle online";
+        } else {
+          _statusEl.className = "tw-status-dot tw-status-offline";
+          _statusEl.title = "Oracle offline";
+          // Swap welcome text
+          if (_win) {
+            const welcome = _win.querySelector(".tw-welcome-text");
+            if (welcome)
+              welcome.textContent =
+                "Ha Huy and I are catching some bugs, hold on — check back in a bit.";
+          }
+        }
+      })
+      .catch(() => {
+        if (!_active || !_statusEl) return;
+        _statusEl.className = "tw-status-dot tw-status-offline";
+        _statusEl.title = "Oracle unreachable";
+        if (_win) {
+          const welcome = _win.querySelector(".tw-welcome-text");
+          if (welcome)
+            welcome.textContent =
+              "Ha Huy and I are catching some bugs, hold on — check back in a bit.";
+        }
+      });
+  }
+
   // ── Public: open(ctx, onClose) ─────────────────────────
   function open(ctx, onClose) {
     if (_active) return;
@@ -249,16 +284,20 @@ const TransformerWindow = (() => {
     _outputEl = _win.querySelector(".tw-output");
     _inputEl = _win.querySelector(".tw-input");
     _quotaEl = _win.querySelector(".tw-quota");
+    _statusEl = _win.querySelector(".tw-status-dot");
 
-    // Welcome message
+    // Welcome message — updated after status check
     appendHTML(
       `<span style="color:var(--color-green);font-weight:700">oracle</span>` +
         `<span style="color:var(--text-muted)"> › </span>` +
-        `Hi, I'm Oracle — Ha Huy's friend who he deployed alongside this site. ` +
+        `<span class="tw-welcome-text">Hi, I'm Oracle — Ha Huy's friend who he deployed alongside this site. ` +
         `I know him pretty well, so I can tell you about his work, skills, projects, ` +
         `or just help you find your way around. ` +
-        `<span style="color:var(--text-muted)">What would you like to know?</span>`,
+        `<span style="color:var(--text-muted)">What would you like to know?</span></span>`,
     );
+
+    // Kick off status check
+    checkOracleStatus();
 
     // Position relative to caller window
     const callerWin = ctx ? ctx.winEl : null;
@@ -311,6 +350,7 @@ const TransformerWindow = (() => {
     _outputEl = null;
     _inputEl = null;
     _quotaEl = null;
+    _statusEl = null;
     _onClose = null;
     _upgradeShown = false;
 

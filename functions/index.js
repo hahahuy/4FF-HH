@@ -1070,8 +1070,10 @@ exports.aiAsk = functions
     const hfKey = process.env.HF_API_KEY;
     if (!hfKey) return res.status(500).json({ error: 'HF_API_KEY not configured' });
 
+    // TODO: migrate to Together AI for faster cold starts (~100ms vs 10-15s)
+    // URL: https://router.huggingface.co/together/v1/chat/completions + TOGETHER_API_KEY
     const HF_MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
-    const HF_URL   = 'https://router.huggingface.co/v1/chat/completions';
+    const HF_URL   = 'https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct/v1/chat/completions';
 
     try {
       const hfRes = await fetch(HF_URL, {
@@ -1101,6 +1103,42 @@ exports.aiAsk = functions
       return res.status(500).json({ error: 'Oracle is offline. Try again later.' });
     }
   });
+
+// ══════════════════════════════════════════════════════════
+// 19. aiStatus
+//     Public: lightweight check — is the HF model reachable?
+//     Returns { online: bool, model: string }.
+//     Uses a minimal 1-token generation to confirm actual availability.
+// ══════════════════════════════════════════════════════════
+exports.aiStatus = functions.region(REGION).https.onRequest(async (req, res) => {
+  setCors(res, req);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+
+  const hfKey = process.env.HF_API_KEY;
+  const HF_MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
+  // Zero-token check: GET the model info endpoint — no generation, no cost.
+  // Returns 200 when the model is loaded, 503 when warming up, 404 when unavailable.
+  const STATUS_URL = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+
+  if (!hfKey) return res.status(200).json({ online: false, model: HF_MODEL, reason: 'no_key' });
+
+  try {
+    const hfRes = await fetch(STATUS_URL, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${hfKey}` },
+    });
+    if (hfRes.ok) {
+      return res.status(200).json({ online: true, model: HF_MODEL });
+    }
+    const body = await hfRes.text();
+    console.warn(`aiStatus: HF ${hfRes.status} — ${body.slice(0, 200)}`);
+    // 503 = model loading (warming up) — treat as temporarily offline
+    return res.status(200).json({ online: false, model: HF_MODEL, reason: `hf_${hfRes.status}` });
+  } catch (e) {
+    console.error(`aiStatus: ${e.message}`);
+    return res.status(200).json({ online: false, model: HF_MODEL, reason: 'network' });
+  }
+});
 
 // ══════════════════════════════════════════════════════════
 // 18. saveOracleContact

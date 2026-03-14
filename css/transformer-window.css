@@ -40,6 +40,30 @@
   margin-left: 6px;
 }
 
+/* ── Status dot ───────────────────────────────────────────── */
+.tw-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 6px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.tw-status-checking {
+  background: var(--text-dim, #484f58);
+  opacity: 0.6;
+}
+
+.tw-status-online {
+  background: var(--color-green, #3fb950);
+}
+
+.tw-status-offline {
+  background: #f85149;
+}
+
 /* ── Body ─────────────────────────────────────────────────── */
 .tw-body {
   display: flex;
