@@ -117,3 +117,57 @@
     height: 100dvh !important;
   }
 }
+
+/* ── Upgrade prompt ───────────────────────────────────────── */
+.tw-upgrade-prompt {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tw-upgrade-prompt p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.tw-upgrade-linkedin,
+.tw-upgrade-phone {
+  background: none;
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.tw-upgrade-linkedin:focus,
+.tw-upgrade-phone:focus {
+  border-color: var(--color-green);
+}
+
+.tw-upgrade-submit {
+  align-self: flex-start;
+  background: var(--color-green);
+  border: none;
+  border-radius: 3px;
+  color: #000;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+}
+
+.tw-upgrade-skip {
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-decoration: underline;
+}

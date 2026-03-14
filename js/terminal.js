@@ -390,22 +390,29 @@ function createTerminal(winEl) {
   }
 
   // ── Boot sequence ─────────────────────────────────────────
-  // Original window only: welcome + hint + divider.
+  // Original window only: ASCII logo (instant) + 3 hint lines typewritten.
   // Subsequent windows: silent boot, no lines at all.
+
+  const ASCII_LOGO_HTML =
+    `<span style="color:var(--color-green)">` +
+    `██╗  ██╗██╗  ██╗\n` +
+    `██║  ██║██║  ██║\n` +
+    `███████║███████║\n` +
+    `██╔══██║██╔══██║\n` +
+    `██║  ██║██║  ██║\n` +
+    `╚═╝  ╚═╝╚═╝  ╚═╝` +
+    `</span>` +
+    `<span style="color:var(--text-muted)">   hahuy.site</span>`;
+
   function getBootLines(name) {
     if (!isFirst) return [];
-    if (name) {
-      return [
-        { text: `hey ${name} — welcome to ha huy's corner of the internet.`, cls: "success" },
-        { text: "software engineer & builder.", cls: "" },
-        { text: "try `init` for an overview · type `message` to reach me directly.", cls: "muted" },
-        { text: "────────────────────────────────────", cls: "hr" },
-      ];
-    }
+    const greeting = name ? `hey ${name} — welcome.` : `quantum engineer · builder · tinkerer.`;
     return [
-      { text: "ha huy — software engineer & builder", cls: "success" },
-      { text: "I ship products, not just code.", cls: "" },
-      { text: "Try `init` for an overview, or `help` to explore.", cls: "muted" },
+      { text: greeting, cls: "success" },
+      {
+        text: "try `init` for an overview · `help` for all commands · `transformers.py` to talk to my oracle.",
+        cls: "muted",
+      },
       { text: "────────────────────────────────────", cls: "hr" },
     ];
   }
@@ -433,13 +440,22 @@ function createTerminal(winEl) {
     });
   }
 
-  function boot(name) {
-    const BOOT_LINES = getBootLines(name);
-    if (BOOT_LINES.length === 0) return Promise.resolve();
-    // Run typewriter lines sequentially
-    return BOOT_LINES.reduce((chain, bootLine) => {
-      return chain.then(() => typewriterLine(bootLine.text, bootLine.cls));
-    }, Promise.resolve()).then(() => new Promise((r) => setTimeout(r, 120)));
+  async function boot(name) {
+    if (!isFirst) return;
+    // 1. Instant ASCII art block
+    const artDiv = document.createElement("div");
+    artDiv.className = "output-line boot-art";
+    artDiv.style.whiteSpace = "pre";
+    artDiv.innerHTML = ASCII_LOGO_HTML;
+    output.appendChild(artDiv);
+    scrollBottom();
+    // 2. Typewriter hint lines
+    const lines = getBootLines(name);
+    await lines.reduce(
+      (chain, l) => chain.then(() => typewriterLine(l.text, l.cls)),
+      Promise.resolve(),
+    );
+    await new Promise((r) => setTimeout(r, 120));
   }
 
   // ── Name wall ─────────────────────────────────────────────

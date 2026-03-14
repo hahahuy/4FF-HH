@@ -6,6 +6,7 @@ const TransformerWindow = (() => {
   let _inputEl = null;
   let _quotaEl = null;
   let _onClose = null;
+  let _upgradeShown = false;
 
   // ── Spinner frames ─────────────────────────────────────
   const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -158,7 +159,10 @@ const TransformerWindow = (() => {
           );
           appendMarkdown(answer);
         }
-        if (data.requestsLeft !== null && data.requestsLeft !== undefined) {
+        if (data.requestsLeft === 0 && !_upgradeShown) {
+          _upgradeShown = true;
+          showUpgradePrompt();
+        } else if (data.requestsLeft !== null && data.requestsLeft !== undefined) {
           if (_quotaEl) _quotaEl.textContent = `${data.requestsLeft} left`;
         }
       })
@@ -179,6 +183,58 @@ const TransformerWindow = (() => {
         }
         if (_outputEl) _outputEl.scrollTop = _outputEl.scrollHeight;
       });
+  }
+
+  // ── Upgrade prompt (quota 15 → 30) ────────────────────────
+  function showUpgradePrompt() {
+    if (!_outputEl) return;
+    const prompt = document.createElement("div");
+    prompt.className = "tw-upgrade-prompt";
+    prompt.innerHTML =
+      `<p>You've used your 15 free requests. Leave your LinkedIn and phone and I'll give you 30/hour.</p>` +
+      `<input class="tw-upgrade-linkedin" placeholder="linkedin.com/in/…" type="text" />` +
+      `<input class="tw-upgrade-phone" placeholder="phone number" type="text" />` +
+      `<button class="tw-upgrade-submit">Unlock 30 requests</button>` +
+      `<span class="tw-upgrade-skip">skip</span>`;
+
+    // Prevent Enter from propagating to terminal
+    prompt.querySelectorAll("input").forEach((inp) => {
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") e.stopPropagation();
+      });
+    });
+
+    prompt.querySelector(".tw-upgrade-submit").addEventListener("click", handleUpgradeSubmit);
+    prompt.querySelector(".tw-upgrade-skip").addEventListener("click", handleUpgradeSkip);
+
+    _outputEl.appendChild(prompt);
+    _outputEl.scrollTop = _outputEl.scrollHeight;
+  }
+
+  function handleUpgradeSubmit() {
+    if (!_win) return;
+    const linkedin = _win.querySelector(".tw-upgrade-linkedin")?.value.trim() ?? "";
+    const phone = _win.querySelector(".tw-upgrade-phone")?.value.trim() ?? "";
+    if (!linkedin || !phone) return;
+
+    cfPost(Config.CF_BASE + "/saveOracleContact", { linkedin, phone })
+      .then(() => {
+        _win.querySelector(".tw-upgrade-prompt")?.remove();
+        if (_quotaEl) _quotaEl.textContent = "30 left";
+        appendHTML(
+          `<span style="color:var(--color-green)">oracle</span>` +
+            `<span style="color:var(--text-muted)"> › </span>` +
+            `Thanks — you now have 30 requests/hour. Ask away.`,
+        );
+      })
+      .catch(() => {
+        appendLine("oracle: could not save — try again.", ["error"]);
+      });
+  }
+
+  function handleUpgradeSkip() {
+    _win?.querySelector(".tw-upgrade-prompt")?.remove();
+    appendLine("oracle: quota stays at 15/hour. Come back later to upgrade.", ["muted"]);
   }
 
   // ── Public: open(ctx, onClose) ─────────────────────────
@@ -256,6 +312,7 @@ const TransformerWindow = (() => {
     _inputEl = null;
     _quotaEl = null;
     _onClose = null;
+    _upgradeShown = false;
 
     if (win) {
       win.classList.remove("tw-visible");

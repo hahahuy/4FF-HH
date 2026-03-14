@@ -157,53 +157,6 @@ const EasterEggs = {
     },
   },
 
-  // ── neofetch ──────────────────────────────────────────────
-  neofetch: {
-    desc: "Display portfolio system info",
-    usage: "neofetch",
-    exec(args, path, ctx, { line, esc }, registry) {
-      const cmdCount = Object.keys(registry).length;
-      let blogCount = 0;
-      try {
-        const blogDir = FS["~"] && FS["~"].blog;
-        if (blogDir) {
-          blogCount = Object.keys(blogDir).filter((k) => k !== "__type").length;
-        }
-      } catch (e) {}
-
-      const asciiArt = [
-        "        ██████████        ",
-        "       ██░░░░░░░░██       ",
-        "      ██░░░░░░░░░░██      ",
-        "     ██░░░░░░░░░░░░██     ",
-        "    ██░░░░██░░░░░░░░██    ",
-        "   ██░░░░████░░░░░░░░██   ",
-        "   ██░░░░░░░░░░░░░░░░██   ",
-        "   ████████████████████   ",
-      ];
-
-      const info = [
-        `<span style="color:var(--color-green);font-weight:700">visitor</span><span style="color:var(--text-muted)">@</span><span style="color:var(--color-blue);font-weight:700">portfolio</span>`,
-        `<span style="color:var(--text-muted)">─────────────────</span>`,
-        `<span style="color:var(--color-green)">OS:</span>       hahuy.site v1.0.0`,
-        `<span style="color:var(--color-green)">Shell:</span>    4FF-HH terminal`,
-        `<span style="color:var(--color-green)">Commands:</span> ${cmdCount}`,
-        `<span style="color:var(--color-green)">Blog:</span>     ${blogCount} post${blogCount === 1 ? "" : "s"}`,
-        `<span style="color:var(--color-green)">Stack:</span>    JS · Firebase · Telegram`,
-        `<span style="color:var(--color-green)">Theme:</span>    ${document.documentElement.dataset.theme || "default"}`,
-      ];
-
-      const lines = [];
-      const maxRows = Math.max(asciiArt.length, info.length);
-      for (let i = 0; i < maxRows; i++) {
-        const art = asciiArt[i] || "                          ";
-        const inf = info[i] || "";
-        lines.push(line(`<span style="color:var(--color-blue)">${art}</span>  ${inf}`, ["pre"]));
-      }
-      return { lines };
-    },
-  },
-
   // ── hn ─────────────────────────────────────────────────────
   hn: {
     desc: "Top Hacker News stories  (hn [n=5])",
