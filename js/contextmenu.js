@@ -136,12 +136,20 @@ const ContextMenu = (() => {
     const existing = document.querySelectorAll(".terminal-window");
     const offset = 32 * (existing.length + 1);
     clone.style.transform = `translate(${offset}px, ${offset}px)`;
-    bringToFront(clone);
 
     // VIS-2: Spring scale-in animation
     clone.style.animation = "window-open 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards";
 
     document.body.appendChild(clone);
+
+    // Post-append max-z scan: read live z-indices (includes Draggable-raised windows)
+    const allWins = [...document.querySelectorAll(".terminal-window")];
+    const maxZ = allWins.reduce(
+      (m, w) => Math.max(m, Number.parseInt(w.style.zIndex, 10) || 10),
+      10,
+    );
+    clone.style.zIndex = maxZ + 1;
+    _zTop = Math.max(_zTop, maxZ + 1);
 
     // Wire drag + resize (pinToScreen runs inside rAF, so this is safe)
     if (App.Draggable?.init) {

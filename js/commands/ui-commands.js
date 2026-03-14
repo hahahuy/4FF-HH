@@ -35,7 +35,12 @@ const UiCommands = {
         const mName = (args[1] || "").toLowerCase();
 
         if (!mName || mName === "list") {
-          const currentMouse = localStorage.getItem(Config.STORAGE.MOUSE_THEME) || "default";
+          const activeMouseClass = Array.from(document.body.classList).find((c) =>
+            c.startsWith("mouse-"),
+          );
+          const currentMouse = activeMouseClass
+            ? activeMouseClass.slice("mouse-".length)
+            : "default";
           return {
             lines: [
               text("Mouse theme variants:", []),

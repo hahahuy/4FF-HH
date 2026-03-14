@@ -39,6 +39,9 @@ function createTerminal(winEl) {
   // Auth masking state
   let _authSuffix = "";
   let _suppressInput = false;
+  // Paste-placeholder state
+  let _pastedRaw = null; // real clipboard text when multiline paste is pending
+  let _pastedPrefix = ""; // input text that preceded the pasted region
 
   if (isFirst) {
     try {
@@ -237,7 +240,12 @@ function createTerminal(winEl) {
     switch (e.key) {
       case "Enter": {
         e.preventDefault();
-        const displayRaw = inputEl.value.trim();
+        let displayRaw = inputEl.value.trim();
+        if (_pastedRaw !== null) {
+          displayRaw = (_pastedPrefix + _pastedRaw).trim();
+          _pastedRaw = null;
+          _pastedPrefix = "";
+        }
         const raw = _authSuffix
           ? (displayRaw.match(/^auth\s+/)?.[0] ?? "auth ") + _authSuffix
           : displayRaw;
@@ -343,6 +351,10 @@ function createTerminal(winEl) {
 
   function handleInput(e) {
     if (_suppressInput) return;
+    if (_pastedRaw !== null) {
+      _pastedRaw = null;
+      _pastedPrefix = "";
+    }
     const val = inputEl.value;
     const authMatch = val.match(/^auth\s+/);
 
@@ -509,6 +521,16 @@ function createTerminal(winEl) {
 
     inputEl.addEventListener("keydown", handleKeydown);
     inputEl.addEventListener("input", handleInput);
+    inputEl.addEventListener("paste", (e) => {
+      const text = e.clipboardData?.getData("text") || "";
+      const parts = text.split("\n");
+      if (parts.length <= 1) return; // single-line: let browser handle normally
+      e.preventDefault();
+      _pastedPrefix = inputEl.value.slice(0, inputEl.selectionStart);
+      _pastedRaw = text;
+      const n = parts.length - 1;
+      inputEl.value = _pastedPrefix + `[pasted text +${n} line${n !== 1 ? "s" : ""}]`;
+    });
 
     // UX-5: Shift+Click on any output line copies its text to clipboard
     output.addEventListener("click", (e) => {

@@ -418,12 +418,7 @@ body.name-wall-active .terminal-body > :not(.name-wall) {
   box-shadow: 0 0 7px 2px rgba(255, 95, 86, 0.55);
 }
 
-/* ── Oracle overlay ───────────────────────────────────────── */
-#terminal-output.oracle-active > *:not(.oracle-thinking):not(.md-render) {
-  opacity: 0.35;
-  transition: opacity 0.25s ease;
-}
-
+/* ── Oracle spinner ──────────────────────────────────────── */
 .oracle-spinner {
   color: var(--color-green);
 }
