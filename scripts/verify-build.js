@@ -6,7 +6,7 @@
  *   node scripts/verify-build.js
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { resolve, join } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -147,6 +147,19 @@ section("content/");
 const contentDir = join(DIST, "content");
 if (existsSync(contentDir)) ok("content/ copied to dist/");
 else fail("content/ directory missing from dist/");
+
+// ─── 7. dist/blog/ ────────────────────────────────────────────────────────────
+section("dist/blog/");
+const blogIndex = join(DIST, "blog", "index.html");
+if (existsSync(blogIndex)) ok("blog/index.html present");
+else fail("blog/index.html missing — did build-blog.js run?");
+
+const blogDir = join(DIST, "blog");
+const blogPostDirs = existsSync(blogDir)
+  ? readdirSync(blogDir).filter((f) => statSync(join(blogDir, f)).isDirectory())
+  : [];
+if (blogPostDirs.length > 0) ok(`blog post pages: ${blogPostDirs.length}`);
+else fail("no post subdirectories found in dist/blog/");
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 console.log(`\n${"─".repeat(40)}`);
