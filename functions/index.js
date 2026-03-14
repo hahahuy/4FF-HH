@@ -899,6 +899,91 @@ exports.blogManifestRemove = functions
   });
 
 // ══════════════════════════════════════════════════════════
+// 17. aiAsk
+//     Public: proxy a question to the HF Inference API
+//     (Mistral-7B-Instruct) with a portfolio system prompt.
+//     Rate-limited: 10 req / hour / IP.
+// ══════════════════════════════════════════════════════════
+const SYSTEM_PROMPT = `You are the AI assistant for Hahuy's terminal portfolio (hahuy.site).
+Answer questions about the owner concisely (≤150 words). Be direct and technical.
+
+About the owner:
+Hahuy is a full-stack developer and builder focused on fast, elegant, purposeful tools.
+He does full-stack development, developer tooling, and open source.
+Currently learning Assembly & Rust; interested in Drone engineering.
+Built this portfolio as a zero-dependency vanilla JS terminal UI.
+
+Skills:
+- Languages: JavaScript, HTML/CSS, Python (proficient), C++/Assembly (improving)
+- ML/AI: Neural Network design, LLM optimization, deployment
+- Quantum: Qiskit, Cirq, Braket, Quantum ML
+- Frontend: Vanilla JS, React/Next.js
+- Backend: Node.js/Express, REST/FastAPI, PostgreSQL, Docker, CI/CD
+- Tools: Git, GitHub Actions, VS Code, Linux CLI
+
+If asked something unrelated to the portfolio or owner, briefly redirect.`;
+
+exports.aiAsk = functions
+  .region(REGION)
+  .https.onRequest(async (req, res) => {
+    setCors(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).send('');
+    if (req.method !== 'POST')    return res.status(405).json({ error: 'Method Not Allowed' });
+
+    // ── Billing kill-switch ──────────────────────────────────
+    if (process.env.HF_DISABLED === 'true')
+      return res.status(402).json({ error: "Sorry, we ran out of tokens :( Come back later!" });
+
+    const { question: rawQ, token } = req.body || {};
+    const question = (rawQ || '').toString().trim().slice(0, 500);
+    if (!question) return res.status(400).json({ error: 'question is required' });
+
+    // ── Tiered rate limit ────────────────────────────────────
+    // Owner (valid session token) → no rate limit
+    // Guest → 10 req / hour / IP
+    const isOwner = token ? (await validateSessionToken(token)).valid : false;
+    if (!isOwner) {
+      const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || 'unknown';
+      if (await isRateLimited('aiAsk', ip, 10, 60 * 60 * 1000))
+        return res.status(429).json({ error: 'Rate limit reached — try again in an hour.' });
+    }
+
+    const hfKey = process.env.HF_API_KEY;
+    if (!hfKey) return res.status(500).json({ error: 'HF_API_KEY not configured' });
+
+    const HF_MODEL = 'HuggingFaceH4/zephyr-7b-beta';
+    const HF_URL   = `https://api-inference.huggingface.co/models/${HF_MODEL}/v1/chat/completions`;
+
+    try {
+      const hfRes = await fetch(HF_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${hfKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: HF_MODEL,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user',   content: question },
+          ],
+          max_tokens: 200,
+          temperature: 0.7,
+        }),
+      });
+      if (!hfRes.ok) {
+        const errBody = await hfRes.text();
+        console.error(`aiAsk: HF error ${hfRes.status} — ${errBody.slice(0, 300)}`);
+        return res.status(502).json({ error: 'Oracle is offline. Try again later.' });
+      }
+      const data   = await hfRes.json();
+      const answer = (data.choices?.[0]?.message?.content || '').trim();
+      if (!answer) return res.status(502).json({ error: 'Oracle returned an empty response.' });
+      return res.status(200).json({ answer });
+    } catch (e) {
+      console.error(`aiAsk: ${e.message}`);
+      return res.status(500).json({ error: 'Oracle is offline. Try again later.' });
+    }
+  });
+
+// ══════════════════════════════════════════════════════════
 // 16. fileUpload
 //     Authenticated: upload a binary file (image/pdf) to
 //     GitHub content/ directory.

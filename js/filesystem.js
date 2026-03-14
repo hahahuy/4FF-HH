@@ -27,6 +27,90 @@ const FS = (globalThis.FS = {
       __type: "file",
       src: "/content/contact.md",
     },
+    "transformers.py": {
+      __type: "file",
+      content: `import numpy as np
+
+def softmax(x):
+    exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+
+def layer_norm(x, eps=1e-5):
+    mean = np.mean(x, axis=-1, keepdims=True)
+    var  = np.var(x, axis=-1, keepdims=True)
+    return (x - mean) / np.sqrt(var + eps)
+
+def gelu(x):
+    return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
+
+def attention(Q, K, V, mask=None):
+    d_k = Q.shape[-1]
+    scores = Q @ K.T / np.sqrt(d_k)
+    if mask is not None:
+        scores = scores + (mask * -1e9)
+    weights = softmax(scores)
+    return weights @ V, weights
+
+class MultiHeadAttention:
+    def __init__(self, d_model, n_heads):
+        assert d_model % n_heads == 0
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        np.random.seed(42)
+        self.W_q = np.random.randn(d_model, d_model) * 0.01
+        self.W_k = np.random.randn(d_model, d_model) * 0.01
+        self.W_v = np.random.randn(d_model, d_model) * 0.01
+        self.W_o = np.random.randn(d_model, d_model) * 0.01
+
+    def forward(self, x, mask=None):
+        seq_len, _ = x.shape
+        Q = (x @ self.W_q).reshape(seq_len, self.n_heads, self.d_k).transpose(1, 0, 2)
+        K = (x @ self.W_k).reshape(seq_len, self.n_heads, self.d_k).transpose(1, 0, 2)
+        V = (x @ self.W_v).reshape(seq_len, self.n_heads, self.d_k).transpose(1, 0, 2)
+        outputs = [attention(Q[i], K[i], V[i], mask)[0] for i in range(self.n_heads)]
+        return np.concatenate(outputs, axis=-1) @ self.W_o
+
+class FeedForward:
+    def __init__(self, d_model, d_ff=None):
+        d_ff = d_ff or 4 * d_model
+        self.W1 = np.random.randn(d_model, d_ff) * 0.01
+        self.W2 = np.random.randn(d_ff, d_model) * 0.01
+
+    def forward(self, x):
+        return gelu(x @ self.W1) @ self.W2
+
+class TransformerBlock:
+    def __init__(self, d_model=128, n_heads=4, d_ff=None):
+        self.attention = MultiHeadAttention(d_model, n_heads)
+        self.ffn       = FeedForward(d_model, d_ff)
+
+    def forward(self, x, mask=None):
+        x = layer_norm(x + self.attention.forward(x, mask))
+        x = layer_norm(x + self.ffn.forward(x))
+        return x
+
+def positional_encoding(seq_len, d_model):
+    position = np.arange(seq_len)[:, np.newaxis]
+    div_term = np.exp(np.arange(0, d_model, 2) * -(np.log(10000.0) / d_model))
+    pe = np.zeros((seq_len, d_model))
+    pe[:, 0::2] = np.sin(position * div_term)
+    pe[:, 1::2] = np.cos(position * div_term)
+    return pe
+
+class MicroTransformer:
+    def __init__(self, vocab_size=1000, d_model=128, n_heads=4, n_layers=2):
+        self.d_model = d_model
+        self.token_embeddings = np.random.randn(vocab_size, d_model) * 0.01
+        self.blocks = [TransformerBlock(d_model, n_heads) for _ in range(n_layers)]
+
+    def forward(self, token_ids, mask=None):
+        x = self.token_embeddings[token_ids] + positional_encoding(len(token_ids), self.d_model)
+        for block in self.blocks:
+            x = block.forward(x, mask)
+        return x
+`,
+    },
     "resume.pdf": {
       __type: "file",
       src: "/content/resume.pdf",

@@ -1,3 +1,19 @@
+// ── Oracle REPL state ──────────────────────────────────────
+let _oracleActive = false;
+let _oracleHandler = null;
+let _oracleCtrlC = null;
+
+function _stopOracle(ctx) {
+  if (!_oracleActive) return;
+  _oracleActive = false;
+  App.EventBus.off("rawInput", _oracleHandler);
+  document.removeEventListener("keydown", _oracleCtrlC, true);
+  _oracleHandler = null;
+  _oracleCtrlC = null;
+  ctx.appendLine("oracle session ended.", ["muted"]);
+  ctx.scrollBottom();
+}
+
 const EasterEggs = {
   // ── cowsay ────────────────────────────────────────────────
   cowsay: {
@@ -313,6 +329,70 @@ const EasterEggs = {
       })();
 
       return { lines: [text(`Searching for "${keyword}"…`, ["muted"])] };
+    },
+  },
+  // ── transformers.py ────────────────────────────────────────
+  "transformers.py": {
+    desc: "Launch the AI oracle REPL (Ctrl+C to exit)",
+    usage: "transformers.py",
+    exec(args, path, ctx, { text, esc }) {
+      if (_oracleActive) return { error: "oracle is already running" };
+
+      _oracleActive = true;
+
+      ctx.appendHTML(
+        `<span style="color:var(--color-green);font-weight:700">oracle v0.1</span>` +
+          `<span style="color:var(--text-muted)"> — Zephyr-7B · Ctrl+C to exit</span>`,
+      );
+      ctx.appendLine("Ask me anything about Hahuy…", ["muted"]);
+      ctx.scrollBottom();
+
+      _oracleHandler = ({ raw, ctx: c }) => {
+        if (!_oracleActive) return false;
+        const question = raw.trim();
+        if (!question) return true;
+
+        const isAuth = typeof Auth !== "undefined" && Auth.isAuthenticated();
+        const body = isAuth ? { question, token: Auth.getToken() } : { question };
+
+        (async () => {
+          c.appendLine("Thinking…", ["muted"]);
+          try {
+            const data = await cfPost(Config.CF_BASE + "/aiAsk", body);
+            const answer = (data.answer || "").trim();
+            if (!answer) {
+              c.appendLine("oracle: empty response.", ["error"]);
+            } else {
+              c.appendHTML(
+                `<span style="color:var(--color-green);font-weight:700">oracle</span>` +
+                  `<span style="color:var(--text-muted)"> › </span>` +
+                  `<span style="color:var(--text-primary)">${esc(answer)}</span>`,
+              );
+            }
+          } catch (e) {
+            const msg = e.message.toLowerCase().includes("rate limit")
+              ? "Rate limit reached — try again in an hour."
+              : e.message.toLowerCase().includes("tokens")
+                ? "Sorry, we ran out of tokens :( Come back later!"
+                : "Oracle is offline. Try again later.";
+            c.appendLine(`oracle: ${msg}`, ["error"]);
+          }
+          c.scrollBottom();
+        })();
+
+        return true;
+      };
+
+      _oracleCtrlC = (e) => {
+        if (e.ctrlKey && (e.key === "c" || e.key === "C")) {
+          _stopOracle(ctx);
+        }
+      };
+
+      App.EventBus.on("rawInput", _oracleHandler);
+      document.addEventListener("keydown", _oracleCtrlC, true);
+
+      return null;
     },
   },
 };

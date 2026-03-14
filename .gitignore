@@ -19,3 +19,6 @@ Thumbs.db
 # Node / build
 node_modules/
 dist/
+
+# Personal
+docs/*.md
