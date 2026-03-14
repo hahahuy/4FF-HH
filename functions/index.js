@@ -1117,7 +1117,7 @@ exports.aiAsk = functions
 // 19. aiStatus
 //     Public: lightweight check — is the model reachable?
 //     Returns { online: bool, model: string }.
-//     Uses GET /v1/models/:model — zero tokens, zero cost, no rate limit.
+//     Uses GET /v1/models (list) and checks for model presence — zero tokens, zero cost.
 // ══════════════════════════════════════════════════════════
 exports.aiStatus = functions.region(REGION).https.onRequest(async (req, res) => {
   setCors(res, req);
@@ -1138,8 +1138,10 @@ exports.aiStatus = functions.region(REGION).https.onRequest(async (req, res) => 
       console.warn(`aiStatus: Together ${statusRes.status} — ${body.slice(0, 200)}`);
       return res.status(200).json({ online: false, model: MODEL, reason: `together_${statusRes.status}` });
     }
-    const models = await statusRes.json();
-    const found = Array.isArray(models) && models.some((m) => m.id === MODEL);
+    const payload = await statusRes.json();
+    // Together returns { data: [...] } (OpenAI-compatible envelope)
+    const list = Array.isArray(payload) ? payload : (payload.data ?? []);
+    const found = list.some((m) => m.id === MODEL);
     if (found) {
       return res.status(200).json({ online: true, model: MODEL });
     }
