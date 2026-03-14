@@ -1045,42 +1045,50 @@ exports.aiAsk = functions
     if (req.method !== 'POST')    return res.status(405).json({ error: 'Method Not Allowed' });
 
     // ── Billing kill-switch ──────────────────────────────────
-    if (process.env.HF_DISABLED === 'true')
-      return res.status(402).json({ error: "Sorry, we ran out of tokens :( Come back later!" });
+    if (process.env.ORACLE_DISABLED === 'true')
+      return res.status(402).json({ error: "Oracle is taking a break — check back later." });
 
     const { question: rawQ, token } = req.body || {};
     const question = (rawQ || '').toString().trim().slice(0, 500);
     if (!question) return res.status(400).json({ error: 'question is required' });
 
+    // ── Global daily cap ─────────────────────────────────────
+    const today = new Date().toISOString().slice(0, 10);
+    const dayRef = db.ref(`oracle_stats/daily/${today}`);
+    const daySnap = await dayRef.once('value');
+    const dayCount = daySnap.val() || 0;
+    const DAILY_CAP = 300;
+    if (dayCount >= DAILY_CAP) {
+      return res.status(429).json({ error: 'Oracle is resting for today — come back tomorrow.' });
+    }
+
     // ── Tiered rate limit ────────────────────────────────────
     // Owner (valid session token) → no rate limit
-    // Guest → rate-limited per IP; bonus grants 30 req / hour, default 15
+    // Guest → rate-limited per IP; bonus grants 30 req / hour, default 10
     let requestsLeft = null; // null = unlimited (owner)
     const isOwner = token ? (await validateSessionToken(token)).valid : false;
     if (!isOwner) {
       const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || 'unknown';
       const ipHash = sha256hex(ip).slice(0, 16);
       const bonusSnap = await db.ref(`oracle_bonus/${ipHash}`).once('value');
-      const maxCount = bonusSnap.exists() ? 30 : 15;
+      const maxCount = bonusSnap.exists() ? 30 : 10;
       const { limited, remaining } = await checkRateLimit('aiAsk', ip, maxCount, 60 * 60 * 1000);
       if (limited) return res.status(429).json({ error: 'Rate limit reached — try again in an hour.' });
       requestsLeft = remaining;
     }
 
-    const hfKey = process.env.HF_API_KEY;
-    if (!hfKey) return res.status(500).json({ error: 'HF_API_KEY not configured' });
+    const togetherKey = process.env.TOGETHER_API_KEY;
+    if (!togetherKey) return res.status(500).json({ error: 'TOGETHER_API_KEY not configured' });
 
-    // TODO: migrate to Together AI for faster cold starts (~100ms vs 10-15s)
-    // URL: https://router.huggingface.co/together/v1/chat/completions + TOGETHER_API_KEY
-    const HF_MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
-    const HF_URL   = 'https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct/v1/chat/completions';
+    const MODEL   = 'Qwen/Qwen2.5-7B-Instruct-Turbo';
+    const API_URL = 'https://api.together.xyz/v1/chat/completions';
 
     try {
-      const hfRes = await fetch(HF_URL, {
+      const apiRes = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${hfKey}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${togetherKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: HF_MODEL,
+          model: MODEL,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user',   content: question },
@@ -1089,14 +1097,15 @@ exports.aiAsk = functions
           temperature: 0.7,
         }),
       });
-      if (!hfRes.ok) {
-        const errBody = await hfRes.text();
-        console.error(`aiAsk: HF error ${hfRes.status} — ${errBody.slice(0, 300)}`);
+      if (!apiRes.ok) {
+        const errBody = await apiRes.text();
+        console.error(`aiAsk: Together error ${apiRes.status} — ${errBody.slice(0, 300)}`);
         return res.status(502).json({ error: 'Oracle is offline. Try again later.' });
       }
-      const data   = await hfRes.json();
+      const data   = await apiRes.json();
       const answer = (data.choices?.[0]?.message?.content || '').trim();
       if (!answer) return res.status(502).json({ error: 'Oracle returned an empty response.' });
+      await dayRef.transaction(n => (n || 0) + 1);
       return res.status(200).json({ answer, requestsLeft });
     } catch (e) {
       console.error(`aiAsk: ${e.message}`);
@@ -1106,37 +1115,33 @@ exports.aiAsk = functions
 
 // ══════════════════════════════════════════════════════════
 // 19. aiStatus
-//     Public: lightweight check — is the HF model reachable?
+//     Public: lightweight check — is the model reachable?
 //     Returns { online: bool, model: string }.
-//     Uses a minimal 1-token generation to confirm actual availability.
+//     Uses GET /v1/models/:model — zero tokens, zero cost, no rate limit.
 // ══════════════════════════════════════════════════════════
 exports.aiStatus = functions.region(REGION).https.onRequest(async (req, res) => {
   setCors(res, req);
   if (req.method === 'OPTIONS') return res.status(204).send('');
 
-  const hfKey = process.env.HF_API_KEY;
-  const HF_MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
-  // Zero-token check: GET the model info endpoint — no generation, no cost.
-  // Returns 200 when the model is loaded, 503 when warming up, 404 when unavailable.
-  const STATUS_URL = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+  const togetherKey = process.env.TOGETHER_API_KEY;
+  const MODEL = 'Qwen/Qwen2.5-7B-Instruct-Turbo';
 
-  if (!hfKey) return res.status(200).json({ online: false, model: HF_MODEL, reason: 'no_key' });
+  if (!togetherKey) return res.status(200).json({ online: false, model: MODEL, reason: 'no_key' });
 
   try {
-    const hfRes = await fetch(STATUS_URL, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${hfKey}` },
-    });
-    if (hfRes.ok) {
-      return res.status(200).json({ online: true, model: HF_MODEL });
+    const statusRes = await fetch(
+      `https://api.together.xyz/v1/models/${encodeURIComponent(MODEL)}`,
+      { headers: { 'Authorization': `Bearer ${togetherKey}` } },
+    );
+    if (statusRes.ok) {
+      return res.status(200).json({ online: true, model: MODEL });
     }
-    const body = await hfRes.text();
-    console.warn(`aiStatus: HF ${hfRes.status} — ${body.slice(0, 200)}`);
-    // 503 = model loading (warming up) — treat as temporarily offline
-    return res.status(200).json({ online: false, model: HF_MODEL, reason: `hf_${hfRes.status}` });
+    const body = await statusRes.text();
+    console.warn(`aiStatus: Together ${statusRes.status} — ${body.slice(0, 200)}`);
+    return res.status(200).json({ online: false, model: MODEL, reason: `together_${statusRes.status}` });
   } catch (e) {
     console.error(`aiStatus: ${e.message}`);
-    return res.status(200).json({ online: false, model: HF_MODEL, reason: 'network' });
+    return res.status(200).json({ online: false, model: MODEL, reason: 'network' });
   }
 });
 
