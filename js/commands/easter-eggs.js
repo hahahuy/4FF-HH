@@ -342,7 +342,7 @@ const EasterEggs = {
 
       ctx.appendHTML(
         `<span style="color:var(--color-green);font-weight:700">oracle v0.1</span>` +
-          `<span style="color:var(--text-muted)"> — Zephyr-7B · Ctrl+C to exit</span>`,
+          `<span style="color:var(--text-muted)"> — Llama-3.2-1B · Ctrl+C to exit</span>`,
       );
       ctx.appendLine("Ask me anything about Hahuy…", ["muted"]);
       ctx.scrollBottom();

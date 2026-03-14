@@ -951,8 +951,8 @@ exports.aiAsk = functions
     const hfKey = process.env.HF_API_KEY;
     if (!hfKey) return res.status(500).json({ error: 'HF_API_KEY not configured' });
 
-    const HF_MODEL = 'HuggingFaceH4/zephyr-7b-beta';
-    const HF_URL   = `https://api-inference.huggingface.co/models/${HF_MODEL}/v1/chat/completions`;
+    const HF_MODEL = 'meta-llama/Llama-3.2-1B-Instruct';
+    const HF_URL   = 'https://router.huggingface.co/v1/chat/completions';
 
     try {
       const hfRes = await fetch(HF_URL, {
