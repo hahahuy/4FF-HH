@@ -1,0 +1,84 @@
+{
+  "bio": "hahahuy is a developer, builder, and occasional over-engineer. Passionate about crafting tools that feel right: fast, elegant, purposeful. Currently learning Assembly & Rust. Interested in Drone engineering. Drinks too much coffee.",
+  "whatHeDoes": [
+    "Full-stack development — database schemas to pixel-perfect UIs",
+    "Developer tooling — CLIs, automation, workflow optimization",
+    "Open source contributions"
+  ],
+  "skills": {
+    "languages": [
+      "JavaScript (proficient)",
+      "HTML/CSS (daily driver)",
+      "Python (proficient)",
+      "C++ (improving)",
+      "Assembly (improving)"
+    ],
+    "mlAI": [
+      "Neural network architecture design",
+      "LLM optimization and deployment",
+      "Python, C++"
+    ],
+    "quantum": [
+      "Qiskit, Cirq, Braket",
+      "Quantum ML (qiskit-machine-learning)",
+      "Circuit optimization, error handling"
+    ],
+    "frontend": [
+      "Vanilla JS (DOM, Fetch, Web APIs)",
+      "React / Next.js",
+      "CSS (BEM, custom properties)",
+      "Accessibility & performance"
+    ],
+    "backend": [
+      "Node.js / Express",
+      "REST API / FastAPI",
+      "PostgreSQL, SQLite",
+      "Docker, CI/CD"
+    ],
+    "tools": ["Git", "GitHub Actions", "VS Code", "Vim", "Linux CLI"]
+  },
+  "projects": [
+    {
+      "name": "4FF-HH — This Portfolio",
+      "description": "CLI-style personal portfolio. Vanilla HTML/CSS/JS, zero runtime npm deps, Vite build, virtual filesystem (cat/ls/cd/grep), draggable window, GitHub Pages deploy via GitHub Actions.",
+      "stack": ["HTML", "CSS", "JavaScript", "Vite", "Firebase Cloud Functions", "GitHub Pages"]
+    }
+  ],
+  "site": {
+    "url": "hahuy.site",
+    "stack": "Vanilla JS + Vite (dev/prod). Zero runtime npm deps. One CDN dep: marked.js.",
+    "deploy": "GitHub Actions: typecheck + lint + test → npm run build → dist/ → gh-pages branch",
+    "backend": "Firebase Cloud Functions (Node.js) — auth (OTP via Telegram), notes sync to GitHub, AI oracle, file upload",
+    "features": [
+      "Virtual filesystem: cat, ls, cd, grep, pwd",
+      "Draggable terminal window (Pointer Events API)",
+      "Live ticker: BTC, Gold, GH commits, HN, weather",
+      "AI oracle (this feature) — Llama-3.2-3B-Instruct via HF Inference API",
+      "Owner auth: passphrase → OTP via Telegram → 4h session token",
+      "Note editor with live Markdown preview",
+      "Right-click context menu"
+    ],
+    "github": "github.com/hahahuy/4FF-HH"
+  },
+  "guardrail": {
+    "allowedTopics": [
+      "Ha Huy — who he is, background, interests, personality",
+      "This website — how it was built, stack, architecture, features",
+      "Ha Huy's knowledge — math, engineering, tech stack, skills",
+      "How to navigate or learn from this site"
+    ],
+    "refusalMessage": "I only answer questions about Ha Huy and his work. Try: 'who is Ha Huy?', 'what stack is this site?', or 'what does Ha Huy know about ML?'",
+    "offTopicExamples": [
+      "What is the weather in Hanoi?",
+      "Write me a Python sorting algorithm.",
+      "Who is Elon Musk?",
+      "What is 2+2?"
+    ],
+    "onTopicExamples": [
+      "What languages does Ha Huy know?",
+      "How does this terminal work?",
+      "What is Ha Huy's ML background?",
+      "What is the ticker bar?"
+    ]
+  }
+}

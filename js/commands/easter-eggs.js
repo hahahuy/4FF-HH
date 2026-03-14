@@ -10,6 +10,7 @@ function _stopOracle(ctx) {
   document.removeEventListener("keydown", _oracleCtrlC, true);
   _oracleHandler = null;
   _oracleCtrlC = null;
+  document.querySelector("#terminal-output")?.classList.remove("oracle-active");
   ctx.appendLine("oracle session ended.", ["muted"]);
   ctx.scrollBottom();
 }
@@ -341,10 +342,11 @@ const EasterEggs = {
       _oracleActive = true;
 
       ctx.appendHTML(
-        `<span style="color:var(--color-green);font-weight:700">oracle v0.1</span>` +
-          `<span style="color:var(--text-muted)"> — Llama-3.2-1B · Ctrl+C to exit</span>`,
+        `<span style="color:var(--color-green);font-weight:700">oracle v0.2</span>` +
+          `<span style="color:var(--text-muted)"> — Llama-3.2-3B · Ctrl+C to exit</span>`,
       );
-      ctx.appendLine("Ask me anything about Hahuy…", ["muted"]);
+      document.querySelector("#terminal-output")?.classList.add("oracle-active");
+      ctx.appendLine("Ask me anything about Ha Huy…", ["muted"]);
       ctx.scrollBottom();
 
       _oracleHandler = ({ raw, ctx: c }) => {
@@ -356,20 +358,41 @@ const EasterEggs = {
         const body = isAuth ? { question, token: Auth.getToken() } : { question };
 
         (async () => {
-          c.appendLine("Thinking…", ["muted"]);
+          const thinkEl = document.createElement("div");
+          thinkEl.className = "output-line muted oracle-thinking";
+          const spinnerSpan = document.createElement("span");
+          spinnerSpan.className = "oracle-spinner";
+          spinnerSpan.textContent = "⠋";
+          thinkEl.appendChild(spinnerSpan);
+          thinkEl.appendChild(document.createTextNode(" Thinking…"));
+          document.querySelector("#terminal-output")?.appendChild(thinkEl);
+          c.scrollBottom();
+
+          const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+          let _fi = 0;
+          const _spin = setInterval(() => {
+            spinnerSpan.textContent = FRAMES[_fi++ % FRAMES.length];
+          }, 80);
+
           try {
             const data = await cfPost(Config.CF_BASE + "/aiAsk", body);
+            clearInterval(_spin);
+            thinkEl.remove();
             const answer = (data.answer || "").trim();
             if (!answer) {
               c.appendLine("oracle: empty response.", ["error"]);
             } else {
-              c.appendHTML(
+              const labelEl = document.createElement("div");
+              labelEl.className = "output-line";
+              labelEl.innerHTML =
                 `<span style="color:var(--color-green);font-weight:700">oracle</span>` +
-                  `<span style="color:var(--text-muted)"> › </span>` +
-                  `<span style="color:var(--text-primary)">${esc(answer)}</span>`,
-              );
+                `<span style="color:var(--text-muted)"> › </span>`;
+              document.querySelector("#terminal-output")?.appendChild(labelEl);
+              c.appendMarkdown(answer);
             }
           } catch (e) {
+            clearInterval(_spin);
+            thinkEl.remove();
             const msg = e.message.toLowerCase().includes("rate limit")
               ? "Rate limit reached — try again in an hour."
               : e.message.toLowerCase().includes("tokens")

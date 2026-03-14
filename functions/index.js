@@ -9,6 +9,7 @@ const functions = require('firebase-functions/v1');
 const admin     = require('firebase-admin');
 const https     = require('https');
 const crypto    = require('crypto');   // built-in Node module — no new deps
+const PROFILE   = require('./profile.json');
 
 admin.initializeApp({
   databaseURL: 'https://hahuy-portfolio-f7f16-default-rtdb.asia-southeast1.firebasedatabase.app',
@@ -933,24 +934,60 @@ exports.blogManifestRemove = functions
 //     (Mistral-7B-Instruct) with a portfolio system prompt.
 //     Rate-limited: 10 req / hour / IP.
 // ══════════════════════════════════════════════════════════
-const SYSTEM_PROMPT = `You are the AI assistant for Hahuy's terminal portfolio (hahuy.site).
-Answer questions about the owner concisely (≤150 words). Be direct and technical.
+function buildPrompt(P) {
+  const topics = P.guardrail.allowedTopics.map(t => `  - ${t}`).join('\n');
+  const skills = [
+    `Languages: ${P.skills.languages.join(', ')}`,
+    `ML/AI: ${P.skills.mlAI.join(', ')}`,
+    `Quantum: ${P.skills.quantum.join(', ')}`,
+    `Frontend: ${P.skills.frontend.join(', ')}`,
+    `Backend: ${P.skills.backend.join(', ')}`,
+    `Tools: ${P.skills.tools.join(', ')}`,
+  ].join('\n');
+  const projects = P.projects.map(pr =>
+    `- **${pr.name}**: ${pr.description} Stack: ${pr.stack.join(', ')}`
+  ).join('\n');
+  const offEx = P.guardrail.offTopicExamples.map(q => `Q: "${q}" → refuse`).join('\n');
+  const onEx  = P.guardrail.onTopicExamples.map(q  => `Q: "${q}" → answer`).join('\n');
 
-About the owner:
-Hahuy is a full-stack developer and builder focused on fast, elegant, purposeful tools.
-He does full-stack development, developer tooling, and open source.
-Currently learning Assembly & Rust; interested in Drone engineering.
-Built this portfolio as a zero-dependency vanilla JS terminal UI.
+  return `You are the AI oracle for Ha Huy's terminal portfolio (${P.site.url}).
+You ONLY answer questions in these topics:
+${topics}
 
-Skills:
-- Languages: JavaScript, HTML/CSS, Python (proficient), C++/Assembly (improving)
-- ML/AI: Neural Network design, LLM optimization, deployment
-- Quantum: Qiskit, Cirq, Braket, Quantum ML
-- Frontend: Vanilla JS, React/Next.js
-- Backend: Node.js/Express, REST/FastAPI, PostgreSQL, Docker, CI/CD
-- Tools: Git, GitHub Actions, VS Code, Linux CLI
+If the question is outside these topics, respond with EXACTLY this sentence (nothing else):
+"${P.guardrail.refusalMessage}"
 
-If asked something unrelated to the portfolio or owner, briefly redirect.`;
+Do NOT explain your refusal. Do NOT engage with off-topic content at all.
+Format your answers in Markdown when useful (code blocks, bullet lists, bold).
+Answer concisely (≤200 words). Be direct and technical.
+
+## About Ha Huy
+${P.bio}
+
+## What He Does
+${P.whatHeDoes.map(d => `- ${d}`).join('\n')}
+
+## Skills
+${skills}
+
+## Projects
+${projects}
+
+## This Site
+URL: ${P.site.url} | GitHub: ${P.site.github}
+Stack: ${P.site.stack}
+Deploy: ${P.site.deploy}
+Backend: ${P.site.backend}
+Features: ${P.site.features.map(f => `\n  - ${f}`).join('')}
+
+## OFF-TOPIC examples (refuse):
+${offEx}
+
+## ON-TOPIC examples (answer):
+${onEx}`;
+}
+
+const SYSTEM_PROMPT = buildPrompt(PROFILE);
 
 exports.aiAsk = functions
   .region(REGION)
@@ -980,7 +1017,7 @@ exports.aiAsk = functions
     const hfKey = process.env.HF_API_KEY;
     if (!hfKey) return res.status(500).json({ error: 'HF_API_KEY not configured' });
 
-    const HF_MODEL = 'meta-llama/Llama-3.2-1B-Instruct';
+    const HF_MODEL = 'meta-llama/Llama-3.2-3B-Instruct';
     const HF_URL   = 'https://router.huggingface.co/v1/chat/completions';
 
     try {
@@ -993,7 +1030,7 @@ exports.aiAsk = functions
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user',   content: question },
           ],
-          max_tokens: 200,
+          max_tokens: 300,
           temperature: 0.7,
         }),
       });
