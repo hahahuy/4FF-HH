@@ -161,27 +161,8 @@ describe("Commands.execute — core commands", () => {
     expect(names).toContain("cat");
     expect(names).toContain("clear");
     expect(names).toContain("theme");
-    expect(names).toContain("neofetch");
     expect(names).toContain("download");
     expect(names).toContain("grep");
-  });
-});
-
-describe("Commands.execute — neofetch", () => {
-  it("returns lines with OS info", () => {
-    const result = Commands.execute("neofetch", [], ["~"]);
-    expect(result.lines?.length).toBeGreaterThan(0);
-    const allHtml = result.lines.map((l) => l.html).join(" ");
-    expect(allHtml).toContain("hahuy.site");
-    expect(allHtml).toContain("4FF-HH");
-    expect(allHtml).toContain("Commands:");
-  });
-
-  it("shows correct command count", () => {
-    const result = Commands.execute("neofetch", [], ["~"]);
-    const allHtml = result.lines.map((l) => l.html).join(" ");
-    const cmdCount = Commands.names().length;
-    expect(allHtml).toContain(String(cmdCount));
   });
 });
 
