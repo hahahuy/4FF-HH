@@ -368,7 +368,36 @@ exports.cleanupStaleSessions = functions
   });
 
 // ══════════════════════════════════════════════════════════
-// 5.  authRequest
+// 4b. cleanupAiAskRateLimits
+//     Runs every 15 minutes. Deletes rate_limits/aiAsk
+//     entries whose 1-hour window has already expired so
+//     RTDB doesn't accumulate stale IP hashes.
+// ══════════════════════════════════════════════════════════
+exports.cleanupAiAskRateLimits = functions
+  .region(REGION)
+  .pubsub.schedule('every 15 minutes')
+  .onRun(async () => {
+    const snap = await db.ref('rate_limits/aiAsk').once('value');
+    if (!snap.exists()) return null;
+
+    const WINDOW_MS = 60 * 60 * 1000; // 1 hour — matches aiAsk window
+    const now       = Date.now();
+    const removes   = [];
+
+    snap.forEach(child => {
+      const { window_start } = child.val() || {};
+      if (window_start && now - window_start >= WINDOW_MS) {
+        removes.push(child.ref.remove());
+      }
+    });
+
+    if (removes.length) {
+      await Promise.all(removes);
+      console.log(`cleanupAiAskRateLimits: removed ${removes.length} expired entry(s)`);
+    }
+
+    return null;
+  });
 //     Owner calls this with their passphrase.
 //     Checks it against the hash stored in /auth_config,
 //     then sends a 6-digit OTP via Telegram.
@@ -940,11 +969,11 @@ exports.aiAsk = functions
 
     // ── Tiered rate limit ────────────────────────────────────
     // Owner (valid session token) → no rate limit
-    // Guest → 10 req / hour / IP
+    // Guest → 30 req / hour / IP
     const isOwner = token ? (await validateSessionToken(token)).valid : false;
     if (!isOwner) {
       const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || 'unknown';
-      if (await isRateLimited('aiAsk', ip, 10, 60 * 60 * 1000))
+      if (await isRateLimited('aiAsk', ip, 30, 60 * 60 * 1000))
         return res.status(429).json({ error: 'Rate limit reached — try again in an hour.' });
     }
 
