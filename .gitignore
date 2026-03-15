@@ -22,3 +22,6 @@ dist/
 
 # Personal
 docs/*.md
+
+# Blog draft template (not a real post)
+new-post.md

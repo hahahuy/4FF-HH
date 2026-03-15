@@ -1,5 +1,17 @@
 [
-  { "file": "hello-world.md","title": "Hello World","date": "2026-03-09" },
-  { "file": "building-a-cli-portfolio.md","title": "Building a CLI Portfolio in Vanilla JS","date": "2026-02-15" },
-  { "file": "Drone_Engineering_Career_CV_Guide.md","title": "How to start a career in drone engineering","date": "2026-03-10" }
+  {
+    "file": "Drone_Engineering_Career_CV_Guide.md",
+    "title": "Drone Engineering Career Guide — EE Background Track (Vietnam / SEA)",
+    "date": "2026-03-10"
+  },
+  {
+    "file": "hello-world.md",
+    "title": "Hello World",
+    "date": "2026-03-09"
+  },
+  {
+    "file": "building-a-cli-portfolio.md",
+    "title": "Building a CLI Portfolio in Vanilla JS",
+    "date": "2026-02-15"
+  }
 ]

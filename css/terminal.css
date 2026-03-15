@@ -455,3 +455,13 @@ body.name-wall-active .terminal-body > :not(.name-wall) {
   color: var(--color-green);
 }
 
+/* ── ls: blog open-in-browser link ──────────────────────── */
+.ls-blog-link {
+  color: var(--text-muted);
+  font-size: .8em;
+  margin-left: .35rem;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: color .15s;
+}
+.ls-blog-link:hover { color: var(--color-blue); }

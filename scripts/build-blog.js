@@ -46,6 +46,11 @@ function formatDate(iso) {
   });
 }
 
+function readTime(html) {
+  const words = stripHtml(html).split(/\s+/).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
 // ─── inlined CSS ──────────────────────────────────────────────────────────────
 
 const STYLE = `
@@ -60,11 +65,12 @@ const STYLE = `
     --font-mono:    'JetBrains Mono', monospace;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-size: 14px; }
+  html { font-size: 15px; }
   body {
     background: var(--bg-page);
     color: var(--text-primary);
     font-family: var(--font-mono);
+    font-feature-settings: "liga" 0;
     line-height: 1.6;
     min-height: 100vh;
   }
@@ -75,6 +81,11 @@ const STYLE = `
     padding: .75rem 1rem;
     border-bottom: 1px solid var(--border-color);
     font-size: .85rem;
+    background: var(--bg-window);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 0 var(--border-color);
   }
   nav a {
     color: var(--color-blue);
@@ -82,28 +93,31 @@ const STYLE = `
   }
   nav a:hover { text-decoration: underline; }
   article, .index-body {
-    max-width: 680px;
+    max-width: 720px;
     margin: 0 auto;
     padding: 2rem 1rem;
   }
-  h1 { font-size: 1.5rem; margin-bottom: .35rem; line-height: 1.3; }
+  h1 { font-size: 1.75rem; margin-bottom: .35rem; line-height: 1.3; color: var(--color-green); }
   h2 { font-size: 1.2rem; margin: 1.6rem 0 .5rem; }
   h3 { font-size: 1rem; margin: 1.4rem 0 .4rem; }
-  time { color: var(--text-muted); font-size: .85rem; display: block; margin-bottom: 1.5rem; }
+  time { color: var(--text-muted); font-size: .85rem; display: block; margin-bottom: .5rem; letter-spacing: .03em; }
   p { margin-bottom: 1rem; }
   a { color: var(--color-blue); text-decoration: none; }
   a:hover { text-decoration: underline; }
   pre {
     background: var(--bg-window);
     border: 1px solid var(--border-color);
+    border-left: 3px solid var(--color-blue);
     border-radius: 4px;
     padding: 1rem;
     overflow-x: auto;
     margin-bottom: 1rem;
+    line-height: 1.55;
   }
   code {
     font-family: var(--font-mono);
     font-size: .9em;
+    line-height: 1.55;
   }
   p code, li code {
     background: var(--bg-window);
@@ -118,6 +132,8 @@ const STYLE = `
     margin: 1rem 0;
     padding: .5rem 1rem;
     color: var(--text-muted);
+    font-style: italic;
+    background: rgba(88,166,255,.04);
   }
   table {
     width: 100%;
@@ -131,20 +147,48 @@ const STYLE = `
     text-align: left;
   }
   th { background: var(--bg-window); color: var(--color-green); }
-  hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }
+  hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; opacity: .4; }
   .post-list { list-style: none; padding: 0; }
   .post-list li {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
-    padding: .5rem 0;
+    padding: .5rem .4rem;
     border-bottom: 1px solid var(--border-color);
+    transition: background .12s;
+    border-left: 2px solid transparent;
   }
   .post-list li:last-child { border-bottom: none; }
+  .post-list li:hover {
+    background: rgba(88,166,255,.06);
+    border-left-color: var(--color-blue);
+  }
   .post-list a { font-weight: 500; }
-  .post-list time { font-size: .8rem; white-space: nowrap; flex-shrink: 0; }
-  .page-title { font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--color-green); }
+  .post-list time { font-size: .8rem; white-space: nowrap; flex-shrink: 0; margin-bottom: 0; }
+  .page-title {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-green);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: .5rem;
+  }
+  .post-meta {
+    font-size: .78rem;
+    color: var(--text-muted);
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    letter-spacing: .02em;
+  }
+  .back-top {
+    display: inline-block;
+    margin-top: 2.5rem;
+    font-size: .82rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color .15s;
+  }
+  .back-top:hover { color: var(--color-blue); text-decoration: none; }
   @media (max-width: 600px) {
     html { font-size: 13px; }
     article, .index-body { padding: 1rem; }
@@ -158,7 +202,7 @@ const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com">
 
 // ─── templates ────────────────────────────────────────────────────────────────
 
-function postPage({ title, date, slug, bodyHtml }) {
+function postPage({ title, date, slug, bodyHtml, mins }) {
   const desc = excerpt(bodyHtml);
   const url = `https://hahuy.site/blog/${slug}/`;
   return `<!DOCTYPE html>
@@ -184,7 +228,9 @@ function postPage({ title, date, slug, bodyHtml }) {
   <article>
     <h1>${title}</h1>
     <time datetime="${date}">${formatDate(date)}</time>
+    <span class="post-meta">~${mins} min read</span>
     ${bodyHtml}
+    <a href="#" class="back-top">↑ top</a>
   </article>
 </body>
 </html>`;
@@ -258,13 +304,14 @@ function main() {
     const body = stripFrontmatter(src);
     const bodyHtml = marked.parse(body);
     const slug = slugify(entry.file);
+    const mins = readTime(bodyHtml);
 
     posts.push({ title: entry.title, date: entry.date, slug, bodyHtml });
 
     const outDir = join(DIST_BLOG, slug);
     mkdirSync(outDir, { recursive: true });
     const outPath = join(outDir, "index.html");
-    writeFileSync(outPath, postPage({ title: entry.title, date: entry.date, slug, bodyHtml }), "utf8");
+    writeFileSync(outPath, postPage({ title: entry.title, date: entry.date, slug, bodyHtml, mins }), "utf8");
     console.log(`  ✅ blog/${slug}/index.html`);
   }
 

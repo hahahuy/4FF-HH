@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev":        "vite",
-    "build":      "vite build && node scripts/minify-js.js && node scripts/build-blog.js",
+    "build":      "node scripts/sync-manifest.js && vite build && node scripts/minify-js.js && node scripts/build-blog.js",
     "preview":    "vite preview",
     "test":       "vitest run",
     "test:watch": "vitest",

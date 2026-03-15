@@ -4,6 +4,9 @@
 // Directories that require authentication to be visible in ls ~/
 const AUTH_GATED_DIRS = new Set(["note", "image"]);
 
+// Slugify a blog filename: strip .md, lowercase, _ → -
+const slugifyBlog = (f) => f.replace(/\.md$/i, "").toLowerCase().replace(/_/g, "-");
+
 // ── populateNoteDir ─────────────────────────────────────────
 // Fetches notes from CF and populates FS["~"].note with stub nodes.
 // Called by ls when listing ~/note while authenticated.
@@ -58,6 +61,8 @@ const FsCommands = {
 
       const authed = typeof Auth !== "undefined" && Auth.isAuthenticated();
       const isRoot = resolved.path.length === 1 && resolved.path[0] === "~";
+      const isBlogDir =
+        resolved.path.length === 2 && resolved.path[0] === "~" && resolved.path[1] === "blog";
 
       // Inject notes dir for authenticated owner when listing root
       if (isRoot && authed) {
@@ -137,6 +142,13 @@ const FsCommands = {
         gridHtml +=
           `<span class="ls-item ${cls}" data-cmd="${esc(cmd)}" ` +
           `title="click to run: ${esc(cmd)} | link: ${esc(shareUrl)}">${esc(label)}${suffix}</span>`;
+        // Blog dir: append ↗ link for .md files (skip index.md)
+        if (isBlogDir && !isDir && e.name.endsWith(".md") && e.name !== "index.md") {
+          const slug = slugifyBlog(e.name);
+          gridHtml +=
+            `<a class="ls-blog-link" href="https://hahuy.site/blog/${slug}/" ` +
+            `target="_blank" rel="noopener noreferrer" title="open post in browser">↗</a>`;
+        }
       });
       gridHtml += "</div>";
       return { lines: [{ html: gridHtml, classes: [] }] };
