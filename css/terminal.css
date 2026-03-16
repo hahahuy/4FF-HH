@@ -1,0 +1,467 @@
+/* ============================================================
+   terminal.css — Input, Output, Prompt, Cursor, Animations
+   ============================================================ */
+
+/* ── Prompt ───────────────────────────────────────────────── */
+.prompt {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  pointer-events: none;
+  user-select: none;
+}
+
+.prompt-dir {
+  color: var(--color-green);
+  font-weight: 500;
+}
+
+/* The $ symbol */
+.prompt::after {
+  color: var(--color-blue);
+}
+
+/* ── Input wrapper ────────────────────────────────────────── */
+.input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.terminal-input {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  width: 100%;
+  caret-color: var(--color-blue);
+  padding: 0;
+}
+
+/* Ghost autocomplete text */
+.ghost-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  pointer-events: none;
+  white-space: pre;
+}
+
+/* ── Output lines ─────────────────────────────────────────── */
+.output-block {
+  margin-bottom: 4px;
+}
+
+/* Echoed command (the line the user typed) */
+.cmd-echo {
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.cmd-echo .echo-prompt {
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.cmd-echo .echo-prompt .echo-dir {
+  color: var(--color-green);
+}
+
+.cmd-echo .echo-cmd {
+  color: var(--text-primary);
+}
+
+/* Generic output */
+.output-line {
+  color: var(--text-primary);
+}
+
+/* ASCII / pre-formatted: preserve spaces and indentation exactly */
+.output-line.pre {
+  white-space: pre;
+}
+
+/* Error */
+.output-line.error {
+  color: var(--color-red);
+}
+
+/* Success / accent */
+.output-line.success {
+  color: var(--color-green);
+}
+
+/* Info / muted */
+.output-line.muted {
+  color: var(--text-muted);
+}
+
+/* Command name in help list */
+.cmd-name {
+  color: var(--color-blue);
+  font-weight: 500;
+}
+
+/* Clickable help items */
+.help-item { cursor: pointer; }
+.help-item:hover { color: var(--color-blue); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Owner command color */
+.cmd-owner { color: var(--color-orange); }
+.cmd-owner:hover { color: var(--color-red); }
+
+/* Directory entries in ls */
+.ls-dir {
+  color: var(--color-green);
+  font-weight: 500;
+}
+
+.ls-file {
+  color: var(--text-primary);
+}
+
+/* Clickable ls items */
+.ls-item[data-cmd] {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 3px;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.ls-item[data-cmd]:hover {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--color-blue);
+  text-decoration: underline;
+}
+
+.ls-dir[data-cmd]:hover {
+  color: var(--color-green);
+  background: rgba(126, 231, 135, 0.12);
+  text-decoration: underline;
+}
+
+/* Horizontal rule in help */
+.hr {
+  color: var(--text-dim);
+  user-select: none;
+}
+
+/* ── Markdown wrapper ─────────────────────────────────────── */
+.md-render {
+  margin: 4px 0 8px;
+  /* Override output-line hover on md wrapper */
+  border-left: none !important;
+  background: none !important;
+  padding-left: 0 !important;
+}
+
+/* ── Boot sequence ────────────────────────────────────────── */
+@keyframes fadeInLine {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.boot-line {
+  animation: fadeInLine 0.2s ease forwards;
+  opacity: 0;
+}
+
+/* Boot ASCII art: side-by-side layout */
+.boot-art {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 4px;
+  animation: fadeInLine 0.15s ease forwards;
+  opacity: 0;
+}
+
+.boot-art-row {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.4;
+}
+
+.boot-art-col-art {
+  font-family: var(--font-mono, monospace);
+  white-space: pre;
+  min-width: 20ch;
+  flex-shrink: 0;
+}
+
+.boot-art-col-info {
+  padding-left: 2ch;
+  white-space: nowrap;
+}
+
+.boot-cmd:hover {
+  text-decoration: underline;
+}
+
+/* VIS-1: Typewriter blinking cursor on the active boot line */
+.boot-line.typing::after {
+  content: '▋';
+  color: var(--color-blue);
+  animation: blink 0.8s step-end infinite;
+  margin-left: 1px;
+}
+
+/* ── UX-5: Copy-flash on Shift+Click ─────────────────────── */
+@keyframes copy-flash {
+  0%   { background-color: rgba(126, 231, 135, 0.35); }
+  70%  { background-color: rgba(126, 231, 135, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.output-line.copy-flash {
+  animation: copy-flash 0.55s ease forwards;
+}
+
+/* ── VIS-3: CRT Scanlines ─────────────────────────────────── */
+body.scanlines .terminal-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  z-index: 999;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* Terminal body needs relative positioning for the pseudo-element */
+.terminal-body {
+  position: relative;
+}
+
+/* ── Blink cursor (custom) ────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.cursor-block {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  vertical-align: text-bottom;
+  background-color: var(--color-blue);
+  animation: blink 1.1s step-end infinite;
+  margin-left: 1px;
+}
+
+/* ── Links inside output ──────────────────────────────────── */
+.output a {
+  color: var(--color-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.output a:hover {
+  color: #79c0ff;
+  text-decoration: underline;
+}
+
+/* ── ls grid layout ───────────────────────────────────────── */
+.ls-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 20px;
+  padding: 2px 0;
+}
+
+.ls-grid .ls-item {
+  min-width: 120px;
+}
+
+@media (max-width: 600px) {
+  .ls-grid { gap: 2px 12px; }
+  .ls-grid .ls-item { min-width: 90px; }
+
+  /* MOB-4: Prevent iOS auto-zoom on input focus (requires font-size ≥ 16px) */
+  .terminal-input {
+    font-size: 16px;
+  }
+}
+
+/* ── Scrollback spacer ────────────────────────────────────── */
+.spacer {
+  height: 8px;
+}
+
+/* ── cat: inline media (images + PDFs) ───────────────────── */
+.cat-media-wrap {
+  margin: 6px 0;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.cat-image {
+  display: block;
+  max-width: min(640px, 100%);
+  max-height: 480px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  object-fit: contain;
+  background: var(--bg-page);
+}
+
+.cat-pdf-wrap {
+  display: block;
+  width: 100%;
+}
+
+.cat-pdf {
+  display: block;
+  width: 100%;
+  min-height: 500px;
+  max-height: 70vh;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.cat-media-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cat-media-meta a {
+  color: var(--color-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .cat-image { max-height: 280px; }
+  .cat-pdf   { min-height: 320px; max-height: 55vh; }
+}
+
+/* ── Name wall overlay ────────────────────────────────────── */
+.name-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg-terminal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.name-wall-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+}
+
+.name-wall-title {
+  color: var(--color-green);
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.name-wall-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-size: 1.15rem;
+}
+
+.name-wall-prompt {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.name-wall-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: inherit;
+  line-height: var(--line-height);
+  caret-color: var(--color-blue);
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.name-wall-hint {
+  color: var(--text-dim);
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+/* Lock all interaction while name wall is shown */
+body.name-wall-active * {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* Re-enable wall itself */
+body.name-wall-active .name-wall,
+body.name-wall-active .name-wall * {
+  pointer-events: auto !important;
+  cursor: auto !important;
+}
+
+body.name-wall-active .name-wall-input {
+  cursor: text !important;
+}
+
+/* Visually mute the terminal content under the wall */
+body.name-wall-active .terminal-body > :not(.name-wall) {
+  opacity: 0.18;
+  user-select: none;
+}
+
+/* Red close button hover glow */
+.dot-red {
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.dot-red:hover {
+  filter: brightness(1.35);
+  box-shadow: 0 0 7px 2px rgba(255, 95, 86, 0.55);
+}
+
+/* ── Oracle spinner ──────────────────────────────────────── */
+.oracle-spinner {
+  color: var(--color-green);
+}
+
+/* ── ls: blog open-in-browser link ──────────────────────── */
+.ls-blog-link {
+  color: var(--text-muted);
+  font-size: .8em;
+  margin-left: .35rem;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: color .15s;
+}
+.ls-blog-link:hover { color: var(--color-blue); }

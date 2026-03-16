@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- MOB-4: maximum-scale=1.0 prevents iOS auto-zoom; user-scalable=no for terminal UX -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+
+  <!-- SEC-2: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net www.gstatic.com https://*.firebasedatabase.app; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://www.gstatic.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://wttr.in https://api.github.com https://asia-southeast1-hahuy-portfolio-f7f16.cloudfunctions.net https://api.coingecko.com https://apipubaws.tcbs.com.vn https://en.wikipedia.org https://api.publicapis.org; frame-src 'none'; object-src 'none';" />
+
+  <title>Ha Huy's Portfolio</title>
+
+  <!-- PWA / MOB-5 -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1f2428" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HH Terminal" />
+  <link rel="apple-touch-icon" href="content/images/icon-192.png" />
+
+  <!-- Theme + scanlines restore (runs before CSS paints to prevent flash) -->
+  <script>
+    (function () {
+      var THEMES = ['dracula', 'solarized', 'light'];
+      // ?theme= query param takes priority, then localStorage
+      var params = new URLSearchParams(location.search);
+      var theme  = params.get('theme') || localStorage.getItem('term_theme') || 'default';
+      if (THEMES.indexOf(theme) !== -1) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('term_theme', theme);
+      }
+      // VIS-3: restore scanlines preference
+      if (localStorage.getItem('term_scanlines') === '1') {
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.classList.add('scanlines');
+        });
+      }
+      // Restore mouse theme class
+      var mouseTheme = localStorage.getItem('term_mouse_theme');
+      if (mouseTheme && mouseTheme !== 'default') {
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.classList.add('mouse-' + mouseTheme);
+        });
+      }
+    })();
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Styles — critical: needed for first paint -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/terminal.css" />
+  <link rel="stylesheet" href="css/ticker.css" />
+
+  <!-- Styles — deferred: loaded at low priority, applied when ready -->
+  <!-- PERF: media="print" trick — browser downloads async, onload switches to "all" -->
+  <link rel="stylesheet" href="css/markdown.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/markdown.css" /></noscript>
+  <link rel="stylesheet" href="css/contextmenu.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/contextmenu.css" /></noscript>
+  <link rel="stylesheet" href="css/init-panels.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/init-panels.css" /></noscript>
+  <link rel="stylesheet" href="css/message-panel.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/message-panel.css" /></noscript>
+  <link rel="stylesheet" href="css/auth.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/auth.css" /></noscript>
+  <link rel="stylesheet" href="css/note-editor.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/note-editor.css" /></noscript>
+  <link rel="stylesheet" href="css/transformer-window.css"
+        media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="css/transformer-window.css" /></noscript>
+
+  <!-- marked.js (CDN) — SEC-3: SRI hash pinned to marked@9 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"
+          integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7"
+          crossorigin="anonymous"></script>
+
+  <!-- mermaid.js (CDN) — diagram rendering for ```mermaid blocks -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
+          crossorigin="anonymous"></script>
+  <script>
+    if (typeof mermaid !== 'undefined') {
+      mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+    }
+  </script>
+
+  <!-- Firebase (CDN — compat build for simple firebase.initializeApp() usage) -->
+  <!-- SEC-3: SRI hashes pinned to firebasejs/10.12.2 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"
+          integrity="sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9"
+          crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"
+          integrity="sha384-1/m+A1jVWbD3yiK3/vtFvm1+LjK1WLpSoDY+Kaxppwn/yP9BVSgdHTNQVOjrzUO5"
+          crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- Page backdrop -->
+  <div class="backdrop"></div>
+
+  <!-- ─── Terminal Window ─────────────────────────────────── -->
+  <div class="terminal-window" id="terminalWindow">
+
+    <!-- Titlebar (drag handle) -->
+    <div class="titlebar" id="titlebar">
+      <span class="dot dot-red"></span>
+      <span class="dot dot-yellow"></span>
+      <span class="dot dot-green"></span>
+      <span class="titlebar-label">Shell</span>
+    </div>
+
+    <!-- Terminal body -->
+    <div class="terminal-body" id="terminalBody">
+
+      <!-- Name wall overlay (shown before boot) -->
+      <div id="nameWall" class="name-wall">
+        <div class="name-wall-inner">
+          <div class="name-wall-title">Who's visiting?</div>
+          <div class="name-wall-row">
+            <span class="name-wall-prompt">Input your name: </span>
+            <input id="nameInput" class="name-wall-input" autocomplete="off" spellcheck="false" autofocus />
+          </div>
+          <div class="name-wall-hint">[Enter] to confirm · [Ctrl+C] to skip</div>
+        </div>
+      </div>
+
+      <!-- Output area -->
+      <div class="output" id="output" aria-live="polite" aria-label="Terminal output"></div>
+
+      <!-- Input row -->
+      <div class="input-row" id="inputRow">
+        <span class="prompt" id="promptLabel"><span class="prompt-user">visitor</span>@site:<span class="prompt-dir" id="promptDir">~</span>$&nbsp;</span>
+        <div class="input-wrapper">
+          <input
+            class="terminal-input"
+            id="terminalInput"
+            type="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            aria-label="Terminal input"
+          />
+          <span class="ghost-text" id="ghostText"></span>
+        </div>
+      </div>
+
+      <!-- Autocomplete suggestions -->
+      <div class="autocomplete-list" id="autocompleteList" hidden></div>
+
+    </div>
+  </div>
+
+  <!-- Scripts (order matters; defer = parallel download, preserved execution order) -->
+  <!-- Utils: loaded first — no dependencies -->
+  <script src="js/utils/config.js" defer></script>
+  <script src="js/utils/html.js" defer></script>
+  <script src="js/utils/fetch.js" defer></script>
+  <script src="js/utils/dom.js" defer></script>
+  <!-- App namespace — populated by each module below -->
+  <script src="js/app.js" defer></script>
+  <!-- EventBus — decouples intercept chain in terminal.js -->
+  <script src="js/event-bus.js" defer></script>
+  <script src="js/filesystem.js" defer></script>
+  <script src="js/autocomplete.js" defer></script>
+  <script src="js/commands/fs-commands.js" defer></script>
+  <script src="js/commands/system-commands.js" defer></script>
+  <script src="js/commands/ui-commands.js" defer></script>
+  <script src="js/commands/social-commands.js" defer></script>
+  <script src="js/commands/owner-commands.js" defer></script>
+  <script src="js/commands/easter-eggs.js" defer></script>
+  <script src="js/commands/index.js" defer></script>
+  <script src="js/init-panels.js" defer></script>
+  <script src="js/message-panel.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/note-editor.js" defer></script>
+  <script src="js/transformer-window.js" defer></script>
+  <script src="js/terminal.js" defer></script>
+  <script src="js/draggable.js" defer></script>
+  <script src="js/contextmenu.js" defer></script>
+  <script src="js/ticker.js" defer></script>
+
+</body>
+</html>

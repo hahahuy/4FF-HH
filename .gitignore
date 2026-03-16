@@ -1,0 +1,27 @@
+# Claude Code local config
+.claude/
+CLAUDE.md
+
+# Firebase secrets
+functions/.env
+functions/.env.*
+RTDBRules.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Node / build
+node_modules/
+dist/
+
+# Personal
+docs/*.md
+
+# Blog draft template (not a real post)
+new-post.md

@@ -1,0 +1,123 @@
+/* ============================================================
+   init-panels.css — Read-only info panels spawned by `init`
+   ============================================================ */
+
+/* ── Panel shell ──────────────────────────────────────────── */
+.info-panel {
+  /* position:fixed + left/top set entirely by JS */
+  transition: opacity 0.2s ease;
+  /* No user interaction beyond scrolling */
+  pointer-events: auto;
+}
+
+/* Disable drag cursor & drag region on titlebar */
+.info-panel .titlebar {
+  cursor: default;
+  -webkit-app-region: no-drag;
+  pointer-events: none;   /* clicks fall through to body focus */
+}
+
+/* ── Output area fills available vertical space ───────────── */
+.info-panel .terminal-body {
+  padding: 14px 18px 12px;
+}
+
+.info-output {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+  user-select: text;
+  /* allow panel to scroll independently */
+  overscroll-behavior: contain;
+}
+
+.info-output::-webkit-scrollbar       { width: 5px; }
+.info-output::-webkit-scrollbar-track { background: transparent; }
+.info-output::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+/* ── Two-column profile card ──────────────────────────── */
+.profile-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.profile-card-img {
+  flex-shrink: 0;
+}
+
+.profile-card-img .info-profile-pic {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  object-position: center top;
+  margin-bottom: 0;
+}
+
+.profile-card-bio {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Profile image ────────────────────────────────────────── */
+.info-profile-pic {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+}
+
+/* ── Divider between sections ─────────────────────────────── */
+.info-section-hr {
+  color: var(--text-dim);
+  user-select: none;
+  padding: 4px 6px;
+  font-size: var(--font-size);
+  font-family: var(--font-mono);
+}
+
+/* ── Fade-in animation on spawn ───────────────────────────── */
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.info-panel.panel-entering {
+  animation: panelFadeIn 0.25s ease forwards;
+}
+
+/* VIS-5: Staggered section fade-in inside panels */
+@keyframes section-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.panel-section-in {
+  opacity: 0;
+  animation: section-in 0.3s ease forwards;
+}
+
+/* ── Tablet (601–900px): stack layout ────────────────────── */
+@media (min-width: 601px) and (max-width: 900px) {
+  .info-panel .titlebar {
+    padding: 8px 14px;
+  }
+  .info-panel .terminal-body {
+    padding: 10px 14px 10px;
+  }
+}
+
+/* ── Mobile (≤ 600px): hide panels ───────────────────────── */
+@media (max-width: 600px) {
+  .info-panel {
+    display: none !important;
+  }
+}

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tests — 4FF-HH Terminal</title>
+
+  <!-- Reuse portfolio fonts + colors -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <!-- Production CSS (needed for CSS rule assertions) -->
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/terminal.css" />
+  <link rel="stylesheet" href="../css/init-panels.css" />
+  <link rel="stylesheet" href="../css/tips.css" />
+
+  <!-- marked.js needed by terminal.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --green:   #7ee787;
+      --red:     #ff7b72;
+      --blue:    #58a6ff;
+      --muted:   #6e7681;
+      --text:    #c9d1d9;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 32px;
+      min-height: 100vh;
+    }
+    h1 { color: var(--blue); font-size: 18px; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 12px; }
+    #summary {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .sum-pass { color: var(--green); }
+    .sum-fail { color: var(--red); }
+    .sum-total { color: var(--muted); }
+    #results { display: flex; flex-direction: column; gap: 3px; }
+    .result {
+      display: flex;
+      gap: 10px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border-left: 3px solid transparent;
+      line-height: 1.5;
+    }
+    .result.pass { border-left-color: var(--green); }
+    .result.fail {
+      border-left-color: var(--red);
+      background: rgba(255,123,114,0.06);
+    }
+    .result .badge {
+      flex-shrink: 0;
+      font-weight: 700;
+      font-size: 11px;
+      width: 36px;
+      padding-top: 1px;
+    }
+    .result.pass .badge { color: var(--green); }
+    .result.fail .badge { color: var(--red); }
+    .result .desc { flex: 1; }
+    .result .errmsg { color: var(--red); font-size: 11px; margin-top: 2px; }
+    #loading { color: var(--muted); margin-top: 16px; }
+
+    /* Tiny hidden terminal needed for Terminal module to init */
+    #test-terminal-host { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>▸ Terminal Test Suite</h1>
+  <p class="subtitle">4FF-HH · in-browser · no build step required</p>
+
+  <div id="summary">
+    <span class="sum-total" id="sum-total">Running…</span>
+  </div>
+
+  <div id="results"></div>
+  <div id="loading">Loading modules…</div>
+
+  <!-- Hidden minimal DOM that terminal.js needs -->
+  <!-- Must mirror the real .terminal-window structure so class-based selectors work -->
+  <div id="test-terminal-host">
+    <div class="terminal-window" id="terminalWindow">
+      <div class="titlebar">
+        <span class="titlebar-label">test</span>
+      </div>
+      <div class="terminal-body" id="terminalBody">
+        <div class="output" id="output" aria-live="polite"></div>
+        <div class="input-row">
+          <span class="prompt"><span class="prompt-dir" id="promptDir">~</span></span>
+          <div class="input-wrapper">
+            <input class="terminal-input" id="terminalInput" type="text" />
+            <span class="ghost-text" id="ghostText"></span>
+          </div>
+        </div>
+        <div class="autocomplete-list" id="autocompleteList" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Shared utilities (must load before any module) ── -->
+  <script src="../js/utils/config.js"></script>
+  <script src="../js/utils/html.js"></script>
+  <script src="../js/utils/fetch.js"></script>
+  <script src="../js/utils/dom.js"></script>
+
+  <!-- ── App namespace + EventBus ── -->
+  <script src="../js/app.js"></script>
+  <script src="../js/event-bus.js"></script>
+
+  <!-- ── Production modules ── -->
+  <script src="../js/filesystem.js"></script>
+  <script src="../js/autocomplete.js"></script>
+
+  <!-- ── InitPanels stub: avoids real DOM manipulation in test context ── -->
+  <script>
+    'use strict';
+    App.InitPanels = (() => {
+      let _active = false;
+      function start() { _active = true; }
+      function stop()  { _active = false; }
+      function isActive() { return _active; }
+      return { start, stop, isActive };
+    })();
+    const InitPanels = App.InitPanels;  // backward-compat alias
+  </script>
+
+  <!-- ── Auth stub: avoids real Cloud Function calls in tests ── -->
+  <script>
+    'use strict';
+    App.Auth = (() => {
+      let _pendingOTP = false;
+      function isAuthenticated() { return false; }
+      function hasPendingOTP()   { return _pendingOTP; }
+      function getToken()        { return null; }
+      function clearSession()    {}
+      function startAuth(passphrase, ctx) {
+        return Promise.resolve({ error: 'auth: not available in tests' });
+      }
+      function resolveOTP(otp, ctx) {
+        _pendingOTP = false;
+        return Promise.resolve({ error: 'auth: not available in tests' });
+      }
+      return { isAuthenticated, hasPendingOTP, getToken, clearSession, startAuth, resolveOTP };
+    })();
+    const Auth = App.Auth;  // backward-compat alias
+    // Register EventBus listener so terminal.js 4-way chain works
+    App.EventBus.on('rawInput', ({ raw, ctx }) => {
+      if (!App.Auth.hasPendingOTP()) return false;
+      App.Auth.resolveOTP(raw, ctx).then(result => {
+        if (!result) return;
+        if (result.error) ctx.appendLine(result.error, ['error']);
+        else if (result.lines) result.lines.forEach(l => ctx.appendHTML(l.html, l.classes || []));
+        ctx.scrollBottom();
+      });
+      return true;
+    });
+  </script>
+
+  <!-- ── NoteEditor stub: avoids real editor DOM in tests ── -->
+  <script>
+    'use strict';
+    App.NoteEditor = (() => {
+      let _pendingDelete = false;
+      function open() {}
+      function isActive() { return false; }
+      function confirmDelete(filename, ctx) {
+        _pendingDelete = true;
+        ctx.appendHTML(`Delete ${escHtml(filename)}? y/n`, ['output-line']);
+        ctx.scrollBottom();
+      }
+      function hasPendingDelete() { return _pendingDelete; }
+      function resolveDelete(raw, ctx) {
+        const a = raw.trim().toLowerCase();
+        if (a === 'y' || a === 'yes') {
+          _pendingDelete = false;
+          ctx.appendLine('Deleted (stub).', ['success']);
+        } else if (a === 'n' || a === 'no') {
+          _pendingDelete = false;
+          ctx.appendLine('Cancelled.', ['muted']);
+        } else {
+          ctx.appendLine('Type y or n.', ['muted']);
+        }
+        ctx.scrollBottom();
+      }
+      return { open, isActive, confirmDelete, hasPendingDelete, resolveDelete };
+    })();
+    const NoteEditor = App.NoteEditor;  // backward-compat alias
+    App.EventBus.on('rawInput', ({ raw, ctx }) => {
+      if (!App.NoteEditor.hasPendingDelete()) return false;
+      App.NoteEditor.resolveDelete(raw, ctx);
+      return true;
+    });
+  </script>
+
+  <!-- ── MessagePanel stub: avoids real Firebase SDK in tests ── -->
+  <script>
+    'use strict';
+    App.MessagePanel = (() => {
+      let _pendingCaptcha  = false;
+      let _captchaContent  = '';
+      let _captchaAnswer   = null;
+      let _pendingConfirm  = false;
+      let _pendingContent  = '';
+
+      function confirmSend(content, ctx) {
+        if (!content || !content.trim())
+          return { error: 'Message cannot be empty.' };
+        if (content.length > 500)
+          return { error: `Message too long. Max 500 characters (got ${content.length}).` };
+        const RATE_KEY  = 'mp_send_times';
+        const WINDOW_MS = 60_000;
+        const MAX_SENDS = 3;
+        const times = JSON.parse(localStorage.getItem(RATE_KEY) || '[]')
+          .filter(t => Date.now() - t < WINDOW_MS);
+        localStorage.setItem(RATE_KEY, JSON.stringify(times));
+        if (times.length >= MAX_SENDS)
+          return { error: 'Too many messages. Please wait a minute.' };
+        const a = 7, b = 4;
+        _captchaAnswer  = a + b;
+        _captchaContent = content;
+        _pendingCaptcha = true;
+        ctx.appendHTML(`<span>Solve to send:</span> ${a} + ${b} = ?`, []);
+        ctx.scrollBottom();
+        return null;
+      }
+
+      function hasPendingCaptcha() { return _pendingCaptcha; }
+
+      function resolvePendingCaptcha(raw, ctx) {
+        const answer = parseInt(raw.trim(), 10);
+        if (isNaN(answer) || answer !== _captchaAnswer) {
+          ctx.appendLine('Incorrect, try again.', ['error']);
+          ctx.appendHTML('New question…', []);
+          ctx.scrollBottom();
+          return;
+        }
+        const content   = _captchaContent;
+        _pendingCaptcha = false;
+        _captchaAnswer  = null;
+        _captchaContent = '';
+        _pendingConfirm = true;
+        _pendingContent = content;
+        ctx.appendHTML('Send? y/n', []);
+        ctx.scrollBottom();
+      }
+
+      function hasPendingConfirm()  { return _pendingConfirm; }
+
+      function resolvePendingConfirm(raw, ctx) {
+        const a = raw.trim().toLowerCase();
+        if (a === 'y' || a === 'yes') {
+          _pendingConfirm = false; _pendingContent = '';
+          ctx.appendLine('Message sent!', ['success']);
+        } else if (a === 'n' || a === 'no') {
+          _pendingConfirm = false; _pendingContent = '';
+          ctx.appendLine('Cancelled.', ['muted']);
+        } else {
+          ctx.appendLine('Type y or n.', ['muted']);
+        }
+      }
+
+      function isActive()    { return false; }
+      function stop()        { return { lines: [] }; }
+      function getLastName() {
+        try { return localStorage.getItem('mp_last_name') || null; }
+        catch (e) { return null; }
+      }
+      function startChat() { return Promise.resolve(null); }
+
+      return {
+        confirmSend, hasPendingCaptcha, resolvePendingCaptcha,
+        hasPendingConfirm, resolvePendingConfirm,
+        isActive, stop, getLastName, startChat,
+      };
+    })();
+    const MessagePanel = App.MessagePanel;  // backward-compat alias
+    // Register EventBus listeners (captcha highest priority)
+    App.EventBus.on('rawInput', ({ raw, ctx }) => {
+      if (App.MessagePanel.hasPendingCaptcha()) { App.MessagePanel.resolvePendingCaptcha(raw, ctx); return true; }
+      if (App.MessagePanel.hasPendingConfirm()) { App.MessagePanel.resolvePendingConfirm(raw, ctx); return true; }
+      return false;
+    });
+  </script>
+
+  <!-- ── Split command files (Phase 4b) ── -->
+  <script src="../js/commands/fs-commands.js"></script>
+  <script src="../js/commands/system-commands.js"></script>
+  <script src="../js/commands/ui-commands.js"></script>
+  <script src="../js/commands/social-commands.js"></script>
+  <script src="../js/commands/owner-commands.js"></script>
+  <script src="../js/commands/easter-eggs.js"></script>
+  <script src="../js/commands/index.js"></script>
+
+  <script src="../js/terminal.js"></script>
+
+  <!-- Test suite -->
+  <script src="suite.js"></script>
+
+  <!-- Runner -->
+  <script>
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const loadingEl  = document.getElementById('loading');
+      const resultsEl  = document.getElementById('results');
+      const summaryEl  = document.getElementById('summary');
+
+      try {
+        // Terminal.init() sets up event listeners — call it so the module is
+        // fully ready (boot lines go into the hidden #output div)
+        await Terminal.init();
+      } catch (e) {
+        // ignore init errors in test context
+      }
+
+      loadingEl.remove();
+
+      const { pass, fail, results } = await runAllSuites();
+
+      // Summary
+      summaryEl.innerHTML =
+        `<span class="sum-pass">✓ ${pass} passed</span>` +
+        (fail ? `<span class="sum-fail">✗ ${fail} failed</span>` : '') +
+        `<span class="sum-total">${pass + fail} total</span>`;
+
+      // Results
+      results.forEach(r => {
+        const div = document.createElement('div');
+        div.className = `result ${r.ok ? 'pass' : 'fail'}`;
+        div.innerHTML =
+          `<span class="badge">${r.ok ? 'PASS' : 'FAIL'}</span>` +
+          `<span class="desc">${r.desc}` +
+          (r.err ? `<div class="errmsg">↳ ${r.err}</div>` : '') +
+          `</span>`;
+        resultsEl.appendChild(div);
+      });
+
+      // Update tab title
+      document.title = `${fail ? '✗' : '✓'} Tests (${pass}/${pass+fail}) — 4FF-HH`;
+    });
+  </script>
+
+</body>
+</html>

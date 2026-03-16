@@ -1,0 +1,197 @@
+/* ============================================================
+   transformer-window.css — Floating oracle REPL window
+   All colours use CSS custom properties from style.css.
+   ============================================================ */
+
+/* ── Window container ────────────────────────────────────── */
+.transformer-window {
+  position: fixed;
+  width: 420px;
+  height: 520px;
+  z-index: 20; /* overridden by inline style from JS max-z scan */
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.transformer-window.tw-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.transformer-window.tw-closing {
+  opacity: 0;
+  transform: scale(0.97);
+  pointer-events: none;
+}
+
+/* ── Titlebar ─────────────────────────────────────────────── */
+.tw-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tw-quota {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 6px;
+}
+
+/* ── Status dot ───────────────────────────────────────────── */
+.tw-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 6px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.tw-status-checking {
+  background: var(--text-dim, #484f58);
+  opacity: 0.6;
+}
+
+.tw-status-online {
+  background: var(--color-green, #3fb950);
+}
+
+.tw-status-offline {
+  background: #f85149;
+}
+
+/* ── Body ─────────────────────────────────────────────────── */
+.tw-body {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 36px);
+  overflow: hidden;
+}
+
+/* ── Output area ──────────────────────────────────────────── */
+.tw-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  /* Scrollbar: thin + theme-aware (Firefox) */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color, #30363d) transparent;
+}
+
+.tw-output::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tw-output::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tw-output::-webkit-scrollbar-thumb {
+  background: var(--border-color, #30363d);
+  border-radius: 2px;
+}
+
+.tw-output::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim, #484f58);
+}
+
+/* ── Input row ────────────────────────────────────────────── */
+.tw-input-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border-color, #30363d);
+  flex-shrink: 0;
+}
+
+.tw-prompt {
+  color: var(--color-green);
+  flex-shrink: 0;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: var(--font-size, 14px);
+}
+
+.tw-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  caret-color: var(--color-green);
+  color: var(--text-primary);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: var(--font-size, 14px);
+  min-width: 0;
+}
+
+.tw-input::placeholder {
+  color: var(--text-dim, #444d56);
+}
+
+/* ── Mobile: fullscreen ───────────────────────────────────── */
+@media (max-width: 600px) {
+  .transformer-window {
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+  }
+}
+
+/* ── Upgrade prompt ───────────────────────────────────────── */
+.tw-upgrade-prompt {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tw-upgrade-prompt p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.tw-upgrade-linkedin,
+.tw-upgrade-phone {
+  background: none;
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.tw-upgrade-linkedin:focus,
+.tw-upgrade-phone:focus {
+  border-color: var(--color-green);
+}
+
+.tw-upgrade-submit {
+  align-self: flex-start;
+  background: var(--color-green);
+  border: none;
+  border-radius: 3px;
+  color: #000;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+}
+
+.tw-upgrade-skip {
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-decoration: underline;
+}

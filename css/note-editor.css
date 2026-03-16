@@ -1,0 +1,169 @@
+/* ============================================================
+   note-editor.css — Split-pane Markdown editor styles
+   All colours use CSS custom properties from style.css.
+   ============================================================ */
+
+/* ── Editor window container ─────────────────────────────── */
+.note-editor-window {
+  position: fixed;
+  z-index: 20;
+  /* size & position set dynamically by JS layoutEditor() */
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.note-editor-window.ne-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.note-editor-window.ne-closing {
+  opacity: 0;
+  transform: scale(0.97);
+  pointer-events: none;
+}
+
+/* ── Titlebar additions ───────────────────────────────────── */
+.ne-titlebar {
+  gap: 6px;
+}
+
+.ne-titlebar-filename {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ne-status-badge {
+  font-size: 11px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.ne-status-saved  { color: var(--color-green); }
+.ne-status-dirty  { color: var(--color-orange); }
+.ne-status-error  { color: var(--color-red); }
+.ne-status-muted  { color: var(--text-muted); }
+.ne-status-site   { color: var(--color-blue); }
+
+/* ── Body: two-pane flex row ─────────────────────────────── */
+.ne-body {
+  display: flex;
+  flex-direction: row;
+  height: calc(100% - 36px);  /* subtract titlebar height */
+  overflow: hidden;
+}
+
+.ne-pane {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Scrollbar: thin + theme-aware (Firefox) */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color, #30363d) transparent;
+}
+
+/* Scrollbar: thin + theme-aware (Chrome / Safari / Edge) */
+.ne-pane::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.ne-pane::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ne-pane::-webkit-scrollbar-thumb {
+  background: var(--border-color, #30363d);
+  border-radius: 2px;
+}
+
+.ne-pane::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim, #484f58);
+}
+
+.ne-pane::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── Vertical divider ────────────────────────────────────── */
+.ne-divider {
+  width: 1px;
+  background: var(--border-color, #30363d);
+  flex-shrink: 0;
+}
+
+/* ── Left pane: textarea ─────────────────────────────────── */
+.ne-editor-pane {
+  background: var(--bg-window);
+}
+
+.ne-textarea {
+  flex: 1;
+  resize: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: var(--font-size, 14px);
+  line-height: var(--line-height, 1.55);
+  border: none;
+  outline: none;
+  padding: 14px 18px;
+  caret-color: var(--color-green);
+  tab-size: 2;
+}
+
+.ne-textarea::selection {
+  background: rgba(88, 166, 255, 0.2);
+}
+
+.ne-textarea::placeholder {
+  color: var(--text-dim, #444d56);
+}
+
+/* ── Hint bar below textarea ─────────────────────────────── */
+.ne-editor-hint {
+  padding: 4px 18px 6px;
+  font-size: 11px;
+  color: var(--text-dim, #444d56);
+  border-top: 1px solid var(--border-color, #30363d);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Right pane: Markdown preview ────────────────────────── */
+.ne-preview-pane {
+  background: var(--bg-window);
+  border-left: none;  /* divider handles separation */
+}
+
+.ne-preview {
+  padding: 14px 18px 14px 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Mobile: stack panes vertically ─────────────────────── */
+@media (max-width: 600px) {
+  .ne-body {
+    flex-direction: column;
+  }
+
+  .ne-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  /* On mobile give textarea 45% and preview 55% of height */
+  .ne-editor-pane  { flex: 0 0 45%; }
+  .ne-preview-pane { flex: 1; }
+}

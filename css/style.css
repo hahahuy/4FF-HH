@@ -1,0 +1,438 @@
+/* ============================================================
+   style.css — Layout, Terminal Window, Drag Chrome
+   ============================================================ */
+
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-page:       #0d1117;
+  --bg-window:     #161b22;
+  --bg-titlebar:   #1f2428;
+  --bg-hover:      #1c2128;
+
+  --text-primary:  #c9d1d9;
+  --text-muted:    #6e7681;
+  --text-dim:      #484f58;
+
+  --color-blue:    #58a6ff;
+  --color-green:   #7ee787;
+  --color-orange:  #f0883e;
+  --color-red:     #ff7b72;
+  --color-purple:  #d2a8ff;
+
+  --dot-red:       #ff5f56;
+  --dot-yellow:    #ffbd2e;
+  --dot-green:     #27c93f;
+
+  --border-color:  #30363d;
+  --shadow:        0 16px 64px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+
+  --radius:        8px;
+  --font-mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-size:     14px;
+  --line-height:   1.6;
+}
+
+/* ── Theme: Dracula ───────────────────────────────────────── */
+[data-theme="dracula"] {
+  --bg-page:       #282a36;
+  --bg-window:     #1e1f29;
+  --bg-titlebar:   #21222c;
+  --bg-hover:      #44475a;
+
+  --text-primary:  #f8f8f2;
+  --text-muted:    #6272a4;
+  --text-dim:      #44475a;
+
+  --color-blue:    #8be9fd;
+  --color-green:   #50fa7b;
+  --color-orange:  #ffb86c;
+  --color-red:     #ff5555;
+  --color-purple:  #bd93f9;
+
+  --dot-red:       #ff5555;
+  --dot-yellow:    #f1fa8c;
+  --dot-green:     #50fa7b;
+
+  --border-color:  #44475a;
+}
+
+/* ── Theme: Solarized Dark ────────────────────────────────── */
+[data-theme="solarized"] {
+  --bg-page:       #002b36;
+  --bg-window:     #073642;
+  --bg-titlebar:   #073642;
+  --bg-hover:      #094453;
+
+  --text-primary:  #839496;
+  --text-muted:    #586e75;
+  --text-dim:      #657b83;
+
+  --color-blue:    #268bd2;
+  --color-green:   #859900;
+  --color-orange:  #cb4b16;
+  --color-red:     #dc322f;
+  --color-purple:  #6c71c4;
+
+  --dot-red:       #dc322f;
+  --dot-yellow:    #b58900;
+  --dot-green:     #859900;
+
+  --border-color:  #094453;
+}
+
+/* ── Theme: Light ─────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-page:       #f6f8fa;
+  --bg-window:     #ffffff;
+  --bg-titlebar:   #f0f2f5;
+  --bg-hover:      #eaeef2;
+
+  --text-primary:  #24292f;
+  --text-muted:    #6e7781;
+  --text-dim:      #8c959f;
+
+  --color-blue:    #0969da;
+  --color-green:   #1a7f37;
+  --color-orange:  #bc4c00;
+  --color-red:     #cf222e;
+  --color-purple:  #8250df;
+
+  --dot-red:       #ff5f56;
+  --dot-yellow:    #ffbd2e;
+  --dot-green:     #27c93f;
+
+  --border-color:  #d0d7de;
+  --shadow:        0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Light theme: dot pattern adjustment */
+[data-theme="light"] body {
+  background-image: radial-gradient(circle, #d0d7de 1px, transparent 1px);
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Subtle grid dot pattern */
+  background-image: radial-gradient(circle, #21262d 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── Backdrop glow ────────────────────────────────────────── */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle 22% at var(--mouse-x,50%) var(--mouse-y,50%),
+      rgba(88,166,255,0.14) 0%, rgba(88,166,255,0.04) 55%, transparent 75%),
+    radial-gradient(circle 46% at calc(var(--mouse-x,50%) - 5%) calc(var(--mouse-y,50%) + 9%),
+      rgba(210,168,255,0.06) 0%, transparent 65%),
+    radial-gradient(circle 72% at calc(var(--mouse-x,50%) + 8%) calc(var(--mouse-y,50%) - 6%),
+      rgba(126,231,135,0.025) 0%, transparent 80%);
+  transition: background 0.06s linear;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Mouse theme variants ─────────────────────────────────── */
+body.mouse-comet .backdrop {
+  background: radial-gradient(circle 16% at var(--mouse-x,50%) var(--mouse-y,50%),
+    rgba(88,166,255,0.22) 0%, rgba(88,166,255,0.06) 50%, transparent 72%);
+}
+body.mouse-halo .backdrop {
+  background: radial-gradient(ellipse 65% 55% at var(--mouse-x,50%) var(--mouse-y,50%),
+    rgba(88,166,255,0.07) 0%, rgba(210,168,255,0.04) 55%, transparent 82%);
+}
+body.mouse-aurora .backdrop {
+  background: radial-gradient(ellipse 70% 40% at var(--mouse-x,50%) var(--mouse-y,50%),
+    rgba(88,166,255,0.09) 0%, rgba(126,231,135,0.04) 40%,
+    rgba(210,168,255,0.03) 65%, transparent 85%);
+}
+body.mouse-off .backdrop { background: none; }
+
+/* ── Terminal Window ──────────────────────────────────────── */
+.terminal-window {
+  position: relative; /* JS overrides to fixed on init */
+  z-index: 10;
+  /* Default size — JS takes over after pinToScreen() */
+  width: min(90vw, 860px);
+  height: min(85vh, 680px);
+  background-color: var(--bg-window);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+  user-select: none;
+}
+
+/* ── Resize handles ───────────────────────────────────────── */
+.resize-handle {
+  position: absolute;
+  z-index: 100;
+}
+
+/* Edge strips */
+.resize-n  { top: 0;    left: 6px;  right: 6px;  height: 5px; cursor: n-resize;  }
+.resize-s  { bottom: 0; left: 6px;  right: 6px;  height: 5px; cursor: s-resize;  }
+.resize-e  { right: 0;  top: 6px;   bottom: 6px; width: 5px;  cursor: e-resize;  }
+.resize-w  { left: 0;   top: 6px;   bottom: 6px; width: 5px;  cursor: w-resize;  }
+
+/* Corner squares — raised above edge strips so corners take priority */
+.resize-ne { top: 0;    right: 0;  width: 10px; height: 10px; cursor: ne-resize; z-index: 101; }
+.resize-nw { top: 0;    left: 0;   width: 10px; height: 10px; cursor: nw-resize; z-index: 101; }
+.resize-se { bottom: 0; right: 0;  width: 10px; height: 10px; cursor: se-resize; z-index: 101; }
+.resize-sw { bottom: 0; left: 0;   width: 10px; height: 10px; cursor: sw-resize; z-index: 101; }
+
+.terminal-window:focus-within {
+  box-shadow: var(--shadow), 0 0 0 1px rgba(88, 166, 255, 0.25);
+}
+
+/* ── Titlebar ─────────────────────────────────────────────── */
+.titlebar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: var(--bg-titlebar);
+  border-bottom: 1px solid var(--border-color);
+  cursor: grab;
+  border-radius: var(--radius) var(--radius) 0 0;
+  -webkit-app-region: drag; /* macOS feel */
+}
+
+.titlebar:active {
+  cursor: grabbing;
+}
+
+/* Traffic-light dots */
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-red    { background-color: var(--dot-red); cursor: pointer; }
+.dot-yellow { background-color: var(--dot-yellow); }
+.dot-green  { background-color: var(--dot-green); }
+
+.titlebar-label {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+/* ── Terminal Body ────────────────────────────────────────── */
+.terminal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px 20px 12px;
+  gap: 0;
+}
+
+/* Scrollable output */
+.output {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 8px;
+  /* Allow text selection in output */
+  user-select: text;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.output::-webkit-scrollbar {
+  width: 5px;
+}
+
+.output::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.output::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+/* ── Output line hover ────────────────────────────────────── */
+.output-line {
+  padding: 1px 6px;
+  border-radius: 3px;
+  border-left: 2px solid transparent;
+  transition: background 0.1s ease, border-color 0.1s ease;
+  word-break: break-word;
+}
+
+.output-line:hover {
+  background-color: var(--bg-hover);
+  border-left-color: var(--color-blue);
+}
+
+/* ── Input Row ────────────────────────────────────────────── */
+.input-row {
+  display: flex;
+  align-items: center;
+  padding-top: 4px;
+  flex-shrink: 0;
+  /* Allow text selection in input */
+  user-select: text;
+}
+
+/* ── Autocomplete list ────────────────────────────────────── */
+.autocomplete-list {
+  margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* hidden attribute → native display:none; this reinforces it */
+.autocomplete-list[hidden] {
+  display: none;
+}
+
+.autocomplete-item {
+  color: var(--color-green);
+}
+
+.autocomplete-item.current {
+  color: var(--bg-page);
+  background-color: var(--color-blue);
+  border-radius: 2px;
+  padding: 0 4px;
+}
+
+/* ── Dragging / Resizing state ────────────────────────────── */
+.terminal-window.dragging,
+.terminal-window.resizing {
+  box-shadow: var(--shadow), 0 0 0 1px rgba(88, 166, 255, 0.4);
+  transition: none;
+  user-select: none;
+}
+
+/* ── Edge bounce animation ────────────────────────────────── */
+/* --bx / --by are set by JS to control bounce direction        */
+@keyframes terminal-bounce {
+  0%   { transform: translate(0, 0); }
+  35%  { transform: translate(var(--bx, 0px), var(--by, 0px)); }
+  65%  { transform: translate(calc(var(--bx, 0px) * -0.3), calc(var(--by, 0px) * -0.3)); }
+  100% { transform: translate(0, 0); }
+}
+
+/* VIS-2: New terminal window spring open animation */
+@keyframes window-open {
+  0%   { opacity: 0; transform: scale(0.88) translateY(8px); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Tablet (601–900 px) ──────────────────────────────────── */
+@media (min-width: 601px) and (max-width: 900px) {
+  :root {
+    --font-size:   13px;
+    --line-height: 1.55;
+  }
+
+  .terminal-body {
+    padding: 12px 14px 10px;
+  }
+
+  .titlebar {
+    padding: 8px 14px;
+  }
+
+  /* Hide resize handles — too fiddly at this size */
+  .resize-handle {
+    display: none;
+  }
+}
+
+/* ── Mobile (≤ 600 px) ────────────────────────────────────── */
+@media (max-width: 600px) {
+  :root {
+    --font-size:   13px;
+    --line-height: 1.5;
+  }
+
+  .terminal-window {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+    position: fixed !important;
+    top: 0   !important;
+    left: 0  !important;
+    transform: none !important;
+  }
+
+  .titlebar {
+    cursor: default;
+    border-radius: 0;
+    padding: 8px 14px;
+  }
+
+  .terminal-body {
+    padding: 10px 12px 8px;
+  }
+
+  .resize-handle {
+    display: none;
+  }
+}
+
+/* ── Small mobile (≤ 480 px) ──────────────────────────────── */
+@media (max-width: 480px) {
+  :root {
+    --font-size:   12px;
+    --line-height: 1.5;
+  }
+
+  .titlebar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .titlebar-label {
+    display: none; /* reclaim space on tiny screens */
+  }
+
+  .terminal-body {
+    padding: 8px 10px;
+  }
+
+  .ls-grid .ls-item {
+    min-width: 100px; /* tighter grid columns */
+  }
+}

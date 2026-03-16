@@ -1,0 +1,145 @@
+{
+  "bio": "Ha Huy is an Electrical Engineering student (minor: Space Engineering, graduating 2026) based in Ho Chi Minh City, Vietnam, and a working Quantum Engineer at Citynow. He started as a curious generalist — drawing from IoT, full-stack dev, machine learning, CFD, rocket science, satellite tech, and cosmology — then goes depth-first on whatever helps his current work or feeds the next project. Passionate about open-source, building meaningful products, and eventually contributing to research that moves humanity forward. Drinks too much coffee.",
+  "personality": [
+    "Curious generalist who goes depth-first — picks a thing, goes all in, then surfaces with new tools",
+    "Passionate about open-source development and closing the gap between closed and open models",
+    "Interested in cosmology, space, drones, robotics, IoT, Meshtastic, and signal technologies",
+    "Stays active — gym and sport are part of the routine",
+    "Reads widely and learns continuously; mostly self-taught outside formal coursework",
+    "Builds things because they make him happy, not just because they're impressive"
+  ],
+  "goals": {
+    "nearTerm": "Graduate EE (2026), deepen quantum engineering work at Citynow, ship AIMO3 to a meaningful benchmark.",
+    "longTerm": "Build products that matter. Become a researcher who contributes to open science and helps humankind progress — specifically at the intersection of AI, quantum, and engineering."
+  },
+  "whatHeDoes": [
+    "Quantum engineering — quantum optimization, circuit design, and making quantum computing accessible over cloud infrastructure at Citynow",
+    "Full-stack development — from database schemas to pixel-perfect UIs and CLI tooling",
+    "ML/AI — neural network design, LLM training and optimization (AIMO3 side project)",
+    "Simulation — drone flight dynamics, CFD, and spacecraft engineering concepts"
+  ],
+  "skills": {
+    "languages": [
+      "JavaScript (proficient)",
+      "HTML/CSS (daily driver)",
+      "Python (proficient)",
+      "C++ (improving)",
+      "Assembly (improving)"
+    ],
+    "mlAI": [
+      "Neural network architecture design",
+      "LLM training and optimization",
+      "AIMO3 — open-source math-olympiad AI training project",
+      "Python, C++"
+    ],
+    "quantum": [
+      "Quantum Engineer at Citynow",
+      "Quantum optimization (QUBO, VQE, QAOA)",
+      "Quantum ML with parameterized circuits",
+      "Qiskit, Cirq, Braket, qiskit-machine-learning",
+      "Circuit optimization and error handling",
+      "Research & prototyping — making quantum coding accessible over distributed cloud infrastructure"
+    ],
+    "frontend": [
+      "Vanilla JS (DOM, Fetch, Web APIs)",
+      "React / Next.js",
+      "CSS (BEM, custom properties)",
+      "Accessibility & performance"
+    ],
+    "backend": [
+      "Node.js / Express",
+      "REST API / FastAPI",
+      "PostgreSQL, SQLite",
+      "Docker, CI/CD"
+    ],
+    "tools": [
+      "Git",
+      "GitHub Actions",
+      "VS Code",
+      "Vim",
+      "Linux CLI"
+    ],
+    "engineering": [
+      "Electrical Engineering (degree in progress)",
+      "IoT systems and Meshtastic / signal technologies",
+      "Drone simulation — MATLAB/Simulink, custom Python, OpenFOAM (CFD), QGIS",
+      "CFD (Computational Fluid Dynamics)",
+      "Space engineering fundamentals"
+    ]
+  },
+  "projects": [
+    {
+      "name": "4FF-HH — This Portfolio",
+      "description": "CLI-style personal portfolio. Vanilla HTML/CSS/JS, zero runtime npm deps, Vite build, virtual filesystem (cat/ls/cd/grep), draggable terminal window, GitHub Pages deploy via GitHub Actions.",
+      "stack": ["HTML", "CSS", "JavaScript", "Vite", "Firebase Cloud Functions", "GitHub Pages"]
+    },
+    {
+      "name": "AIMO3 — AI Mathematical Olympiad training project",
+      "description": "Personal open-source project contributing to the AI Mathematical Olympiad (AIMO) initiative — which aims to develop AI models capable of performing at the level of top human mathematicians. AIMO3 is designed to accelerate open-source progress and close the gap between closed and open models on olympiad-level math reasoning. Ongoing.",
+      "stack": ["Python", "LLM training tooling", "C++"]
+    },
+    {
+      "name": "Drone Simulation",
+      "description": "Simulation project exploring drone flight dynamics and computational fluid dynamics (CFD). Uses MATLAB/Simulink for flight modelling, OpenFOAM for CFD, QGIS for spatial analysis, and custom Python scripts for data processing.",
+      "stack": ["MATLAB/Simulink", "Python", "OpenFOAM", "QGIS"]
+    },
+    {
+      "name": "CLI dev tool (Citynow)",
+      "description": "Internal CLI tool for Citynow's quantum product workflows, built to improve team automation and make quantum circuit development more convenient.",
+      "stack": ["Node.js", "Python"]
+    }
+  ],
+  "contact": {
+    "github": "github.com/hahahuy",
+    "linkedin": "linkedin.com/in/haqhuy/",
+    "email": "quanghuyha098@gmail.com"
+  },
+  "site": {
+    "url": "hahuy.site",
+    "stack": "Vanilla JS + Vite (dev/prod). Zero runtime npm deps. One CDN dep: marked.js.",
+    "deploy": "GitHub Actions: typecheck + lint + test → npm run build → dist/ → gh-pages branch",
+    "backend": "Firebase Cloud Functions (Node.js) — auth (OTP via Telegram), notes sync to GitHub, AI oracle, file upload",
+    "navigation": "Type 'ls' to browse files, 'cat about.md' to read about Ha Huy, 'cat projects/README.md' for projects, 'cat skills.md' for skills, 'transformers.py' to open this Oracle window, 'help' for all commands.",
+    "features": [
+      "Virtual filesystem: cat, ls, cd, grep, pwd",
+      "Draggable terminal window (Pointer Events API)",
+      "Live ticker: BTC, Gold, GH commits, HN, weather",
+      "AI oracle (this feature) — Llama-3.2-3B-Instruct via HF Inference API",
+      "Owner auth: passphrase → OTP via Telegram → 4h session token",
+      "Note editor with live Markdown preview",
+      "Right-click context menu"
+    ],
+    "github": "github.com/hahahuy/4FF-HH"
+  },
+  "guardrail": {
+    "allowedTopics": [
+      "Ha Huy — who he is, background, personality, location, education, work style, interests, goals",
+      "Ha Huy's career — Quantum Engineer at Citynow, EE student, projects, ambitions",
+      "Ha Huy's skills and knowledge — quantum, ML/AI, full-stack, EE, simulation, CFD, IoT",
+      "This website — how it works, the stack, architecture, features, how to navigate",
+      "How to contact Ha Huy — GitHub, LinkedIn, email"
+    ],
+    "refusalMessage": "I only answer questions about Ha Huy and his work. Try: 'who is Ha Huy?', 'what does he do at Citynow?', 'what stack is this site?', or 'tell me about his AI projects'.",
+    "offTopicExamples": [
+      "What is the weather in Hanoi?",
+      "Write me a Python sorting algorithm.",
+      "Who is Elon Musk?",
+      "Explain quantum computing in general.",
+      "What is 2+2?",
+      "Translate this sentence to French.",
+      "What is the capital of Japan?"
+    ],
+    "onTopicExamples": [
+      "What languages does Ha Huy know?",
+      "How does this terminal work?",
+      "What is Ha Huy's ML background?",
+      "What does he do at Citynow?",
+      "What is AIMO3?",
+      "What is the ticker bar?",
+      "How do I navigate this site?",
+      "Where is Ha Huy based?",
+      "How can I contact Ha Huy?",
+      "What are Ha Huy's goals?"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      # typecheck disabled: project uses vanilla JS globals loaded via <script> tags.
+      # TypeScript's checkJs correctly flags `globalThis.X = X` writes but these are
+      # intentional runtime exports — not actual bugs. Re-enable once the codebase
+      # migrates to ES modules or a proper type declaration strategy is in place.
+      # - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test

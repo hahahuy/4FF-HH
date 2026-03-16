@@ -1,0 +1,30 @@
+/* ============================================================
+   auth.css — Auth module styles
+   Minimal — only the OTP pending pulse indicator.
+   All colours use CSS custom properties from style.css.
+   ============================================================ */
+
+/* ── Pending OTP pulse indicator ─────────────────────────── */
+.auth-pending-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-orange);
+  animation: auth-pulse 1s ease infinite alternate;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes auth-pulse {
+  from { opacity: 0.4; }
+  to   { opacity: 1;   }
+}
+
+/* ── Session badge (optional, shown next to prompt) ──────── */
+.auth-session-badge {
+  font-size: 11px;
+  color: var(--color-green);
+  opacity: 0.65;
+  margin-left: 6px;
+}
