@@ -272,6 +272,7 @@ const STYLE = `
     transition: color .12s, border-color .12s;
   }
   .icon-btn:hover { color: var(--color-blue); border-color: var(--color-blue); }
+  .controls.search-active .icon-btn { display: none; }
   .search-results {
     background: var(--bg-page);
     border: 1px solid var(--border-color);
@@ -660,6 +661,15 @@ const CLIENT_JS = `
   var currentSlug = window.BLOG_META.currentSlug;
   var input = document.getElementById('search');
   var results = document.getElementById('search-results');
+  var controls = input.closest('.controls');
+
+  // Expand search bar on focus — hide icon buttons
+  input.addEventListener('focus', function () {
+    controls.classList.add('search-active');
+  });
+  input.addEventListener('blur', function () {
+    controls.classList.remove('search-active');
+  });
 
   input.addEventListener('input', function () {
     var q = input.value.trim().toLowerCase();
@@ -679,29 +689,39 @@ const CLIENT_JS = `
         results.appendChild(a);
       });
     } else {
-      // Local search on post page — highlight within article
+      // Local search on post page — highlight all matches within article
       var article = document.querySelector('article');
       article.querySelectorAll('mark.sh').forEach(function (m) {
         m.replaceWith(document.createTextNode(m.textContent));
       });
+      article.normalize();
       var walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
       var count = 0;
       var nodes = [];
       var node;
       while ((node = walker.nextNode())) nodes.push(node);
       nodes.forEach(function (tn) {
-        var i = tn.textContent.toLowerCase().indexOf(q);
-        if (i === -1) return;
-        count++;
-        var mark = document.createElement('mark');
-        mark.className = 'sh';
-        mark.style.background = 'rgba(126,231,135,.3)';
-        mark.style.color = 'inherit';
-        var range = document.createRange();
-        range.setStart(tn, i);
-        range.setEnd(tn, i + q.length);
-        try { range.surroundContents(mark); } catch (e) { return; }
-        if (count === 1) mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var text = tn.textContent;
+        var lc = text.toLowerCase();
+        var pos = 0;
+        var i;
+        var frag = document.createDocumentFragment();
+        var hasMatch = false;
+        while ((i = lc.indexOf(q, pos)) !== -1) {
+          hasMatch = true;
+          count++;
+          if (i > pos) frag.appendChild(document.createTextNode(text.slice(pos, i)));
+          var mark = document.createElement('mark');
+          mark.className = 'sh';
+          mark.style.background = 'rgba(126,231,135,.3)';
+          mark.style.color = 'inherit';
+          mark.textContent = text.slice(i, i + q.length);
+          frag.appendChild(mark);
+          pos = i + q.length;
+        }
+        if (!hasMatch) return;
+        if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)));
+        tn.parentNode.replaceChild(frag, tn);
       });
       var div = document.createElement('div');
       div.className = 'search-count';
