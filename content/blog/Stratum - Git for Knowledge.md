@@ -120,7 +120,7 @@ If you're a developer, the stack is approachable: FastAPI + Python 3.10 on the b
 
 ```bash
 # Self-host in two commands
-git clone https://github.com/your-org/stratum
+git clone https://github.com/hahahuy/stratum
 docker compose up --build
 ```
 

@@ -342,7 +342,27 @@ const STYLE = `
     overflow-x: auto;
     margin-bottom: 1rem;
     line-height: 1.55;
+    position: relative;
   }
+  .copy-btn {
+    position: absolute;
+    top: .45rem;
+    right: .5rem;
+    padding: .18rem .55rem;
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    color: var(--text-muted);
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, color .15s, border-color .15s;
+    user-select: none;
+    line-height: 1.6;
+  }
+  pre:hover .copy-btn { opacity: 1; }
+  .copy-btn.copied { color: var(--color-green); border-color: var(--color-green); opacity: 1; }
   code { font-family: var(--font-mono); font-size: .9em; line-height: 1.55; }
   p code, li code {
     background: var(--bg-page);
@@ -554,11 +574,50 @@ const STYLE = `
     html { font-size: 13px; }
     .main-content { padding: 1rem; }
   }
+  /* ── Footer ── */
+  .site-footer {
+    max-width: 1720px;
+    margin: 2rem auto 0;
+    padding: 1.25rem 0 .75rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .6rem 1.5rem;
+    font-size: .78rem;
+    color: var(--text-muted);
+  }
+  .site-footer a { color: var(--text-muted); text-decoration: none; transition: color .12s; }
+  .site-footer a:hover { color: var(--color-blue); }
+  .footer-left { display: flex; flex-direction: column; gap: .3rem; }
+  .footer-right { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
 `;
 
 const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">`;
+
+const YEAR = new Date().getFullYear();
+const FOOTER_HTML = `
+  <footer class="site-footer">
+    <div class="footer-left">
+      <span>© ${YEAR} Ha Huy (Tony). All rights reserved.</span>
+      <span>
+        Blog content licensed under
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>
+        — code snippets under
+        <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT</a>.
+      </span>
+      <span>Views are my own and do not represent any employer or institution.</span>
+    </div>
+    <div class="footer-right">
+      <a href="https://hahuy.site">← terminal</a>
+      <a href="/blog/">~/blog</a>
+      <a href="https://github.com/Hahuy" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="mailto:contact@hahuy.site">contact@hahuy.site</a>
+    </div>
+  </footer>`;
 
 // ─── inlined client JS ────────────────────────────────────────────────────────
 
@@ -753,6 +812,35 @@ const CLIENT_JS = `
       btn.classList.toggle('visible', window.scrollY > 300);
     }, { passive: true });
   })();
+
+  // Copy buttons for fenced code blocks
+  (function () {
+    var LANGS = /\blanguage-(\w+)\b/;
+    var SKIP  = /^(text|plaintext|none|markup|html|xml|svg|mathml)$/i;
+    document.querySelectorAll('pre > code[class]').forEach(function (code) {
+      var m = code.className.match(LANGS);
+      if (!m || SKIP.test(m[1])) return;
+      var pre = code.parentElement;
+      var btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = 'copy';
+      btn.setAttribute('aria-label', 'Copy code');
+      btn.addEventListener('click', function () {
+        navigator.clipboard.writeText(code.innerText).then(function () {
+          btn.textContent = 'copied!';
+          btn.classList.add('copied');
+          setTimeout(function () {
+            btn.textContent = 'copy';
+            btn.classList.remove('copied');
+          }, 1800);
+        }).catch(function () {
+          btn.textContent = 'error';
+          setTimeout(function () { btn.textContent = 'copy'; }, 1800);
+        });
+      });
+      pre.appendChild(btn);
+    });
+  })();
 })();
 `;
 
@@ -824,6 +912,7 @@ function postPage({ title, date, slug, bodyHtml, mins, blogMeta, explorerHtml })
       <button class="graph-modal-close" id="graph-modal-close">✕</button>
     </div>
   </div>
+  ${FOOTER_HTML}
   <a href="#" class="back-top" aria-label="Scroll to top">↑</a>
   <script>window.BLOG_META = ${JSON.stringify(meta)};</script>
   <script>${CLIENT_JS}</script>
@@ -912,6 +1001,7 @@ function indexPage(posts, blogMeta, explorerHtml) {
       <button class="graph-modal-close" id="graph-modal-close">✕</button>
     </div>
   </div>
+  ${FOOTER_HTML}
   <a href="#" class="back-top" aria-label="Scroll to top">↑</a>
   <script>window.BLOG_META = ${JSON.stringify(meta)};</script>
   <script>${CLIENT_JS}</script>
