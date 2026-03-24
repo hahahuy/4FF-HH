@@ -161,6 +161,19 @@
     </div>
   </div>
 
+  <!-- Blog promo widget -->
+  <div class="blog-promo-window" id="blogPromo">
+    <div class="blog-promo-titlebar">
+      <button class="blog-promo-close" id="blogPromoClose" aria-label="Close"></button>
+      <span class="blog-promo-title">blog.exe</span>
+    </div>
+    <a href="https://hahuy.site/blog" target="_blank" rel="noopener noreferrer" class="blog-promo-body">
+      <span class="blog-promo-icon">☕</span>
+      <span class="blog-promo-text">Here for the tea?<br>Read my Blogs now</span>
+      <span class="blog-promo-arrow">→</span>
+    </a>
+  </div>
+
   <!-- Scripts (order matters; defer = parallel download, preserved execution order) -->
   <!-- Utils: loaded first — no dependencies -->
   <script src="js/utils/config.js" defer></script>
@@ -189,6 +202,11 @@
   <script src="js/draggable.js" defer></script>
   <script src="js/contextmenu.js" defer></script>
   <script src="js/ticker.js" defer></script>
-
+  <script>
+    document.getElementById('blogPromoClose').addEventListener('click', function (e) {
+      e.stopPropagation();
+      document.getElementById('blogPromo').classList.add('hidden');
+    });
+  </script>
 </body>
 </html>

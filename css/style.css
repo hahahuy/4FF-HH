@@ -436,3 +436,103 @@ body.mouse-off .backdrop { background: none; }
     min-width: 100px; /* tighter grid columns */
   }
 }
+
+/* ── Blog Promo Widget ────────────────────────────────────── */
+.blog-promo-window {
+  position: fixed;
+  top: 44px;          /* 28px ticker + 16px gap */
+  left: 16px;
+  z-index: 1100;      /* below ticker (1200) but above terminal */
+  width: 210px;
+  background: var(--bg-window);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.blog-promo-window.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92) translateY(-6px);
+}
+
+/* Titlebar */
+.blog-promo-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--bg-titlebar);
+  border-bottom: 1px solid var(--border-color);
+  cursor: default;
+  user-select: none;
+}
+
+.blog-promo-close {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  background: var(--dot-red, #ff5f56);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: filter 0.15s;
+}
+
+.blog-promo-close:hover {
+  filter: brightness(1.25);
+}
+
+.blog-promo-title {
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* Clickable body */
+.blog-promo-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: background 0.15s;
+}
+
+.blog-promo-body:hover {
+  background: var(--bg-hover);
+}
+
+.blog-promo-body:hover .blog-promo-arrow {
+  transform: translateX(3px);
+}
+
+.blog-promo-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.blog-promo-text {
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  flex: 1;
+}
+
+.blog-promo-arrow {
+  color: var(--color-green);
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+/* Hide on mobile alongside the ticker */
+@media (max-width: 600px) {
+  .blog-promo-window { display: none !important; }
+}

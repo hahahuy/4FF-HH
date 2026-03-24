@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quantum Tunneling — Reading Graph (HPC / QPU)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d1117; font-family: 'Segoe UI', system-ui, sans-serif; color: #e6edf3; user-select: none; }
+
+    header { text-align: center; padding: 22px 0 4px; }
+    header h1 { font-size: 1.25rem; color: #c9d1d9; font-weight: 600; letter-spacing: 0.04em; }
+    header p  { font-size: 0.78rem; color: #6e7681; margin-top: 5px; }
+
+    /* ── legend ── */
+    .legend-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0 14px; }
+    .legend-row   { display:flex; justify-content:center; gap:18px; flex-wrap:wrap; }
+    .legend-item  { display:flex; align-items:center; gap:7px; font-size:11.5px; color:#8b949e; }
+    .legend-swatch { width:11px; height:11px; border-radius:3px; flex-shrink:0; }
+
+    /* HPC / QPU badge pills in legend */
+    .badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size:9px; font-weight:800; letter-spacing:0.08em;
+      padding:2px 6px; border-radius:4px; line-height:1;
+    }
+    .badge-hpc { background:#1a3a4a; color:#22d3ee; border:1px solid #22d3ee55; }
+    .badge-qpu { background:#3a1a10; color:#f59e0b; border:1px solid #f59e0b55; }
+    .badge-both { background: linear-gradient(90deg,#1a3a4a 50%,#3a1a10 50%);
+                  color:#fff; border:1px solid #44444466; }
+
+    .legend-divider { width:520px; max-width:90vw; border:none; border-top:1px solid #21262d; margin:2px 0; }
+
+    svg { display: block; margin: 0 auto; overflow: visible; }
+
+    #tooltip {
+      position: fixed; background: #13171f; border: 1px solid #2d333b;
+      border-radius: 10px; padding: 13px 16px; max-width: 320px;
+      font-size: 12.5px; line-height: 1.55; pointer-events: none;
+      opacity: 0; transition: opacity 0.12s ease; z-index: 100;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+    #tooltip.show { opacity: 1; }
+    #tooltip .tt-name  { font-weight:700; font-size:13.5px; margin-bottom:3px; }
+    #tooltip .tt-short { font-size:11.5px; color:#8b949e; margin-bottom:8px; }
+    #tooltip .tt-body  { color:#c9d1d9; font-size:12px; }
+    #tooltip .tt-access { margin-top:10px; display:flex; gap:6px; flex-wrap:wrap; }
+    #tooltip .tt-access-label { font-size:11px; color:#6e7681; margin-bottom:4px; }
+    #tooltip .tt-link  { margin-top:8px; }
+    #tooltip .tt-link a { font-size:11.5px; text-decoration:none; }
+    #tooltip .tt-link a:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Quantum Tunneling — Reading Graph</h1>
+  <p>Core Theory → Domain Reviews → Cutting Edge &nbsp;·&nbsp; Hover for details &nbsp;·&nbsp; Glows = your HPC / QPU access</p>
+</header>
+
+<div class="legend-wrap">
+  <!-- row 1: domain colours -->
+  <div class="legend-row">
+    <div class="legend-item"><div class="legend-swatch" style="background:#a78bfa"></div>General Theory</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#60a5fa"></div>Quantum Computing</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#34d399"></div>Nanodevices / STM</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#4ade80"></div>Biology</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fb923c"></div>Cosmology / GR</div>
+    <div class="legend-item">
+      <svg width="34" height="12"><line x1="0" y1="6" x2="34" y2="6" stroke="#666" stroke-width="1.5" stroke-dasharray="4,3"/></svg>
+      skip-tier edge
+    </div>
+  </div>
+  <hr class="legend-divider">
+  <!-- row 2: HPC/QPU access -->
+  <div class="legend-row">
+    <div class="legend-item"><span class="badge badge-hpc">HPC</span>&nbsp;HPC-accessible research</div>
+    <div class="legend-item"><span class="badge badge-qpu">QPU</span>&nbsp;QPU-accessible research</div>
+    <div class="legend-item"><span class="badge badge-hpc">HPC</span><span class="badge badge-qpu">QPU</span>&nbsp;Both platforms</div>
+    <div class="legend-item" style="opacity:0.4">
+      <div class="legend-swatch" style="background:#444;border:1px solid #555"></div>Not directly accessible
+    </div>
+  </div>
+</div>
+
+<svg id="g"></svg>
+<div id="tooltip"></div>
+
+<script>
+const SVG_W = 1180, SVG_H = 860;
+const NW = 236, NH = 72;
+const COL_X  = { 2: 168, 3: 572, 4: 1004 };
+const V_SPACE = { 2: 148, 3: 148, 4: 116  };
+
+const DC = {
+  theory: "#a78bfa",
+  qc:     "#60a5fa",
+  nano:   "#34d399",
+  bio:    "#4ade80",
+  cosmo:  "#fb923c",
+};
+
+// access: null | "hpc" | "qpu" | "both" | "none"
+// accessNote: short description shown in tooltip
+const NODES = [
+  // ── Tier 2
+  { id:"sakurai", tier:2, domain:"theory", access:"hpc",
+    name:"Sakurai & Napolitano",
+    short:"Modern Quantum Mechanics (2020)",
+    year:"3rd ed. — Cambridge UP",
+    accessNote:"Foundation for coding tunneling Hamiltonians on HPC (exact diagonalisation, scattering matrix).",
+    body:"Standard graduate QM reference. Covers scattering theory, bra-ket formalism, and approximation methods — the shared vocabulary of every tunneling research paper.",
+    link:null },
+
+  { id:"ll", tier:2, domain:"theory", access:"hpc",
+    name:"Landau & Lifshitz",
+    short:"Quantum Mechanics Vol. 3, Ch. 25",
+    year:"JWKB / Semiclassical approximation",
+    accessNote:"JWKB / instanton derivations underpin HPC tunneling rate codes (DL-FIND, i-PI instanton module).",
+    body:"The authoritative rigorous JWKB derivation: Gamow factor, connection formulae, tunneling through barriers of arbitrary shape. Terse but precise — cited by every theorist working on tunneling rates.",
+    link:null },
+
+  { id:"razavy", tier:2, domain:"theory", access:"hpc",
+    name:"Razavy",
+    short:"Quantum Theory of Tunneling (World Scientific)",
+    year:"2003 / 2014",
+    accessNote:"Path integral and instanton chapters map directly to HPC codes: PIMC, i-PI, instanton optimisation.",
+    body:"The only book-length treatment of tunneling across all domains. Covers dissipative tunneling, many-body effects, the tunneling-time problem, exactly solvable models, and path integral methods. Read selectively by chapter.",
+    link:null },
+
+  { id:"caldeira", tier:2, domain:"theory", access:"both",
+    name:"Caldeira & Leggett",
+    short:"Ann. Phys. 149, 374 (1983)",
+    year:"Dissipative tunneling — foundational",
+    accessNote:"HPC: solve Lindblad master equation numerically. QPU: encode bath modes as ancilla qubits and simulate open-system tunneling directly on hardware.",
+    body:"Foundational paper: quantum tunneling in dissipative environments (quantum Brownian motion). The Caldeira-Leggett model is the shared theoretical language of qubit decoherence, biological tunneling, and open quantum systems. Required reading for ALL four domains.",
+    link:"https://doi.org/10.1016/0003-4916(83)90202-6" },
+
+  // ── Tier 3
+  { id:"blais", tier:3, domain:"qc", access:"qpu",
+    name:"Blais, Grimsmo, Girvin & Wallraff",
+    short:"Circuit Quantum Electrodynamics",
+    year:"Rev. Mod. Phys. 93, 025005 (2021)",
+    accessNote:"Direct QPU relevance: Josephson junction tunneling is the mechanism of your QPU's qubits. Use this review to design pulse sequences probing tunneling-induced leakage and T₁/T₂.",
+    body:"Definitive 100-page review of circuit QED. Josephson junction tunneling → transmon nonlinearity, coupling to microwave cavities, qubit control, and error correction. The essential gateway into superconducting qubit SoTA.",
+    link:"https://doi.org/10.1103/RevModPhys.93.025005" },
+
+  { id:"klinman", tier:3, domain:"bio", access:"hpc",
+    name:"Klinman & Kohen",
+    short:"Annu. Rev. Biochemistry 82, 471 (2013)",
+    year:"Enzymatic hydrogen tunneling",
+    accessNote:"HPC: QM/MM + RPMD simulations of DHFR/ADH hydrogen tunneling. A single free-energy calculation requires 10³–10⁴ CPU hours — only feasible on HPC.",
+    body:"Best available review of quantum tunneling in enzyme catalysis. Covers kinetic isotope effects (KIE) as experimental signature, DHFR as model system, theoretical frameworks, and the ongoing debate over biological significance.",
+    link:null },
+
+  { id:"tsang", tier:3, domain:"nano", access:"hpc",
+    name:"Tsang, Pu & Chen",
+    short:"TFET Multiscale Simulation Review",
+    year:"arXiv:2409.18965 (2024)",
+    accessNote:"HPC: DFT + NEGF transport simulation of TFET devices. ML surrogate training for device design acceleration — a publishable open area on HPC.",
+    body:"Current SoTA on Tunnel FET simulation with multiscale and ML methods. Covers band-to-band tunneling in 2D heterostructures (MoS₂, WS₂), device physics, and design optimisation. Gateway into nanodevice tunneling.",
+    link:"https://arxiv.org/abs/2409.18965" },
+
+  { id:"schofield", tier:3, domain:"nano", access:"both",
+    name:"Schofield et al.",
+    short:"Atomic-Scale Semiconductor Roadmap",
+    year:"Nano Futures 9, 012001 (2025)",
+    accessNote:"HPC: large-scale tight-binding / DFT for donor-in-silicon device simulation. QPU: donor-spin qubits in silicon are themselves QPU hardware — characterisation experiments apply directly.",
+    body:"94-page community roadmap on donor-in-silicon qubits and atomic-precision tunneling devices. Maps the entire SoTA for STM-based device engineering and atomic-scale quantum computing hardware.",
+    link:"https://arxiv.org/abs/2501.04535" },
+
+  // ── Tier 4
+  { id:"takayoshi", tier:4, domain:"theory", access:"hpc",
+    name:"Takayoshi & Oka",
+    short:"Geometric Tunneling in Floquet Systems",
+    year:"JPSJ 94, 111003 (2025) · arXiv:2509.03674",
+    accessNote:"HPC: Floquet band structure + Berry curvature calculations for driven 2D materials. Large k-grid and time-stepping required — scales well on HPC clusters.",
+    body:"Berry phase and quantum geometry modify tunneling rates in driven/Floquet systems. Opens new topological control knobs — a 2025 frontier connecting geometry and tunneling dynamics.",
+    link:"https://arxiv.org/abs/2509.03674" },
+
+  { id:"su", tier:4, domain:"qc", access:"both",
+    name:"Su, Cortiñas, Venkatraman & Puri",
+    short:"Switching Dynamics in Quantum Double-Well",
+    year:"Phys. Rev. A 112, 042202 (2025) · arXiv:2501.00209",
+    accessNote:"QPU: implement double-well switching directly on superconducting qubit hardware; probe tunneling rate vs. drive amplitude. HPC: classical Lindblad master equation reference for comparison.",
+    body:"Challenges the assumption that tunneling rates decrease monotonically with barrier height in driven superconducting oscillators. Directly relevant to cat-qubit design and quantum error correction.",
+    link:"https://arxiv.org/abs/2501.00209" },
+
+  { id:"nishimura", tier:4, domain:"theory", access:"both",
+    name:"Nishimura & Watanabe",
+    short:"Decoherence from Complex Saddle Points",
+    year:"Phys. Rev. Lett. (2025) · arXiv:2408.16627",
+    accessNote:"HPC: numerical instanton optimisation to compute complex saddle-point actions. QPU: measure decoherence rates and compare against saddle-point predictions — direct HPC↔QPU benchmarking opportunity.",
+    body:"Connects instanton tunneling (complex saddle-point calculus) to the mechanism of decoherence. Bridges Caldeira-Leggett theory to modern quantum computing noise problems — a theoretical unification.",
+    link:"https://arxiv.org/abs/2408.16627" },
+
+  { id:"choi", tier:4, domain:"nano", access:"qpu",
+    name:"Choi et al.",
+    short:"ESR with Scanning Tunneling Microscopy",
+    year:"Nanoscale Advances 7, 4551 (2025) · arXiv:2505.10079",
+    accessNote:"QPU: the ESR-STM spin system is a driven two-level system simulable on QPU. Model the tunneling-current-driven Rabi dynamics and Lindblad noise as a qubit circuit.",
+    body:"STM tunneling current drives electron spin resonance on individual atoms — SoTA in atomic-scale quantum sensing. Directly connects STM to qubit manipulation and single-atom quantum control.",
+    link:"https://arxiv.org/abs/2505.10079" },
+
+  { id:"zhang", tier:4, domain:"theory", access:"hpc",
+    name:"Zhang & Gu",
+    short:"Klein Tunneling in Dirac Systems",
+    year:"Phys. Rev. A 113, 032208 (2026) · arXiv:2602.23650",
+    accessNote:"HPC: large-scale tight-binding (KWANT) for graphene p-n junctions; systems of 10⁶+ atoms needed for clean Klein tunneling. Disorder studies are embarrassingly parallel.",
+    body:"Rigorous analysis of Klein tunneling (relativistic tunneling without exponential suppression) in graphene and topological systems. Contrasts non-relativistic vs. relativistic tunneling — expands conceptual vocabulary beyond WKB.",
+    link:"https://arxiv.org/abs/2602.23650" },
+
+  { id:"eslamzadeh", tier:4, domain:"cosmo", access:"none",
+    name:"Eslamzadeh & Soroushfar",
+    short:"Hawking Radiation as Tunneling",
+    year:"JHAP 5(2), 44–56 (2025) · arXiv:2512.06361",
+    accessNote:"Not directly accessible: cosmological/GR tunneling at the Planck scale cannot be simulated by HPC or QPU. Valuable conceptually — shows the universality of the tunneling framework.",
+    body:"Applies Parikh-Wilczek quantum tunneling formalism to black hole horizons. Shows tunneling is a universal framework beyond condensed matter — connects to cosmology and the information paradox.",
+    link:"https://arxiv.org/abs/2512.06361" },
+];
+
+const EDGES = [
+  { from:"sakurai",   to:"blais",      skip:false },
+  { from:"sakurai",   to:"klinman",    skip:false },
+  { from:"sakurai",   to:"tsang",      skip:false },
+  { from:"ll",        to:"blais",      skip:false },
+  { from:"ll",        to:"tsang",      skip:false },
+  { from:"razavy",    to:"blais",      skip:false },
+  { from:"razavy",    to:"klinman",    skip:false },
+  { from:"razavy",    to:"tsang",      skip:false },
+  { from:"razavy",    to:"schofield",  skip:false },
+  { from:"caldeira",  to:"blais",      skip:false },
+  { from:"caldeira",  to:"klinman",    skip:false },
+  { from:"ll",        to:"takayoshi",  skip:true  },
+  { from:"razavy",    to:"nishimura",  skip:true  },
+  { from:"caldeira",  to:"nishimura",  skip:true  },
+  { from:"sakurai",   to:"zhang",      skip:true  },
+  { from:"razavy",    to:"eslamzadeh", skip:true  },
+  { from:"blais",     to:"su",         skip:false },
+  { from:"blais",     to:"nishimura",  skip:false },
+  { from:"tsang",     to:"choi",       skip:false },
+  { from:"schofield", to:"choi",       skip:false },
+];
+
+// ─── LAYOUT ──────────────────────────────────────────────────────────────────
+function assignY(tierNodes, canvasH, nodeH, spacing) {
+  const totalH = (tierNodes.length - 1) * spacing + nodeH;
+  const startY  = (canvasH - totalH) / 2 + nodeH / 2;
+  return tierNodes.map((n, i) => ({ ...n, y: Math.round(startY + i * spacing) }));
+}
+
+let positioned = [];
+[2, 3, 4].forEach(t => {
+  const tn = NODES.filter(n => n.tier === t);
+  assignY(tn, SVG_H, NH, V_SPACE[t]).forEach(n => {
+    positioned.push({ ...n, x: COL_X[t] });
+  });
+});
+
+const NM = Object.fromEntries(positioned.map(n => [n.id, n]));
+
+// ─── SVG SETUP ───────────────────────────────────────────────────────────────
+const NS  = "http://www.w3.org/2000/svg";
+const svg = document.getElementById('g');
+svg.setAttribute('width',  SVG_W);
+svg.setAttribute('height', SVG_H);
+svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
+
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ─── DEFS ────────────────────────────────────────────────────────────────────
+const defs = el('defs', {}, svg);
+
+// Arrow markers per domain (normal + skip)
+Object.entries(DC).forEach(([dom, col]) => {
+  const mk = el('marker', { id:`arr-${dom}`, markerWidth:7, markerHeight:7,
+    refX:6, refY:3, orient:'auto' }, defs);
+  el('path', { d:'M0,0.5 L0,5.5 L6.5,3 Z', fill:col, opacity:0.7 }, mk);
+  const mk2 = el('marker', { id:`arrd-${dom}`, markerWidth:7, markerHeight:7,
+    refX:6, refY:3, orient:'auto' }, defs);
+  el('path', { d:'M0,0.5 L0,5.5 L6.5,3 Z', fill:col, opacity:0.35 }, mk2);
+});
+
+// Glow filters — one per access type
+const glowDefs = [
+  { id:'glow-hpc',  color:'#22d3ee', stdDev:6  },
+  { id:'glow-qpu',  color:'#f59e0b', stdDev:6  },
+  { id:'glow-both', color:'#a78bfa', stdDev:7  },
+];
+glowDefs.forEach(({ id, color, stdDev }) => {
+  const f = el('filter', { id, x:'-40%', y:'-40%', width:'180%', height:'180%' }, defs);
+  const flood = el('feFlood', { 'flood-color':color, 'flood-opacity':0.55, result:'c' }, f);
+  el('feComposite', { in:'c', in2:'SourceGraphic', operator:'in', result:'cm' }, f);
+  el('feGaussianBlur', { in:'cm', stdDeviation:stdDev, result:'blur' }, f);
+  el('feMerge', {}, f);
+  // feMergeNode needs children
+  const fm = f.querySelector('feMerge') || f.lastChild;
+  const mn1 = el('feMergeNode', { in:'blur' }, fm);
+  const mn2 = el('feMergeNode', { in:'SourceGraphic' }, fm);
+});
+
+// Dot grid
+const pat = el('pattern', { id:'grid', width:28, height:28, patternUnits:'userSpaceOnUse' }, defs);
+el('circle', { cx:14, cy:14, r:1, fill:'#1e2530' }, pat);
+el('rect', { width:SVG_W, height:SVG_H, fill:'url(#grid)' }, svg);
+
+// ─── TIER BANDS & LABELS ─────────────────────────────────────────────────────
+[
+  { tier:2, label:"TIER 2 — CORE THEORY" },
+  { tier:3, label:"TIER 3 — DOMAIN REVIEWS" },
+  { tier:4, label:"TIER 4 — CUTTING EDGE 2025+" },
+].forEach(({ tier, label }) => {
+  const cx = COL_X[tier];
+  el('rect', { x: cx - NW/2 - 10, y:0, width: NW + 20, height: SVG_H,
+    fill:'#ffffff', opacity:'0.018' }, svg);
+  const t = el('text', { x:cx, y:26, 'text-anchor':'middle',
+    fill:'#484f58', 'font-size':11, 'font-weight':700, 'letter-spacing':2 }, svg);
+  t.textContent = label;
+});
+
+// ─── EDGES ───────────────────────────────────────────────────────────────────
+const edgeGroup = el('g', { id:'edges' }, svg);
+
+EDGES.forEach(edge => {
+  const s = NM[edge.from], d = NM[edge.to];
+  if (!s || !d) return;
+  const x1 = s.x + NW/2,     y1 = s.y;
+  const x2 = d.x - NW/2 - 6, y2 = d.y;
+  const dx = x2 - x1;
+  const cx1 = x1 + dx * 0.42, cx2 = x2 - dx * 0.42;
+  const col   = DC[s.domain];
+  const opac  = edge.skip ? 0.20 : 0.30;
+  const dash  = edge.skip ? "5,4" : "none";
+  const mrkr  = edge.skip ? `url(#arrd-${s.domain})` : `url(#arr-${s.domain})`;
+  el('path', {
+    class:`edge src-${s.id} dst-${d.id}`,
+    d:`M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`,
+    fill:'none', stroke:col,
+    'stroke-opacity':opac, 'stroke-width':1.6,
+    'stroke-dasharray':dash, 'marker-end':mrkr,
+    'data-src':s.id, 'data-dst':d.id,
+  }, edgeGroup);
+});
+
+// ─── NODES ───────────────────────────────────────────────────────────────────
+const nodeGroup = el('g', { id:'nodes' }, svg);
+const tip = document.getElementById('tooltip');
+
+// Badge geometry constants
+const BADGE_W = 28, BADGE_H = 13, BADGE_R = 3;
+const BADGE_HPC_COL = "#22d3ee", BADGE_QPU_COL = "#f59e0b";
+
+// Access → glow filter id
+const GLOW_ID = { hpc:'glow-hpc', qpu:'glow-qpu', both:'glow-both', none:null };
+// Access → outer ring color
+const RING_COL = { hpc:'#22d3ee', qpu:'#f59e0b', both:'#c084fc', none:null };
+
+positioned.forEach(n => {
+  const col      = n.access === 'none' ? '#444' : DC[n.domain];
+  const cardFill = n.access === 'none' ? '#111418' : '#161b22';
+  const dimOpac  = n.access === 'none' ? 0.42 : 1.0;
+  const gx = n.x - NW/2;
+  const gy = n.y - NH/2;
+
+  const g = el('g', {
+    class:'node',
+    transform:`translate(${gx},${gy})`,
+    style:`cursor:pointer;opacity:${dimOpac}`,
+  }, nodeGroup);
+
+  // ── Outer glow ring (access indicator) ──
+  const ringCol = RING_COL[n.access];
+  if (ringCol) {
+    el('rect', {
+      x:-5, y:-5, width:NW+10, height:NH+10, rx:13,
+      fill:'none', stroke:ringCol, 'stroke-width':1.5,
+      'stroke-opacity':0.45, 'stroke-dasharray': n.access === 'both' ? '4,3' : 'none',
+    }, g);
+    // Soft ambient fill behind card
+    el('rect', {
+      x:-3, y:-3, width:NW+6, height:NH+6, rx:11,
+      fill:ringCol, opacity:n.access === 'both' ? 0.07 : 0.05,
+    }, g);
+  }
+
+  // Card background
+  const card = el('rect', {
+    x:0, y:0, width:NW, height:NH, rx:8,
+    fill:cardFill, stroke:col, 'stroke-width':1.4, 'stroke-opacity':0.7,
+  }, g);
+
+  // Left accent bar
+  el('rect', { x:0, y:8, width:3.5, height:NH-16, rx:2, fill:col }, g);
+
+  // Author name
+  const t1 = el('text', { x:14, y:25, fill: n.access === 'none' ? '#6e7681' : '#dde1e7',
+    'font-size':12.5, 'font-weight':700 }, g);
+  t1.textContent = n.name;
+
+  // Short title
+  const t2 = el('text', { x:14, y:42, fill:col, 'font-size':11 }, g);
+  t2.textContent = n.short.length > 34 ? n.short.slice(0,33)+'…' : n.short;
+
+  // Year
+  const t3 = el('text', { x:14, y:58, fill:'#6e7681', 'font-size':10 }, g);
+  t3.textContent = n.year.length > 36 ? n.year.slice(0,35)+'…' : n.year;
+
+  // ── HPC / QPU badges (top-right corner) ──
+  const drawBadge = (label, fillCol, rx) => {
+    const bg = el('rect', { x:rx, y:4, width:BADGE_W, height:BADGE_H, rx:BADGE_R,
+      fill:fillCol, opacity:0.18 }, g);
+    el('rect', { x:rx, y:4, width:BADGE_W, height:BADGE_H, rx:BADGE_R,
+      fill:'none', stroke:fillCol, 'stroke-width':0.9, 'stroke-opacity':0.7 }, g);
+    const bt = el('text', { x:rx + BADGE_W/2, y:13.5, 'text-anchor':'middle',
+      fill:fillCol, 'font-size':8, 'font-weight':800, 'letter-spacing':'0.07em' }, g);
+    bt.textContent = label;
+  };
+
+  if (n.access === 'hpc')  { drawBadge('HPC', BADGE_HPC_COL, NW - BADGE_W - 6); }
+  if (n.access === 'qpu')  { drawBadge('QPU', BADGE_QPU_COL, NW - BADGE_W - 6); }
+  if (n.access === 'both') {
+    drawBadge('HPC', BADGE_HPC_COL, NW - BADGE_W*2 - 10);
+    drawBadge('QPU', BADGE_QPU_COL, NW - BADGE_W - 6);
+  }
+
+  // ── Hover ──
+  function highlightEdges(on) {
+    edgeGroup.querySelectorAll(`.src-${n.id},.dst-${n.id}`).forEach(e => {
+      e.setAttribute('stroke-opacity', on ? 0.85 : (e.getAttribute('stroke-dasharray') !== 'none' ? 0.20 : 0.30));
+      e.setAttribute('stroke-width', on ? 2.3 : 1.6);
+    });
+  }
+
+  g.addEventListener('mouseenter', evt => {
+    card.setAttribute('fill', n.access === 'none' ? '#181c22' : '#1c2333');
+
+    // Build access badges HTML for tooltip
+    let accessHtml = '';
+    if (n.access && n.access !== 'none') {
+      const labels = {
+        hpc:  `<span class="badge badge-hpc">HPC</span>`,
+        qpu:  `<span class="badge badge-qpu">QPU</span>`,
+        both: `<span class="badge badge-hpc">HPC</span> <span class="badge badge-qpu">QPU</span>`,
+      };
+      accessHtml = `
+        <div class="tt-access">
+          <div style="width:100%"><span class="tt-access-label">Your access:</span> ${labels[n.access]}</div>
+          <div style="color:#9ca3af;font-size:11.5px;margin-top:3px">${n.accessNote}</div>
+        </div>`;
+    } else if (n.access === 'none') {
+      accessHtml = `
+        <div class="tt-access">
+          <div style="color:#6e7681;font-size:11.5px;margin-top:3px">⚠ ${n.accessNote}</div>
+        </div>`;
+    }
+
+    const linkHtml = n.link
+      ? `<div class="tt-link"><a href="${n.link}" target="_blank" style="color:${DC[n.domain]}">→ Open paper ↗</a></div>`
+      : '';
+
+    tip.innerHTML = `
+      <div class="tt-name" style="color:${DC[n.domain]}">${n.name}</div>
+      <div class="tt-short">${n.short} · ${n.year}</div>
+      <div class="tt-body">${n.body}</div>
+      ${accessHtml}
+      ${linkHtml}
+    `;
+    tip.classList.add('show');
+    highlightEdges(true);
+    moveTip(evt);
+  });
+  g.addEventListener('mousemove', moveTip);
+  g.addEventListener('mouseleave', () => {
+    card.setAttribute('fill', cardFill);
+    highlightEdges(false);
+    tip.classList.remove('show');
+  });
+});
+
+// ─── TOOLTIP POSITION ────────────────────────────────────────────────────────
+function moveTip(evt) {
+  const TW = 320, TH = 220;
+  let lx = evt.clientX + 18, ly = evt.clientY + 18;
+  if (lx + TW > window.innerWidth)  lx = evt.clientX - TW - 18;
+  if (ly + TH > window.innerHeight) ly = evt.clientY - TH - 18;
+  tip.style.left = lx + 'px';
+  tip.style.top  = ly + 'px';
+}
+</script>
+</body>
+</html>

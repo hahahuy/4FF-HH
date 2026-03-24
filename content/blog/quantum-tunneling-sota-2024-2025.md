@@ -234,6 +234,23 @@ Instanton methods (QFT), WKB (single-particle), RPMD (chemistry), and Floquet th
 | Eslamzadeh & Soroushfar, "Hawking Radiation as Tunneling: A Brief Review"   | *JHAP* **5**(2), 44–56 (2025); arXiv:2512.06361           | Parikh-Wilczek tunneling formalism for black hole horizons — shows universality of tunneling framework |
 
 
+### Interactive Reading Graph
+
+Hover any node for a paper summary, HPC/QPU access notes, and a direct link. Edges show recommended reading order; dashed edges are skip-tier shortcuts.
+
+<div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
+  <iframe
+    src="/blog/graphs/quantum-tunneling-reading-graph.html"
+    style="width:100%;height:660px;border:none;display:block"
+    title="Quantum Tunneling Reading Graph — Tiers 2–4"
+    loading="lazy"
+  ></iframe>
+</div>
+
+[Open full-page graph ↗](/blog/graphs/quantum-tunneling-reading-graph.html)
+
+---
+
 ### Free Online Resources
 
 

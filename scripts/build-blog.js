@@ -7,7 +7,7 @@
  *   node scripts/build-blog.js
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, readdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { marked } from "marked";
 
@@ -981,6 +981,17 @@ function main() {
   // Write index
   writeFileSync(join(DIST_BLOG, "index.html"), indexPage(postsForList, blogMeta, explorerHtmlIndex), "utf8");
   console.log(`  ✅ blog/index.html`);
+
+  // Copy standalone graph assets into dist/blog/graphs/
+  const graphsSrc = join(ROOT, "content", "blog", "graphs");
+  if (existsSync(graphsSrc)) {
+    const graphsDist = join(DIST_BLOG, "graphs");
+    mkdirSync(graphsDist, { recursive: true });
+    for (const file of readdirSync(graphsSrc)) {
+      copyFileSync(join(graphsSrc, file), join(graphsDist, file));
+      console.log(`  ✅ blog/graphs/${file}`);
+    }
+  }
 }
 
 main();
