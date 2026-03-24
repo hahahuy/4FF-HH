@@ -614,8 +614,8 @@ const FOOTER_HTML = `
     <div class="footer-right">
       <a href="https://hahuy.site">← terminal</a>
       <a href="/blog/">~/blog</a>
-      <a href="https://github.com/Hahuy" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <a href="mailto:contact@hahuy.site">contact@hahuy.site</a>
+      <a href="https://github.com/hahahuy" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="mailto:quanghuyha098@gmail.com">contact</a>
     </div>
   </footer>`;
 
@@ -868,7 +868,7 @@ function postPage({ title, date, slug, bodyHtml, mins, blogMeta, explorerHtml })
   <style>${STYLE}</style>
 </head>
 <body>
-  <div class="top-bar"><a href="https://hahuy.site">← back to terminal</a></div>
+  <div class="top-bar"><a href="/blog/">← back to blog menu</a></div>
   <div class="page-shell">
     <div class="layout">
       <aside class="sidebar-left">
@@ -1036,7 +1036,8 @@ function main() {
 
     const rawSrc = readFileSync(mdPath, "utf8");
     const body = stripFrontmatter(rawSrc);
-    const bodyHtml = marked.parse(body);
+    // Strip the leading H1 — the template injects <h1>${title}</h1> itself
+    const bodyHtml = marked.parse(body).replace(/^<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
     const slug = slugify(entry.file);
     const mins = readTime(bodyHtml);
     const folder = entry.folder ?? "";
