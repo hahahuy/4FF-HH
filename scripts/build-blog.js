@@ -269,10 +269,23 @@ const STYLE = `
     cursor: pointer;
     padding: .25rem .4rem;
     font-size: .85rem;
-    transition: color .12s, border-color .12s;
+    max-width: 48px;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: color .12s, border-color .12s, max-width .2s ease, opacity .18s ease, padding .2s ease;
   }
   .icon-btn:hover { color: var(--color-blue); border-color: var(--color-blue); }
-  .controls.search-active .icon-btn { display: none; }
+  .controls.search-active .icon-btn {
+    max-width: 0;
+    opacity: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    pointer-events: none;
+  }
+  .search-wrap { transition: border-color .2s ease; }
+  .controls.search-active .search-wrap { border-color: var(--color-blue); }
   .search-results {
     background: var(--bg-page);
     border: 1px solid var(--border-color);
