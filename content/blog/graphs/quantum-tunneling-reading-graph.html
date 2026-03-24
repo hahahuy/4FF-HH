@@ -398,7 +398,7 @@ positioned.forEach(n => {
   const g = el('g', {
     class:'node',
     transform:`translate(${gx},${gy})`,
-    style:`cursor:pointer;opacity:${dimOpac}`,
+    style:`cursor:${n.link ? 'pointer' : 'default'};opacity:${dimOpac}`,
   }, nodeGroup);
 
   // ── Outer glow ring (access indicator) ──
@@ -508,6 +508,10 @@ positioned.forEach(n => {
     highlightEdges(false);
     tip.classList.remove('show');
   });
+
+  if (n.link) {
+    g.addEventListener('click', () => window.open(n.link, '_blank'));
+  }
 });
 
 // ─── TOOLTIP POSITION ────────────────────────────────────────────────────────

@@ -248,8 +248,6 @@ Hover any node for a paper summary, HPC/QPU access notes, and a direct link. Edg
   ></iframe>
 </div>
 
-[Open full-page graph ↗](/blog/graphs/quantum-tunneling-reading-graph.html)
-
 ---
 
 ### Free Online Resources
