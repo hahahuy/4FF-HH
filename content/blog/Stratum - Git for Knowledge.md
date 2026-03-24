@@ -4,7 +4,7 @@ Picture this. It's 11pm. You're writing the discussion section of your paper and
 
 This is not an edge case. This is Tuesday in a research lab.
 
-Somewhere on another floor, a PDF is living in seventeen different people's Downloads folders, each annotated differently, none of those annotations shared. A brilliant synthesis note lives in a PhD student's personal Obsidian vault, accessible to exactly one person, lost to the institution the day they defend. The team's "shared knowledge base" is a Google Drive folder where documents go to die.
+Somewhere on another floor of the same building, a PDF is living in seventeen different people's Downloads folders, each annotated differently, none of those annotations shared. A brilliant synthesis note lives in a PhD student's personal Obsidian vault, accessible to exactly one person, and will be lost to the institution the day they defend. The team's "shared knowledge base" is a Google Drive folder where documents go to die — no graph, no backlinks, no way to say "this finding was contested in 2024" versus "this is the consensus position."
 
 ---
 
@@ -14,7 +14,9 @@ We've had Zotero for papers, Obsidian for notes, Google Docs for collaboration, 
 
 There is no shared model for how a research idea moves from "one person's hunch" to "team consensus." There is no protocol for flagging a finding as outdated without just deleting it. There is no mechanism for keeping speculative ideas separate from what you actually know. There is no audit trail for who added a claim, when, and why.
 
-You wouldn't run a codebase with no version control, no code review, and no way to revert bad commits. Yet that's exactly how research teams run shared knowledge. Developers solved this in the early 2000s: git gave us explicit staging — you don't push half-baked work directly to main. You propose a change, someone reviews it, and it enters the shared record only when it's ready. That layer forces clarity, creates accountability, and produces a record that survives any individual contributor's departure.
+Research teams are running distributed knowledge systems with none of the coordination primitives that distributed knowledge systems require. You wouldn't run a codebase with no version control, no code review, and no way to revert bad commits. Yet somehow that's exactly how we run shared research knowledge.
+
+Developers solved this in the early 2000s: git gave us explicit staging — you don't push half-baked work directly to main. You propose a change, someone reviews it, and it enters the shared record only when it's ready. That layer forces clarity, creates accountability, and produces a record that survives any individual contributor's departure.
 
 Research knowledge needs all of this. It just hasn't had it — until now.
 
@@ -30,21 +32,37 @@ The ICS is the part that matters. Everything else is infrastructure.
 
 ## The ICS: A Git for Knowledge
 
+The metaphor maps cleanly. Here it is in full:
+
+| Git concept | ICS equivalent |
+|---|---|
+| Local working directory | Your private draft space |
+| `git add` + pull request | Proposal with rationale |
+| Code reviewer | Domain reviewer matched by expertise tags |
+| Merge | Node/link enters the shared graph |
+| Merge conflict | Semantic conflict (detected by embeddings) |
+| Close PR | Archive — never deleted, always re-proposable |
+| Branch | Speculative track |
+| Tag / release | Confidence level: `hypothesis → supported → established` |
+| Git blame | Provenance trail on every node |
+
 Every team member has a private draft space. When you're ready to make a claim part of the shared knowledge base, you submit a **proposal**: a note or set of notes, plus a rationale explaining *why* this belongs in the shared graph. You can attach source papers and reference existing nodes.
 
 The proposal enters a review queue. Reviewers are suggested automatically based on **expertise tags** — each user declares their domain expertise, and the system routes proposals to whoever is best positioned to give a meaningful review, without relying on a single gatekeeper.
 
-Review has three outcomes. Not two — three.
+Review has three outcomes.
 
 - **Merged**: the note enters the shared graph as consensus knowledge.
 - **Archived**: rejected, but preserved. Nothing is deleted. It can be re-proposed later with new evidence.
 - **Contested**: the community is genuinely split. This is not a tag or a comment — it is a first-class status that visually flags the node in the graph and surfaces a banner in the note view.
 
-That third outcome is the one no existing tool supports, and it's the most honest one science has.
+That third outcome is the one no existing tool supports. Contestation is how science actually works. Embedding it as a first-class state means the knowledge graph reflects reality: some things are settled, some are contested, some are speculative, and the difference matters.
 
 ### Confidence Decay
 
 Merged notes carry a **confidence level**: `hypothesis`, `supported`, or `established`. If no one affirms a note within its configurable decay window, its confidence decays and the graph flags it as stale. Any team member can "affirm" a note to reset the clock. There is also a hard constraint: a note cannot reach `established` without at least one attached source — epistemic hygiene enforced at the data layer, not by a policy doc no one reads.
+
+This models how scientific consensus actually works. Nothing is settled forever. A finding supported by five studies in 2019 may be contested by a meta-analysis in 2024. Stratum makes that temporal dimension visible and actionable rather than letting stale claims sit quietly in the knowledge base, looking authoritative long after they've stopped being so.
 
 ### Semantic Conflict Detection
 
@@ -70,10 +88,12 @@ Beyond data sovereignty: self-hosting means you own the system. Modify the decay
 
 ## Try It. Star It. Build It.
 
-The core workflow — import papers, write linked notes, propose to shared graph, review, merge — is complete and stable. If you're a developer, the stack is approachable: FastAPI + Python 3.10 on the backend, React 18 + TypeScript + Vite on the frontend.
+If you run a research lab, an R&D team, a think tank, or any group that produces and shares structured knowledge, Stratum is worth running today. The core workflow — import papers, write linked notes, propose to shared graph, review, merge — is complete and stable.
+
+If you're a developer, the stack is approachable: FastAPI + Python 3.10 on the backend, React 18 + TypeScript + Vite on the frontend. The codebase is well-structured, the API is documented, and the open items list is honest about what isn't done yet.
 
 ```bash
-git clone https://github.com/your-org/stratum
+git clone https://github.com/hahahuy/stratum
 docker compose up --build
 ```
 
