@@ -191,7 +191,7 @@ const STYLE = `
   }
   /* ── Top bar (back to terminal) ── */
   .top-bar {
-    max-width: 1440px;
+    max-width: 1720px;
     margin: 0 auto 1.25rem;
   }
   .top-bar a {
@@ -203,7 +203,7 @@ const STYLE = `
   .top-bar a:hover { color: var(--color-blue); }
   /* ── Centred shell wrapping all 3 columns ── */
   .page-shell {
-    max-width: 1440px;
+    max-width: 1720px;
     margin: 0 auto;
     background: var(--bg-window);
     border: 1px solid var(--border-color);
