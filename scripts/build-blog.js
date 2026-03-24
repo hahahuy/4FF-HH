@@ -356,13 +356,11 @@ const STYLE = `
     border: 1px solid var(--border-color);
     border-radius: 3px;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity .15s, color .15s, border-color .15s;
+    transition: color .15s, border-color .15s;
     user-select: none;
     line-height: 1.6;
   }
-  pre:hover .copy-btn { opacity: 1; }
-  .copy-btn.copied { color: var(--color-green); border-color: var(--color-green); opacity: 1; }
+  .copy-btn.copied { color: var(--color-green); border-color: var(--color-green); }
   code { font-family: var(--font-mono); font-size: .9em; line-height: 1.55; }
   p code, li code {
     background: var(--bg-page);
