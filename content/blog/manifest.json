@@ -6,6 +6,12 @@
     "folder": ""
   },
   {
+    "file": "Stratum - Git for Knowledge.md",
+    "title": "Stratum: Because Your Research Team Deserves a Git for Knowledge",
+    "date": "2026-03-25",
+    "folder": ""
+  },
+  {
     "file": "Drone_Engineering_Career_CV_Guide.md",
     "title": "Drone Engineering Career Guide — EE Background Track (Vietnam / SEA)",
     "date": "2026-03-10",
@@ -21,12 +27,6 @@
     "file": "building-a-cli-portfolio.md",
     "title": "Building a CLI Portfolio in Vanilla JS",
     "date": "2026-02-15",
-    "folder": ""
-  },
-  {
-    "file": "Stratum - Git for Knowledge.md",
-    "title": "Stratum - Git for Knowledge",
-    "date": "2026-03-25",
     "folder": ""
   }
 ]
