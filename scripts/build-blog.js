@@ -191,7 +191,7 @@ const STYLE = `
   }
   /* ── Top bar (back to terminal) ── */
   .top-bar {
-    max-width: 1200px;
+    max-width: 1440px;
     margin: 0 auto 1.25rem;
   }
   .top-bar a {
@@ -203,7 +203,7 @@ const STYLE = `
   .top-bar a:hover { color: var(--color-blue); }
   /* ── Centred shell wrapping all 3 columns ── */
   .page-shell {
-    max-width: 1200px;
+    max-width: 1440px;
     margin: 0 auto;
     background: var(--bg-window);
     border: 1px solid var(--border-color);
@@ -213,7 +213,7 @@ const STYLE = `
   /* ── Layout grid inside the shell ── */
   .layout {
     display: grid;
-    grid-template-columns: 240px 1fr 240px;
+    grid-template-columns: 210px 1fr 210px;
     min-height: 80vh;
     background: var(--bg-window);
   }
@@ -391,14 +391,27 @@ const STYLE = `
     letter-spacing: .02em;
   }
   .back-top {
-    display: inline-block;
-    margin-top: 2.5rem;
-    font-size: .82rem;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 500;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-titlebar, #1f2428);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     color: var(--text-muted);
     text-decoration: none;
-    transition: color .15s;
+    font-size: .9rem;
+    opacity: 0;
+    transition: opacity .2s, color .15s, border-color .15s;
+    pointer-events: none;
   }
-  .back-top:hover { color: var(--color-blue); text-decoration: none; }
+  .back-top.visible { opacity: 1; pointer-events: auto; }
+  .back-top:hover { color: var(--color-blue); border-color: var(--color-blue); text-decoration: none; }
   /* ── TOC (in sidebar-left on post pages) ── */
   .toc { padding-top: 0; }
   .toc-label {
@@ -731,6 +744,15 @@ const CLIENT_JS = `
 
   // Render inline graph on load
   renderGraph('graph-canvas');
+
+  // Scroll-to-top button visibility
+  (function () {
+    var btn = document.querySelector('.back-top');
+    if (!btn) return;
+    window.addEventListener('scroll', function () {
+      btn.classList.toggle('visible', window.scrollY > 300);
+    }, { passive: true });
+  })();
 })();
 `;
 
@@ -783,7 +805,6 @@ function postPage({ title, date, slug, bodyHtml, mins, blogMeta, explorerHtml })
           <time datetime="${date}">${formatDate(date)}</time>
           <span class="post-meta">~${mins} min read</span>
           ${bodyWithIds}
-          <a href="#" class="back-top">↑ top</a>
         </article>
       </main>
       <aside class="sidebar-right" id="graph-panel">
@@ -803,6 +824,7 @@ function postPage({ title, date, slug, bodyHtml, mins, blogMeta, explorerHtml })
       <button class="graph-modal-close" id="graph-modal-close">✕</button>
     </div>
   </div>
+  <a href="#" class="back-top" aria-label="Scroll to top">↑</a>
   <script>window.BLOG_META = ${JSON.stringify(meta)};</script>
   <script>${CLIENT_JS}</script>
 </body>
@@ -890,6 +912,7 @@ function indexPage(posts, blogMeta, explorerHtml) {
       <button class="graph-modal-close" id="graph-modal-close">✕</button>
     </div>
   </div>
+  <a href="#" class="back-top" aria-label="Scroll to top">↑</a>
   <script>window.BLOG_META = ${JSON.stringify(meta)};</script>
   <script>${CLIENT_JS}</script>
 </body>
