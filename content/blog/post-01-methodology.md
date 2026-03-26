@@ -1,4 +1,4 @@
-# How I Approach a Contest I Can't Win… Yet
+# How I Approach a Contest I Can't Win… Yet - Parameter Golf (OpenAI)
 
 *OpenAI Parameter Golf · Series post #1 of 5*
 
