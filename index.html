@@ -174,6 +174,19 @@
     </a>
   </div>
 
+  <!-- Portfolio promo widget -->
+  <div class="blog-promo-window portfolio-promo-window" id="portfolioPromo">
+    <div class="blog-promo-titlebar">
+      <button class="blog-promo-close portfolio-promo-close" id="portfolioPromoClose" aria-label="Close"></button>
+      <span class="blog-promo-title">portfolio.exe</span>
+    </div>
+    <a href="https://hahahuy.github.io/portfoliosite/" target="_blank" rel="noopener noreferrer" class="blog-promo-body">
+      <span class="blog-promo-icon">🖥️</span>
+      <span class="blog-promo-text">Not familiar with terminals, or a low-tech person? Click here for <strong><em>the normal portfolio site</em></strong><span class="portfolio-promo-comment"># but you will miss the fun stuff</span></span>
+      <span class="blog-promo-arrow">→</span>
+    </a>
+  </div>
+
   <!-- Scripts (order matters; defer = parallel download, preserved execution order) -->
   <!-- Utils: loaded first — no dependencies -->
   <script src="js/utils/config.js" defer></script>
@@ -206,6 +219,10 @@
     document.getElementById('blogPromoClose').addEventListener('click', function (e) {
       e.stopPropagation();
       document.getElementById('blogPromo').classList.add('hidden');
+    });
+    document.getElementById('portfolioPromoClose').addEventListener('click', function (e) {
+      e.stopPropagation();
+      document.getElementById('portfolioPromo').classList.add('hidden');
     });
   </script>
 </body>

@@ -536,3 +536,24 @@ body.mouse-off .backdrop { background: none; }
 @media (max-width: 600px) {
   .blog-promo-window { display: none !important; }
 }
+
+/* ── Portfolio promo widget overrides ────────────────────── */
+.portfolio-promo-window {
+  top: 140px;   /* below blog promo: 44px offset + ~88px blog height + 8px gap */
+}
+
+.portfolio-promo-close {
+  background: var(--dot-red, #ff5f56);
+}
+
+.portfolio-promo-window .blog-promo-arrow {
+  color: var(--color-orange);
+}
+
+.portfolio-promo-comment {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.01em;
+}
