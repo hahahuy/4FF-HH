@@ -273,5 +273,95 @@
   </div>
 </div>
 
+<style>
+  #tt {
+    position: fixed; z-index: 999; pointer-events: none;
+    background: #1a1d27; border: 1px solid #2d3250; border-radius: 8px;
+    padding: 10px 14px; max-width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    display: none;
+  }
+  #tt .tt-title { font-size: 0.82rem; font-weight: 700; color: #e8eaf6; margin-bottom: 5px; }
+  #tt .tt-body  { font-size: 0.76rem; color: #8892b0; line-height: 1.55; }
+  #tt .tt-cost  { margin-top: 6px; font-size: 0.72rem; font-weight: 700;
+                  background: rgba(255,255,255,0.06); padding: 2px 7px;
+                  border-radius: 3px; display: inline-block; color: #ccd; }
+</style>
+<div id="tt"><div class="tt-title" id="ttTitle"></div><div class="tt-body" id="ttBody"></div><div id="ttCost"></div></div>
+
+<script>
+const tooltips = {
+  'n-idea':     { title: 'New Technique Idea', body: 'Starts when you spot a potential improvement — from the leaderboard diff, a paper, or an ablation from a public submission. Must pass pre-check before any code is touched.' },
+  'n-fail-check':{ title: 'Check failures.md', body: 'Mandatory first step. If the technique is already ruled out with a documented reason, stop here. Prevents re-running known dead ends.' },
+  'n-failed-q': { title: 'Already ruled out?', body: 'If YES → drop the idea. Unless new context changes the outcome (different scale, different base, new evidence from a public submission).' },
+  'n-plan':     { title: 'Write plan file', body: 'Document the hypothesis, expected Δbpb, exact code changes, which env vars to add, conflicts with other plans, and a fallback to disable if things break.' },
+  'n-g1':       { title: 'Gate 1 — Smoke Test', body: 'Run on 1×H100, 1 seed (42). Pass criteria: training completes without crash AND artifact file < 16,000,000 bytes. Does NOT require any bpb improvement yet.', cost: '~$0.30 · ~10 min' },
+  'n-g1-q':     { title: 'Gate 1 pass?', body: 'Fail → debug and retry. Common causes: import error, OOM on forward pass, artifact size overflow from a larger hash table or extra layer.' },
+  'n-g2':       { title: 'Gate 2 — Quality Check', body: '1×H100, full 600s run. Compare val_bpb vs copy base. Any visible improvement passes. Catches things that compile but don\'t help quality.', cost: '~$0.30 · ~12 min' },
+  'n-g2-q':     { title: 'No improvement?', body: 'Log in failures.md with the reason — throughput loss, quant interaction, hyperparameter mismatch, etc. The "why" is more valuable than the result.' },
+  'n-g3':       { title: 'Gate 3 — Scale Check', body: '8×H100, 1 seed. Target: val_bpb below current threshold (typically 1.139 era, now ~1.116). Catches single-GPU gains that don\'t scale to full 8-GPU training.', cost: '~$3.50 · ~12 min' },
+  'n-g3-q':     { title: 'Gate 3 < threshold?', body: 'Fail → analyze: did it not scale? Retune LR/WD for 8-GPU regime first. If still failing, log as a conditional failure with the exact numbers.' },
+  'n-g4':       { title: 'Gate 4 — Final 3 Seeds', body: '8×H100, seeds 42, 1337, and 7. Mean val_bpb must be below target with p < 0.01 variance across seeds. This is the statistical bar for a real leaderboard submission.', cost: '~$10.50 · 3 × 12 min' },
+};
+
+const tt    = document.getElementById('tt');
+const ttT   = document.getElementById('ttTitle');
+const ttB   = document.getElementById('ttBody');
+const ttC   = document.getElementById('ttCost');
+const svgEl = document.getElementById('flowchart');
+let mx = 0, my = 0;
+
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+function placeTooltip() {
+  const W = tt.offsetWidth, H = tt.offsetHeight;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = mx + 16, top = my + 14;
+  if (left + W > vw - 12) left = mx - W - 12;
+  if (top  + H > vh - 12) top  = my - H - 12;
+  tt.style.left = left + 'px';
+  tt.style.top  = top  + 'px';
+}
+
+Object.keys(tooltips).forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.cursor = 'pointer';
+
+  el.addEventListener('mouseenter', e => {
+    const d = tooltips[id];
+    ttT.textContent = d.title;
+    ttB.textContent = d.body;
+    ttC.textContent = d.cost || '';
+    ttC.style.display = d.cost ? 'inline-block' : 'none';
+    tt.style.display = 'block';
+    // dim all other nodes
+    Object.keys(tooltips).forEach(oid => {
+      const o = document.getElementById(oid);
+      if (o && oid !== id) o.style.opacity = '0.35';
+    });
+    // boost hovered node
+    const rects = el.querySelectorAll('rect, polygon');
+    rects.forEach(r => {
+      r._origSW = r.getAttribute('stroke-width');
+      r.setAttribute('stroke-width', parseFloat(r._origSW || 1.5) + 1.5);
+    });
+    placeTooltip();
+  });
+
+  el.addEventListener('mousemove', placeTooltip);
+
+  el.addEventListener('mouseleave', () => {
+    tt.style.display = 'none';
+    Object.keys(tooltips).forEach(oid => {
+      const o = document.getElementById(oid);
+      if (o) o.style.opacity = '';
+    });
+    const rects = el.querySelectorAll('rect, polygon');
+    rects.forEach(r => {
+      if (r._origSW !== undefined) r.setAttribute('stroke-width', r._origSW);
+    });
+  });
+});
+</script>
 </body>
 </html>

@@ -12,113 +12,105 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
-  header { padding: 2rem 2rem 1.2rem; border-bottom: 1px solid var(--border); }
-  header h1 { font-size: 1.6rem; font-weight: 700; }
-  header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.9rem; }
-  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.7rem; padding: 2px 8px; margin-left: 8px; vertical-align: middle; font-weight: 600; }
+  header { padding: 1.5rem 2rem 1rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.85rem; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.68rem; padding: 2px 7px; margin-left: 6px; vertical-align: middle; font-weight: 600; }
 
-  .main { padding: 2rem; }
+  .main { padding: 1.5rem 2rem; }
 
   /* Track tabs */
-  .track-tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .track-tab {
-    padding: 7px 18px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.2rem; flex-wrap: wrap; align-items: center; }
+  .tab {
+    padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600;
     border: 1px solid var(--border); background: var(--surface); color: var(--muted);
     transition: all 0.15s;
   }
-  .track-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .track-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  .tab.retired-tab.active { background: #2a1c2a; border-color: var(--accent2); color: var(--accent2); }
+  .tab.retired-tab:hover:not(.active) { border-color: var(--accent2); color: var(--accent2); }
+  .tab-sep { color: var(--border); font-size: 1.2rem; line-height: 1; padding: 0 4px; }
 
-  /* Pipeline layout */
+  /* Pipeline */
   .pipeline { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding-bottom: 1rem; }
-  .pipeline-step {
-    display: flex; flex-direction: column; align-items: center; min-width: 200px;
-  }
-  .arrow {
-    display: flex; align-items: center; padding-top: 48px;
-    font-size: 1.6rem; color: var(--muted); padding-left: 2px; padding-right: 2px;
-    flex-shrink: 0;
-  }
+  .pipeline-step { display: flex; flex-direction: column; align-items: center; min-width: 196px; }
+  .arrow { display: flex; align-items: center; padding-top: 46px; font-size: 1.5rem; color: var(--muted); flex-shrink: 0; padding-left: 3px; padding-right: 3px; }
 
   .step-card {
-    width: 190px; border-radius: 10px; border: 2px solid var(--border);
+    width: 188px; border-radius: 10px; border: 2px solid var(--border);
     background: var(--surface); overflow: hidden;
-    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    transition: border-color 0.18s, transform 0.14s, box-shadow 0.18s;
     cursor: pointer;
   }
-  .step-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(108,99,255,0.15); }
-  .step-card.highlighted { border-color: var(--accent3); }
-  .step-card.base-card { border-color: var(--accent); }
-  .step-card.sota-card { border-color: var(--accent4); }
+  .step-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(108,99,255,0.13); }
+  .step-card.base-card  { border-color: var(--accent5); }
+  .step-card.plan-d     { border-color: var(--accent3); }
+  .step-card.plan-b     { border-color: var(--accent); }
+  .step-card.target-card{ border-color: var(--accent5); cursor: default; }
+  .step-card.retired-card { border-color: #3a2040; opacity: 0.65; }
 
-  .card-header {
-    padding: 10px 12px 6px; display: flex; justify-content: space-between; align-items: flex-start;
-  }
-  .card-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-  .card-bpb { font-size: 1.3rem; font-weight: 700; color: #fff; }
-  .card-delta { font-size: 0.78rem; font-weight: 600; border-radius: 4px; padding: 2px 7px; }
-  .card-delta.pos { background: rgba(67,233,123,0.15); color: var(--accent3); }
-  .card-delta.sota { background: rgba(247,151,30,0.15); color: var(--accent4); }
-  .card-delta.base { background: rgba(108,99,255,0.15); color: var(--accent); }
-  .card-delta.target { background: rgba(56,189,248,0.15); color: var(--accent5); }
+  .card-header { padding: 9px 11px 5px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .card-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .card-bpb { font-size: 1.25rem; font-weight: 700; color: #fff; }
+  .card-delta { font-size: 0.75rem; font-weight: 600; border-radius: 4px; padding: 2px 7px; }
+  .card-delta.base-d  { background: rgba(56,189,248,0.13); color: var(--accent5); }
+  .card-delta.pos     { background: rgba(67,233,123,0.13); color: var(--accent3); }
+  .card-delta.big-pos { background: rgba(67,233,123,0.2); color: var(--accent3); }
+  .card-delta.target-d{ background: rgba(56,189,248,0.13); color: var(--accent5); }
+  .card-delta.retired-d{ background: rgba(255,107,107,0.1); color: var(--accent2); }
 
-  .card-body { padding: 0 12px 10px; }
-  .card-name { font-size: 0.88rem; font-weight: 600; color: #ccd; margin-bottom: 6px; }
-  .tech-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-  .chip {
-    font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: 500;
-    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
-  }
-  .chip.new { background: rgba(108,99,255,0.12); border-color: rgba(108,99,255,0.3); color: var(--accent); }
-  .chip.key { background: rgba(67,233,123,0.1); border-color: rgba(67,233,123,0.25); color: var(--accent3); }
+  .card-body { padding: 0 11px 9px; }
+  .card-name { font-size: 0.83rem; font-weight: 600; color: #ccd; margin-bottom: 5px; }
+  .tech-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+  .chip { font-size: 0.63rem; padding: 1px 5px; border-radius: 3px; font-weight: 500; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+  .chip.new { background: rgba(67,233,123,0.1); border-color: rgba(67,233,123,0.25); color: var(--accent3); }
+  .chip.ret { background: rgba(255,107,107,0.07); border-color: rgba(255,107,107,0.2); color: var(--accent2); }
 
   /* Detail panel */
-  .detail { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin-top: 1.5rem; }
-  .detail h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
-  .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-  @media (max-width: 700px) { .detail-cols { grid-template-columns: 1fr; } }
-
-  .detail-section h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 0.6rem; }
-  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .detail { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.6rem; margin-top: 1.2rem; }
+  .detail h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.9rem; }
+  .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 640px) { .detail-cols { grid-template-columns: 1fr; } }
+  .detail-section h4 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 0.5rem; }
+  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
   .detail-row:last-child { border-bottom: none; }
   .detail-row .k { color: var(--muted); }
   .detail-row .v { font-weight: 600; color: #fff; }
   .detail-row .v.good { color: var(--accent3); }
-  .detail-row .v.bad { color: var(--accent2); }
+  .detail-row .v.bad  { color: var(--accent2); }
   .detail-row .v.neutral { color: var(--muted); }
+  .notes-box { background: var(--surface2); border-radius: 7px; padding: 0.8rem 0.9rem; font-size: 0.8rem; line-height: 1.6; color: #bbc; margin-top: 0.8rem; }
 
-  .notes-box { background: var(--surface2); border-radius: 8px; padding: 0.9rem 1rem; font-size: 0.83rem; line-height: 1.6; color: #bbc; margin-top: 0.8rem; }
+  /* Retired section */
+  .retired-note { background: #1a1020; border: 1px solid #3a2040; border-radius: 8px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; font-size: 0.82rem; color: #c8a0c8; line-height: 1.6; }
+  .retired-note strong { color: var(--accent2); }
 
   /* Compat matrix */
-  .compat-section { margin-top: 2rem; }
-  .compat-section h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
-  .matrix { display: grid; grid-template-columns: 100px repeat(5, 60px); gap: 4px; }
-  .matrix-cell {
-    height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
-    font-size: 0.8rem; font-weight: 600;
-  }
-  .matrix-label { background: transparent; color: var(--muted); justify-content: flex-end; padding-right: 8px; font-size: 0.78rem; }
-  .matrix-header { background: var(--surface2); color: var(--accent); font-size: 0.8rem; }
-  .compat-yes { background: rgba(67,233,123,0.12); color: var(--accent3); border: 1px solid rgba(67,233,123,0.2); }
-  .compat-no  { background: rgba(255,107,107,0.12); color: var(--accent2); border: 1px solid rgba(255,107,107,0.2); }
+  .compat-section { margin-top: 1.5rem; }
+  .compat-section h2 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.8rem; color: #ccd; }
+  .matrix { display: grid; grid-template-columns: 110px repeat(2, 70px); gap: 4px; }
+  .matrix-cell { height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; }
+  .matrix-label { background: transparent; color: var(--muted); justify-content: flex-end; padding-right: 8px; font-size: 0.76rem; }
+  .matrix-header { background: var(--surface2); color: var(--accent5); font-size: 0.8rem; }
+  .compat-yes  { background: rgba(67,233,123,0.1); color: var(--accent3); border: 1px solid rgba(67,233,123,0.2); }
   .compat-self { background: var(--surface2); color: var(--muted); }
-  .compat-caution { background: rgba(247,151,30,0.1); color: var(--accent4); border: 1px solid rgba(247,151,30,0.2); }
 </style>
 </head>
 <body>
 
 <header>
   <h1>Technique Stack Pipeline <span class="tag">Interactive</span></h1>
-  <p>How techniques layer from naive baseline to SOTA · click any node to explore · switch tracks below</p>
+  <p>Active plan stack (Plan D → B) · click any node for details · retired plans preserved as reference</p>
 </header>
 
 <div class="main">
 
-  <div class="track-tabs">
-    <div class="track-tab active" data-track="A">Track A — Conservative (~1.137)</div>
-    <div class="track-tab" data-track="B">Track B — Aggressive (~1.134)</div>
-    <div class="track-tab" data-track="C">Track C — Recurrence (~1.135)</div>
-    <div class="track-tab" data-track="sota">SOTA Reference</div>
+  <div class="tabs">
+    <div class="tab active" data-track="main">Main Stack</div>
+    <div class="tab" data-track="d-only">Plan D Only</div>
+    <div class="tab-sep">|</div>
+    <div class="tab retired-tab" data-track="retired">Retired P1–P5 (historical)</div>
   </div>
 
   <div class="pipeline" id="pipeline"></div>
@@ -131,7 +123,7 @@
         <div id="detailStats"></div>
       </div>
       <div class="detail-section">
-        <h4>Techniques added at this step</h4>
+        <h4>Techniques at this step</h4>
         <div id="detailTechs"></div>
       </div>
     </div>
@@ -139,260 +131,250 @@
   </div>
 
   <div class="compat-section">
-    <h2>Plan compatibility matrix</h2>
+    <h2>Plan compatibility — active plans</h2>
     <div class="matrix" id="compatMatrix"></div>
   </div>
+
 </div>
 
 <script>
-const BASE_BPB = 1.1458;
-const SOTA_BPB = 1.1428;
-const TARGET_BPB = 1.1378;
-
 const steps = {
   base: {
-    label: "Base", name: "#2 SmearGate", bpb: 1.1458, delta: null, deltaStr: "base",
-    chips: ["9L", "int6-QAT", "MLP×3", "SmearGate", "BigramHash(4096)", "SWA", "OrthoInit", "Muon WD"],
+    label: "Base", name: "Merged SOTA (our base)", bpb: 1.1194, deltaStr: "base", cardCls: "base-card", deltaCls: "base-d",
+    chips: ["11L", "LeakyReLU²", "TTT-3ep", "BigramHash(1536)", "Parallel-Muon", "int6-QAT", "MLP×3", "SmearGate", "SWA", "FP16"],
     newChips: [],
     stats: [
-      { k: "val bpb", v: "1.1458", cls: "" },
-      { k: "pre-quant bpb", v: "1.1616", cls: "" },
-      { k: "quant gap", v: "0.0158", cls: "bad" },
-      { k: "artifact size", v: "15.86 MB", cls: "" },
-      { k: "steps in 600s", v: "7,379", cls: "" },
-      { k: "ms/step", v: "81 ms", cls: "" },
+      { k: "val bpb (3-seed)", v: "1.1194", cls: "" },
+      { k: "bpb std", v: "0.0006", cls: "good" },
+      { k: "artifact", v: "15.75 MB", cls: "" },
+      { k: "ms/step", v: "116 ms", cls: "" },
+      { k: "quant scheme", v: "int6 MLP + int6 attn", cls: "" },
+      { k: "record folder", v: "2026-03-23_LeakyReLU_LegalTTT_ParallelMuon", cls: "neutral" },
     ],
     techs: [
-      { k: "Sliding eval stride=64", v: "−0.032", cls: "good" },
-      { k: "STE int6 QAT", v: "gap ×100↓", cls: "good" },
-      { k: "MLP hidden ×3 (1536)", v: "−0.029", cls: "good" },
-      { k: "SmearGate activation", v: "~−0.003", cls: "good" },
-      { k: "BigramHash(4096)", v: "~−0.004", cls: "good" },
-      { k: "OrthoInit", v: "~−0.001", cls: "good" },
-      { k: "Muon WD=0.04", v: "~−0.001", cls: "good" },
-      { k: "SWA frac=0.5", v: "~−0.002", cls: "good" },
+      { k: "LeakyReLU(0.5)² activation", v: "~−0.004", cls: "good" },
+      { k: "Legal score-first TTT 3ep SGD", v: "~−0.008", cls: "good" },
+      { k: "Parallel Muon optimizer", v: "faster conv.", cls: "good" },
+      { k: "BigramHash(1536)", v: "in base", cls: "neutral" },
+      { k: "int6 QAT (STE), MLP×3, SmearGate", v: "inherited", cls: "neutral" },
+      { k: "SWA, OrthoInit, FP16 embed", v: "inherited", cls: "neutral" },
     ],
-    notes: "This is our copy base. Everything listed above is already working in the training script — we start here and make targeted diffs. Pre-quant 1.1616 vs post-quant 1.1458 = 0.016 quant gap (target for further QAT work in P4)."
+    notes: "Our current copy base. Already includes TTT, LeakyReLU², Parallel Muon — do not re-implement. Budget is tight at 15.75MB: Plan D's int5 MLP must free space before adding layers or expanding bigram.",
   },
-  p1: {
-    label: "P1", name: "Int5 MLP + 10 Layers", bpb: 1.1428, delta: -0.003, deltaStr: "−0.003",
-    chips: ["9L→10L", "int5-MLP", "int6-attn"],
-    newChips: ["int5-MLP", "10th-layer"],
+  planD: {
+    label: "Plan D", name: "Int5 MLP → space budget", bpb: 1.116, deltaStr: "~−0.003", cardCls: "plan-d", deltaCls: "pos",
+    chips: ["int5-MLP", "BigramHash(1536→4096)", "or 11L→12L"],
+    newChips: ["int5-MLP"],
     stats: [
-      { k: "expected val bpb", v: "~1.1428", cls: "good" },
+      { k: "expected val bpb", v: "~1.116", cls: "good" },
       { k: "int5 MLP range", v: "[-16, 15]", cls: "" },
-      { k: "size saved by int5", v: "~1.86 MB", cls: "good" },
-      { k: "10th layer cost", v: "~1.8 MB", cls: "" },
-      { k: "net artifact change", v: "≈0 MB", cls: "good" },
-      { k: "new env var", v: "NUM_LAYERS", cls: "" },
+      { k: "space freed by int5", v: "~1.5 MB", cls: "good" },
+      { k: "space allocation", v: "bigram expand OR +1 layer", cls: "" },
+      { k: "artifact after D", v: "< 15.9 MB target", cls: "good" },
+      { k: "TTT interaction", v: "verify TTT still fires", cls: "neutral" },
     ],
     techs: [
       { k: "quantize_int5_per_row()", v: "new function", cls: "" },
-      { k: "MLP weights → int5", v: "saves 1.86 MB", cls: "good" },
-      { k: "Attn weights → int6", v: "unchanged", cls: "neutral" },
-      { k: "Add 10th transformer layer", v: "funded by int5", cls: "good" },
-      { k: "mixed_quantize_int6 update", v: "branch on mlp/attn", cls: "" },
+      { k: "MLP weights → int5 [-16,15]", v: "saves ~1.5 MB", cls: "good" },
+      { k: "Attn weights stay int6", v: "unchanged", cls: "neutral" },
+      { k: "BigramHash 1536→4096", v: "−0.001 est.", cls: "good" },
+      { k: "mixed_quantize update", v: "branch on mlp/attn names", cls: "" },
     ],
-    notes: "The key insight: int5 MLP [-16,15] saves ~1.86 MB vs int6, which is almost exactly enough to add a 10th transformer layer (~1.8 MB). The quality from the extra layer (−0.003 bpb, proven by SOTA) outweighs the tiny quality cost of tighter MLP quantization. Low-risk, proven technique."
+    notes: "Low-risk. The key arithmetic: int5 MLP saves ~1.5MB vs int6. That space funds either a larger bigram table (1536→4096, −0.001) or a 12th layer. Check artifact < 15.9MB at smoke. Verify TTT dequant path still works after int5.",
   },
-  p2a: {
-    label: "P2a", name: "BigramHash(10240)", bpb: 1.1408, delta: -0.002, deltaStr: "−0.002",
-    chips: ["BigramHash(4096→10240)"],
-    newChips: ["bigram-10k"],
+  planB: {
+    label: "Plan B", name: "15L BI-guided recurrence", bpb: 1.110, deltaStr: "~−0.009", cardCls: "plan-b", deltaCls: "big-pos",
+    chips: ["15L-recurrence", "layers-9-13-tied", "dedup-quant", "BI-guided"],
+    newChips: ["depth-recurrence", "layer-map"],
     stats: [
-      { k: "expected val bpb", v: "~1.1408", cls: "good" },
-      { k: "hash collisions 4096", v: "~250 / bucket", cls: "bad" },
-      { k: "hash collisions 10240", v: "~100 / bucket", cls: "good" },
-      { k: "env var change", v: "BIGRAM_VOCAB_SIZE=10240", cls: "" },
-      { k: "size impact", v: "+2.4 MB (if budget allows)", cls: "" },
+      { k: "expected val bpb", v: "~1.110", cls: "good" },
+      { k: "unique blocks", v: "11 (of 15 positions)", cls: "" },
+      { k: "tied positions", v: "9, 10, 11, 12, 13 → block 9", cls: "" },
+      { k: "step time gate", v: "≤ 130 ms (hard abort)", cls: "bad" },
+      { k: "artifact", v: "< 16.0 MB (dedup saves)", cls: "good" },
+      { k: "reference", v: "PR #857 @ 1.1093 bpb", cls: "" },
     ],
     techs: [
-      { k: "Default BIGRAM_VOCAB_SIZE", v: "4096 → 10240", cls: "good" },
-      { k: "Hash collision reduction", v: "60% fewer", cls: "good" },
-      { k: "Training change", v: "env var only", cls: "neutral" },
+      { k: "NUM_LAYERS=15, TIE_LAYERS=9,10,11,12,13", v: "env vars", cls: "" },
+      { k: "layer_map in GPT.__init__", v: "new", cls: "" },
+      { k: "Dedup quant (store tied block once)", v: "saves ~4 blocks", cls: "good" },
+      { k: "U-Net skip_weights resize", v: "15//2 = 7", cls: "" },
+      { k: "BI scores: layers 9-13 most redundant", v: "BI 0.10–0.16", cls: "neutral" },
     ],
-    notes: "The simplest change in the plan stack — change one default value. Proven by SOTA's own ablation: 4096→8192 = −0.0012, 8192→10240 = −0.0008. Combined −0.002 total. Only risk: artifact size; verify < 16MB in Gate 1."
+    notes: "CRITICAL GATE: smoke test must show step_avg ≤ 130ms. PR #857 measured 116ms on 8×H100 for this exact config. If smoke is slower, abort — the time budget will be violated. Dedup serialization: tied layers stored once in the artifact, with a small (<100 byte) reconstruction map.",
   },
-  p2b: {
-    label: "P2b", name: "+ TrigramHash(8192)", bpb: 1.1388, delta: -0.002, deltaStr: "−0.002 (est)",
-    chips: ["TrigramHash(8192)"],
-    newChips: ["trigram"],
+
+  // ── Retired plans (historical) ──────────────────────────────
+  retiredBase: {
+    label: "Old Base", name: "#2 SmearGate", bpb: 1.1458, deltaStr: "retired", cardCls: "retired-card", deltaCls: "retired-d",
+    chips: ["9L", "int6-QAT", "MLP×3", "SmearGate", "BigramHash(4096)", "SWA", "Muon-WD"],
+    newChips: [],
     stats: [
-      { k: "expected val bpb", v: "~1.1388", cls: "good" },
-      { k: "trigram embedding dim", v: "64", cls: "" },
-      { k: "TRIGRAM_VOCAB_SIZE", v: "8192 (0=disabled)", cls: "" },
-      { k: "artifact risk", v: "> 15.8 MB if kept", cls: "bad" },
-      { k: "fallback", v: "TRIGRAM_VOCAB_SIZE=0", cls: "good" },
+      { k: "val bpb", v: "1.1458", cls: "" },
+      { k: "retired", v: "2026-03-26", cls: "bad" },
+      { k: "reason", v: "Leaderboard moved to 1.1194", cls: "bad" },
     ],
-    techs: [
-      { k: "TrigramHashEmbedding class", v: "new", cls: "" },
-      { k: "Hash 3-token windows", v: "→ learned embed", cls: "good" },
-      { k: "GPT forward() update", v: "wire trigram in", cls: "" },
-    ],
-    notes: "Novel extension — no public ablation for this on top of BigramHash. The hypothesis: trigram context at embedding layer captures short phrase patterns the bigram misses. High artifact risk: if compressed model + trigram table > 16MB budget, disable with TRIGRAM_VOCAB_SIZE=0 and only keep P2a."
+    techs: [],
+    notes: "Retired 2026-03-26. Plans P1–P5 were built off this base. Leaderboard advanced to 1.1194 before we had results, making the targets (~1.137) too conservative to compete. Preserved as historical reference.",
+  },
+  p1: {
+    label: "P1 (retired)", name: "Int5 MLP + 10 Layers", bpb: 1.1428, deltaStr: "superseded", cardCls: "retired-card", deltaCls: "retired-d",
+    chips: ["int5-MLP", "10L"],
+    newChips: [],
+    stats: [{ k: "target was", v: "~1.1428", cls: "" }, { k: "technique", v: "absorbed into Plan D", cls: "neutral" }],
+    techs: [],
+    notes: "Technique is still valid — int5 MLP is Plan D's core idea. But the target bpb (1.1428) is now above our base (1.1194). Partial work: 2026-03-23_P1_Int5_10L.",
+  },
+  p2: {
+    label: "P2 (retired)", name: "BigramHash(10240) + Trigram", bpb: 1.1388, deltaStr: "superseded", cardCls: "retired-card", deltaCls: "retired-d",
+    chips: ["bigram-10k", "trigram"],
+    newChips: [],
+    stats: [{ k: "target was", v: "~1.1388", cls: "" }, { k: "bigram in new base", v: "1536 (re-tune in D)", cls: "neutral" }],
+    techs: [],
+    notes: "Bigram expansion is still in Plan D but at a different size. Trigram not pursued — artifact budget risk without proven benefit.",
   },
   p4: {
-    label: "P4", name: "Int5 QAT + SWA(0.4)", bpb: 1.1368, delta: -0.002, deltaStr: "~−0.002",
-    chips: ["QAT→int5-MLP", "SWA(0.5→0.4)", "pruning"],
-    newChips: ["qat-int5", "swa-0.4"],
-    stats: [
-      { k: "expected val bpb", v: "~1.1368", cls: "good" },
-      { k: "SWA frac", v: "0.5 → 0.4", cls: "" },
-      { k: "SWA checkpoints", v: "24 (vs every-50)", cls: "" },
-      { k: "magnitude pruning", v: "3%", cls: "" },
-    ],
-    techs: [
-      { k: "STE QAT for int5 MLP", v: "extend base QAT", cls: "good" },
-      { k: "SWA frac 0.5→0.4", v: "−0.0006 proven", cls: "good" },
-      { k: "3% magnitude pruning", v: "~neutral size", cls: "neutral" },
-      { k: "QAT warmup", v: "int5 STE from step 0", cls: "" },
-    ],
-    notes: "The base already has STE int6 QAT. P4 extends it to cover the new int5 MLP weights from P1 — P1 adds int5 weights but doesn't update the STE training loop. Also retuning SWA fraction from 0.5 (base) to 0.4 (SOTA-proven). Medium risk: QAT interaction with int5 range may need warmup tuning."
+    label: "P4 (retired)", name: "QAT int5 + SWA retune", bpb: 1.1368, deltaStr: "superseded", cardCls: "retired-card", deltaCls: "retired-d",
+    chips: ["qat-int5", "swa-0.4"],
+    newChips: [],
+    stats: [{ k: "target was", v: "~1.1368", cls: "" }],
+    techs: [],
+    notes: "STE int5 QAT is built into Plan D. SWA fraction tuning available via env var in the new base. Superseded.",
   },
   p5: {
-    label: "P5", name: "seq_len 2048→4096", bpb: 1.1348, delta: -0.002, deltaStr: "~−0.002",
-    chips: ["seq=4096", "LR retune"],
-    newChips: ["long-ctx-4096"],
-    stats: [
-      { k: "expected val bpb", v: "~1.1348", cls: "good" },
-      { k: "seq_len", v: "2048 → 4096", cls: "" },
-      { k: "step time penalty", v: "+~20 ms/step", cls: "bad" },
-      { k: "MATRIX_LR", v: "0.02 → 0.015", cls: "" },
-      { k: "WARMDOWN_ITERS", v: "→ 4000", cls: "" },
-    ],
-    techs: [
-      { k: "TRAIN_SEQ_LEN=4096", v: "env var", cls: "" },
-      { k: "MATRIX_LR retune", v: "0.02→0.015", cls: "" },
-      { k: "WARMDOWN_ITERS", v: "→ 4000", cls: "" },
-      { k: "Longer context quality", v: "−0.015 (proven)", cls: "good" },
-    ],
-    notes: "Longest context in the plan stack. seq_len 2048→4096 costs ~20% more ms/step (from 2048 run precedent) but gains ~−0.015 bpb — one of the larger single improvements. LR needs retuning because at longer seq lengths the effective batch token count changes. Risk: step time on our full stack may push over 600s."
+    label: "P5 (retired)", name: "seq_len 4096", bpb: 1.1348, deltaStr: "superseded", cardCls: "retired-card", deltaCls: "retired-d",
+    chips: ["seq=4096"],
+    newChips: [],
+    stats: [{ k: "target was", v: "~1.1348", cls: "" }],
+    techs: [],
+    notes: "Possible addendum to Plan B if step budget allows. Step time on 15L recurrence at 4096 seq needs measurement first.",
   },
 };
 
 const tracks = {
-  A: ['base', 'p1', 'p2a', 'p4', 'p5'],
-  B: ['base', 'p1', 'p2a', 'p2b', 'p4', 'p5'],
-  C: ['base', 'p1', 'p2a', 'p4', 'p5'], // P3 instead of P1 in real C
-  sota: ['base', 'p1', 'p2a']
+  main:    ['base', 'planD', 'planB'],
+  'd-only':['base', 'planD'],
+  retired: ['retiredBase', 'p1', 'p2', 'p4', 'p5'],
 };
 
-const targetBpbs = { A: '~1.137', B: '~1.134', C: '~1.135', sota: 'SOTA baseline' };
+const targets = {
+  main: '≤1.109 bpb',
+  'D-only': '≤1.116 bpb',
+  retired: '(retired — targets superseded)',
+};
 
-let currentTrack = 'A';
-let activeStep = 'base';
+let currentTrack = 'main';
 
 function renderPipeline(track) {
-  const pipeline = document.getElementById('pipeline');
-  pipeline.innerHTML = '';
-  const steps_in_track = tracks[track];
-  steps_in_track.forEach((sid, i) => {
+  const el = document.getElementById('pipeline');
+  el.innerHTML = '';
+  const ids = tracks[track];
+  ids.forEach((sid, i) => {
     const s = steps[sid];
-    const isBase = sid === 'base';
-    const isSOTA = track === 'sota' && i === steps_in_track.length - 1;
-
     const stepEl = document.createElement('div');
     stepEl.className = 'pipeline-step';
-
     const card = document.createElement('div');
-    card.className = 'step-card' + (isBase ? ' base-card' : '') + (isSOTA ? ' sota-card' : '');
+    card.className = `step-card ${s.cardCls}`;
     card.innerHTML = `
       <div class="card-header">
         <div>
           <div class="card-label">${s.label}</div>
           <div class="card-bpb">${s.bpb.toFixed(4)}</div>
         </div>
-        <div class="card-delta ${isBase ? 'base' : isSOTA ? 'sota' : 'pos'}">${s.deltaStr || 'base'}</div>
+        <div class="card-delta ${s.deltaCls}">${s.deltaStr}</div>
       </div>
       <div class="card-body">
         <div class="card-name">${s.name}</div>
         <div class="tech-chips">
-          ${s.chips.map(c => `<span class="chip ${s.newChips.includes(c) ? 'new' : ''}">${c}</span>`).join('')}
+          ${s.chips.map(c => `<span class="chip ${s.newChips.includes(c) ? 'new' : (s.cardCls === 'retired-card' ? 'ret' : '')}">${c}</span>`).join('')}
         </div>
       </div>
     `;
-    card.addEventListener('click', () => { activeStep = sid; showDetail(sid); });
+    card.addEventListener('click', () => showDetail(sid));
     stepEl.appendChild(card);
-    pipeline.appendChild(stepEl);
-
-    if (i < steps_in_track.length - 1) {
-      const arrow = document.createElement('div');
-      arrow.className = 'arrow';
-      arrow.textContent = '→';
-      pipeline.appendChild(arrow);
+    el.appendChild(stepEl);
+    if (i < ids.length - 1) {
+      const arr = document.createElement('div');
+      arr.className = 'arrow';
+      arr.textContent = '→';
+      el.appendChild(arr);
     }
   });
 
-  // Also show target
-  const arrow2 = document.createElement('div');
-  arrow2.className = 'arrow';
-  arrow2.textContent = '→';
-  const targetStep = document.createElement('div');
-  targetStep.className = 'pipeline-step';
-  targetStep.innerHTML = `
-    <div class="step-card" style="border-color:var(--accent5);cursor:default">
-      <div class="card-header">
-        <div><div class="card-label">Target</div><div class="card-bpb">≤${TARGET_BPB}</div></div>
-        <div class="card-delta target">goal</div>
+  // Target card (only for active tracks)
+  if (track !== 'retired') {
+    const tgt = targets[track] || '≤1.109 bpb';
+    const arr2 = document.createElement('div');
+    arr2.className = 'arrow';
+    arr2.textContent = '→';
+    const tgtStep = document.createElement('div');
+    tgtStep.className = 'pipeline-step';
+    tgtStep.innerHTML = `
+      <div class="step-card target-card" style="cursor:default">
+        <div class="card-header">
+          <div><div class="card-label">Target</div><div class="card-bpb" style="font-size:1rem">${tgt}</div></div>
+          <div class="card-delta target-d">goal</div>
+        </div>
+        <div class="card-body"><div class="card-name">Beat PR #857 (1.1048)</div></div>
       </div>
-      <div class="card-body"><div class="card-name">${targetBpbs[track]}</div></div>
-    </div>
-  `;
-  pipeline.appendChild(arrow2);
-  pipeline.appendChild(targetStep);
+    `;
+    el.appendChild(arr2);
+    el.appendChild(tgtStep);
+  }
 }
 
 function showDetail(sid) {
   const s = steps[sid];
   document.getElementById('detailTitle').textContent = `${s.label}: ${s.name}`;
-  document.getElementById('detailStats').innerHTML = s.stats.map(r => `
-    <div class="detail-row"><span class="k">${r.k}</span><span class="v ${r.cls}">${r.v}</span></div>
-  `).join('');
-  document.getElementById('detailTechs').innerHTML = s.techs.map(r => `
-    <div class="detail-row"><span class="k">${r.k}</span><span class="v ${r.cls}">${r.v}</span></div>
-  `).join('');
+  document.getElementById('detailStats').innerHTML = s.stats.map(r =>
+    `<div class="detail-row"><span class="k">${r.k}</span><span class="v ${r.cls}">${r.v}</span></div>`
+  ).join('');
+  document.getElementById('detailTechs').innerHTML = s.techs.length
+    ? s.techs.map(r => `<div class="detail-row"><span class="k">${r.k}</span><span class="v ${r.cls}">${r.v}</span></div>`).join('')
+    : '<div class="detail-row"><span class="k" style="font-style:italic">Historical entry — see notes</span></div>';
   document.getElementById('detailNotes').textContent = s.notes;
 }
 
-// Compat matrix
-const plans = ['P1', 'P2', 'P3', 'P4', 'P5'];
-const compat = [
-  // P1    P2     P3    P4    P5
-  ['self', 'yes', 'no', 'yes', 'yes'], // P1
-  ['yes', 'self', 'yes', 'yes', 'yes'], // P2
-  ['no', 'yes', 'self', 'yes', 'yes'], // P3
-  ['yes', 'yes', 'yes', 'self', 'yes'], // P4
-  ['yes', 'yes', 'yes', 'yes', 'self'], // P5
-];
+// Compat matrix (active plans only)
 function renderCompat() {
+  const plans = ['Plan D', 'Plan B'];
+  const matrix = [['self','yes'],['yes','self']];
   const m = document.getElementById('compatMatrix');
-  m.innerHTML = '';
-  // header row
-  m.innerHTML += `<div class="matrix-cell matrix-label"></div>`;
+  m.innerHTML = `<div class="matrix-cell matrix-label"></div>`;
   plans.forEach(p => { m.innerHTML += `<div class="matrix-cell matrix-header">${p}</div>`; });
-  // rows
-  compat.forEach((row, ri) => {
+  matrix.forEach((row, ri) => {
     m.innerHTML += `<div class="matrix-cell matrix-label">${plans[ri]}</div>`;
     row.forEach(v => {
-      const cls = v === 'self' ? 'compat-self' : v === 'yes' ? 'compat-yes' : v === 'no' ? 'compat-no' : 'compat-caution';
-      const label = v === 'self' ? '—' : v === 'yes' ? '✓' : '✗';
-      m.innerHTML += `<div class="matrix-cell ${cls}">${label}</div>`;
+      const cls = v === 'self' ? 'compat-self' : 'compat-yes';
+      m.innerHTML += `<div class="matrix-cell ${cls}">${v === 'self' ? '—' : '✓'}</div>`;
     });
   });
 }
 
-// Tab switch
-document.querySelectorAll('.track-tab').forEach(tab => {
+document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.track-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTrack = tab.dataset.track;
     renderPipeline(currentTrack);
-    showDetail('base');
+    const firstId = tracks[currentTrack][0];
+    if (firstId) showDetail(firstId);
+    // Show/hide retired note
+    const retNote = document.getElementById('retiredNote');
+    retNote.style.display = currentTrack === 'retired' ? 'block' : 'none';
   });
 });
 
-renderPipeline('A');
+// Retired note (hidden by default)
+const detailEl = document.getElementById('detail');
+const retiredNote = document.createElement('div');
+retiredNote.id = 'retiredNote';
+retiredNote.className = 'retired-note';
+retiredNote.style.display = 'none';
+retiredNote.innerHTML = '<strong>Retired 2026-03-26.</strong> Plans P1–P5 targeted improvements off the #2 SmearGate base (1.1458). The leaderboard advanced to 1.1194 before we had Gate 3 results, making those targets too conservative. Techniques from P1 (int5 MLP) and P4 (QAT retune) were absorbed into Plan D. P2 (bigram) updated for the new base. P5 (seq 4096) remains as a possible addendum to Plan B.';
+document.querySelector('.main').insertBefore(retiredNote, detailEl);
+
+renderPipeline('main');
 showDetail('base');
 renderCompat();
 </script>

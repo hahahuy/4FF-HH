@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parameter Golf — Plan Dependency Graph</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --accent: #6c63ff; --accent2: #ff6b6b; --accent3: #43e97b; --accent4: #f7971e; --accent5: #38bdf8;
+    --text: #e8eaf6; --muted: #8892b0; --border: #2d3250;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+  header { padding: 1.4rem 2rem 0.8rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.3rem; font-weight: 700; }
+  header p { color: var(--muted); margin-top: 0.25rem; font-size: 0.82rem; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.65rem; padding: 2px 6px; margin-left: 6px; vertical-align: middle; font-weight: 600; }
+
+  .body { padding: 1.2rem 2rem 1.5rem; }
+
+  /* ── Node graph ──────────────────────────────────────────── */
+  .graph { display: flex; align-items: center; gap: 0; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.4rem; }
+
+  .node-wrap { display: flex; flex-direction: column; align-items: center; }
+  .connector { display: flex; flex-direction: column; align-items: center; padding: 0 4px; margin-top: -4px; }
+  .conn-line { width: 48px; height: 2px; background: var(--border); flex-shrink: 0; }
+  .conn-arrow { font-size: 1.3rem; color: var(--muted); flex-shrink: 0; margin-top: -2px; }
+
+  .node {
+    border-radius: 10px; border: 2px solid; padding: 10px 14px;
+    min-width: 150px; max-width: 180px; cursor: pointer;
+    transition: transform 0.13s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .node:hover { transform: translateY(-4px); }
+  .node.base  { border-color: var(--accent5); }
+  .node.base:hover  { box-shadow: 0 6px 18px rgba(56,189,248,0.2); }
+  .node.d     { border-color: var(--accent3); }
+  .node.d:hover     { box-shadow: 0 6px 18px rgba(67,233,123,0.2); }
+  .node.b     { border-color: var(--accent); }
+  .node.b:hover     { box-shadow: 0 6px 18px rgba(108,99,255,0.2); }
+  .node.goal  { border-color: var(--accent4); cursor: default; }
+
+  .node-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 2px; }
+  .node-bpb   { font-size: 1.3rem; font-weight: 700; color: #fff; }
+  .node-name  { font-size: 0.78rem; color: #bbc; margin-top: 1px; }
+  .node-delta { display: inline-block; margin-top: 5px; font-size: 0.72rem; font-weight: 700; border-radius: 3px; padding: 1px 7px; }
+  .node-delta.base { background: rgba(56,189,248,0.1); color: var(--accent5); }
+  .node-delta.d    { background: rgba(67,233,123,0.13); color: var(--accent3); }
+  .node-delta.b    { background: rgba(108,99,255,0.13); color: var(--accent); }
+  .node-delta.goal { background: rgba(247,151,30,0.1); color: var(--accent4); }
+
+  /* ── Detail strip ────────────────────────────────────────── */
+  .detail-strip {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.3rem;
+  }
+  @media (max-width: 560px) { .detail-strip { grid-template-columns: 1fr; } }
+  .ds-left h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.7rem; }
+  .ds-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+  .ds-row:last-child { border-bottom: none; }
+  .ds-row .k { color: var(--muted); }
+  .ds-row .v { font-weight: 600; }
+  .ds-row .v.good { color: var(--accent3); }
+  .ds-row .v.warn { color: var(--accent2); }
+  .ds-row .v.info { color: var(--accent5); }
+
+  .ds-right h3 { font-size: 0.88rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.6rem; }
+  .code-block { background: var(--surface2); border-radius: 6px; padding: 0.6rem 0.8rem; font-family: monospace; font-size: 0.75rem; color: var(--accent3); line-height: 1.6; white-space: pre; overflow-x: auto; }
+
+  /* ── Summary table ───────────────────────────────────────── */
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 1.3rem; font-size: 0.82rem; }
+  .summary-table th { background: var(--surface2); color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; padding: 7px 12px; text-align: left; border-bottom: 2px solid var(--border); }
+  .summary-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .summary-table tr:last-child td { border-bottom: none; }
+  .risk { display: inline-block; border-radius: 3px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; }
+  .risk.low  { background: rgba(67,233,123,0.12); color: var(--accent3); }
+  .risk.med  { background: rgba(247,151,30,0.12); color: var(--accent4); }
+  .risk.hard { background: rgba(255,107,107,0.12); color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Plan Dependency Graph <span class="tag">Interactive</span></h1>
+  <p>Active plans D → B · click any node to see gate thresholds and env vars</p>
+</header>
+
+<div class="body">
+
+  <div class="graph">
+
+    <div class="node-wrap">
+      <div class="node base" data-plan="base">
+        <div class="node-label">Current Base</div>
+        <div class="node-bpb">1.1194</div>
+        <div class="node-name">LeakyReLU+TTT SOTA</div>
+        <span class="node-delta base">start</span>
+      </div>
+    </div>
+
+    <div class="connector"><div class="conn-line"></div></div>
+    <div style="font-size:1.3rem;color:var(--muted);flex-shrink:0;padding:0 2px;margin-top:-30px">→</div>
+    <div class="connector"><div class="conn-line"></div></div>
+
+    <div class="node-wrap">
+      <div class="node d" data-plan="d">
+        <div class="node-label">Plan D</div>
+        <div class="node-bpb">~1.116</div>
+        <div class="node-name">Int5 MLP + bigram</div>
+        <span class="node-delta d">~−0.003</span>
+      </div>
+    </div>
+
+    <div class="connector"><div class="conn-line"></div></div>
+    <div style="font-size:1.3rem;color:var(--muted);flex-shrink:0;padding:0 2px;margin-top:-30px">→</div>
+    <div class="connector"><div class="conn-line"></div></div>
+
+    <div class="node-wrap">
+      <div class="node b" data-plan="b">
+        <div class="node-label">Plan B</div>
+        <div class="node-bpb">~1.110</div>
+        <div class="node-name">15L depth recurrence</div>
+        <span class="node-delta b">~−0.009</span>
+      </div>
+    </div>
+
+    <div class="connector"><div class="conn-line"></div></div>
+    <div style="font-size:1.3rem;color:var(--muted);flex-shrink:0;padding:0 2px;margin-top:-30px">→</div>
+    <div class="connector"><div class="conn-line"></div></div>
+
+    <div class="node-wrap">
+      <div class="node goal" data-plan="goal">
+        <div class="node-label">Target</div>
+        <div class="node-bpb">≤1.109</div>
+        <div class="node-name">Beat PR #857</div>
+        <span class="node-delta goal">goal</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="detail-strip" id="detailStrip">
+    <div class="ds-left">
+      <h3 id="dsTitle">← Click a node to see gate thresholds</h3>
+      <div id="dsStats"></div>
+    </div>
+    <div class="ds-right">
+      <h3 id="dsCodeLabel">Run command</h3>
+      <div class="code-block" id="dsCode">Select a plan to see the run command.</div>
+    </div>
+  </div>
+
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Plan</th>
+        <th>Technique</th>
+        <th>Expected Δbpb</th>
+        <th>Risk</th>
+        <th>Hard gate</th>
+        <th>Compatible with</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>D</strong></td>
+        <td>Int5 MLP quantization → free ~1.5 MB → bigram expand or +1 layer</td>
+        <td style="color:var(--accent3)">−0.002 to −0.003</td>
+        <td><span class="risk low">Low</span></td>
+        <td>artifact &lt; 15.9 MB at smoke</td>
+        <td>B ✓</td>
+      </tr>
+      <tr>
+        <td><strong>B</strong></td>
+        <td>15L BI-guided depth recurrence (layers 9–13 tied to block 9, dedup quant)</td>
+        <td style="color:var(--accent3)">−0.009 to −0.012</td>
+        <td><span class="risk med">Med</span></td>
+        <td>step_avg ≤ 130 ms — <span style="color:var(--accent2)">hard abort if exceeded</span></td>
+        <td>D ✓</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+
+<script>
+const planData = {
+  base: {
+    title: "Current Base — LeakyReLU+TTT Merged SOTA",
+    stats: [
+      { k: "val bpb (3-seed)", v: "1.1194", cls: "info" },
+      { k: "artifact", v: "15.75 MB (tight — barely fits)", cls: "warn" },
+      { k: "ms/step", v: "116 ms on 8×H100", cls: "" },
+      { k: "quant scheme", v: "int6 MLP + int6 attn + fp16 embed", cls: "" },
+      { k: "already included", v: "TTT, LeakyReLU², Parallel Muon, SmearGate, SWA", cls: "" },
+    ],
+    codeLabel: "Check status",
+    code: "# Verify current base\ncd records/track_10min_16mb/2026-03-23_LeakyReLU_LegalTTT_ParallelMuon\nls -lh *.py",
+  },
+  d: {
+    title: "Plan D — Int5 MLP Quantization",
+    stats: [
+      { k: "Gate 1 (smoke)", v: "artifact < 15.9 MB + no crash", cls: "" },
+      { k: "Gate 2 (1×H100)", v: "val_bpb ≤ 1.122", cls: "" },
+      { k: "Gate 3 (8×H100)", v: "val_bpb ≤ 1.119", cls: "" },
+      { k: "Gate 4 (3-seed)", v: "mean ≤ 1.116", cls: "good" },
+      { k: "key check", v: "TTT still fires after int5 dequant", cls: "warn" },
+    ],
+    codeLabel: "Gate 1 smoke (Plan D)",
+    code: "# Smoke test — 1×H100, seed 42\nbash .claude/scripts/smoke_test.sh \\\n  records/track_10min_16mb/FOLDER 1 42\n\n# Extract result\ngrep 'val_bpb\\|submission size' train_seed42.log",
+  },
+  b: {
+    title: "Plan B — 15L BI-Guided Depth Recurrence",
+    stats: [
+      { k: "CRITICAL: step_avg", v: "≤ 130 ms or ABORT", cls: "warn" },
+      { k: "Gate 1 (smoke)", v: "step_avg ≤ 130 ms + artifact < 16 MB", cls: "" },
+      { k: "Gate 2 (1×H100)", v: "val_bpb ≤ 1.120", cls: "" },
+      { k: "Gate 3 (8×H100)", v: "val_bpb ≤ 1.113", cls: "" },
+      { k: "Gate 4 (3-seed)", v: "mean ≤ 1.110", cls: "good" },
+    ],
+    codeLabel: "Run Plan B smoke",
+    code: "# Smoke — 1×H100, 15L recurrence\nSEED=42 \\\nNUM_LAYERS=15 \\\nTIE_LAYERS=9,10,11,12,13 \\\ntorchrun --standalone \\\n  --nproc_per_node=1 \\\n  train_gpt.py\n\n# Check step time (must be ≤ 130ms)\ngrep 'step_avg\\|val_bpb' train_seed42.log",
+  },
+  goal: {
+    title: "Target — ≤1.109 bpb (beat PR #857)",
+    stats: [
+      { k: "reference PR", v: "PR #857 — 1.1093 bpb (3-seed)", cls: "" },
+      { k: "our target", v: "≤1.109 mean, p < 0.01", cls: "good" },
+      { k: "final run cost", v: "~$10.50 (3 × 8×H100)", cls: "" },
+      { k: "seeds", v: "42, 1337, 7", cls: "" },
+    ],
+    codeLabel: "3-seed final run",
+    code: "# Final submission run\nfor SEED in 42 1337 7; do\n  SEED=$SEED \\\n  NUM_LAYERS=15 \\\n  TIE_LAYERS=9,10,11,12,13 \\\n  torchrun --standalone \\\n    --nproc_per_node=8 \\\n    train_gpt.py 2>&1 \\\n    | tee train_seed${SEED}.log\ndone",
+  },
+};
+
+document.querySelectorAll('.node[data-plan]').forEach(node => {
+  node.addEventListener('click', () => {
+    const d = planData[node.dataset.plan];
+    if (!d) return;
+    document.getElementById('dsTitle').textContent = d.title;
+    document.getElementById('dsStats').innerHTML = d.stats.map(r =>
+      `<div class="ds-row"><span class="k">${r.k}</span><span class="v ${r.cls}">${r.v}</span></div>`
+    ).join('');
+    document.getElementById('dsCodeLabel').textContent = d.codeLabel;
+    document.getElementById('dsCode').textContent = d.code;
+    // Highlight clicked node
+    document.querySelectorAll('.node').forEach(n => n.style.opacity = '0.45');
+    node.style.opacity = '1';
+  });
+});
+
+// Click-away restore
+document.body.addEventListener('click', e => {
+  if (!e.target.closest('.node')) {
+    document.querySelectorAll('.node').forEach(n => n.style.opacity = '');
+  }
+});
+
+// Init
+document.querySelector('.node[data-plan="d"]').click();
+</script>
+</body>
+</html>

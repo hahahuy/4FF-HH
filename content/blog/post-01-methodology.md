@@ -27,7 +27,7 @@ Three reasons, honestly stacked:
 
 ## Understanding the constraint
 
-The contest evaluates on **bits-per-byte (bpb)** — how many bits the model needs per byte of text to predict it. Lower is better. The current best is around **1.1428 bpb**. The naive baseline starts at **1.2244 bpb**. Every technique you see in the leaderboard submissions represents a measurable slice of that 0.08 gap.
+The contest evaluates on **bits-per-byte (bpb)** — how many bits the model needs per byte of text to predict it. Lower is better. The contest opened with a naive baseline at **1.2244 bpb**. As I write this, open PRs are pushing toward **1.1048 bpb**. That entire 0.12 gap was closed in under two weeks of public collaboration.
 
 The hard constraints:
 - **16,000,000 bytes** total (code + compressed weights, decimal not MiB)
@@ -35,12 +35,12 @@ The hard constraints:
 - Tokenizer fixed: SentencePiece sp1024 (vocabulary of 1024 tokens)
 - Evaluated on FineWeb validation set
 
-> 📊 **Leaderboard timeline** — every public submission, key techniques, bpb progression. Click any entry to see the full technique breakdown.
+> 📊 **Leaderboard timeline** — every public entry from baseline to the current PR frontier. Click any dot or card to see the full technique breakdown and stats.
 
 <div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
   <iframe
     src="/blog/graphs/leaderboard-timeline.html"
-    style="width:100%;aspect-ratio:1180/820;border:none;display:block"
+    style="width:100%;height:clamp(460px, 55vw, 820px);border:none;display:block"
     scrolling="no"
     title="Parameter Golf — Leaderboard Timeline"
     loading="lazy"
@@ -55,25 +55,23 @@ This is open-weight. Every top submission publishes full training code.
 
 Before writing a single line, I spent time reading the top entries end to end. Not to copy blindly — to understand *why* each choice was made and what the measured delta was.
 
-Here's what the leaderboard looked like when I started, compressed to what matters:
+The leaderboard tells a story in generations. Reading them in order is like watching an optimization campaign compressed into two weeks:
 
-| Rank | bpb | Key techniques over baseline |
-|------|-----|------------------------------|
-| Naive baseline | 1.2244 | 9L×512d, int8+zlib |
-| After sliding eval | ~1.192 | Pure eval trick — free −0.032 |
-| After MLP×3 | ~1.163 | Wider MLP — biggest single arch win (−0.029) |
-| After int6 QAT | ~1.150 | STE quantization-aware training eliminates quant gap |
-| **#2 SmearGate** | **1.1458** | + SmearGate, OrthoInit, BigramHash(4096), SWA, Muon WD |
-| **#1 SOTA** | **1.1428** | + Int5 MLP, 10 layers, BigramHash(10240) |
+| Era | bpb range | What happened |
+|-----|-----------|---------------|
+| Foundations (Mar 17–18) | 1.22–1.19 | Sliding window eval, FP16 embed, long context — the free wins |
+| Architecture (Mar 19–20) | 1.19–1.14 | MLP×3, STE int6 QAT, SmearGate, BigramHash, SWA — the big wins |
+| TTT + LeakyReLU (Mar 21–23) | 1.14–1.119 | Test-time training, LeakyReLU², Parallel Muon — the merged SOTA |
+| Open PRs (Mar 26) | 1.119–1.10 | 15L depth recurrence, HedgeMixer, Mamba hybrid — the frontier |
 
-Each row is a generation of the contest. Reading them in order is like watching an optimization campaign compressed into a week.
+The key lesson from reading: **each generation builds directly on the last**. No one is starting from scratch. The contest moves fast because people fork the strongest public base and make targeted diffs.
 
-> 📊 **Technique stack pipeline** — how every technique layers from naive baseline to SOTA, with per-plan deltas and compatibility matrix. Switch between Track A / B / C.
+> 📊 **Technique stack pipeline** — how each technique layers from the naive baseline to the current merged SOTA and our active plans. Click any node to see the technique details and expected delta.
 
 <div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
   <iframe
     src="/blog/graphs/technique-stack-pipeline.html"
-    style="width:100%;aspect-ratio:1180/860;border:none;display:block"
+    style="width:100%;height:clamp(480px, 58vw, 860px);border:none;display:block"
     scrolling="no"
     title="Parameter Golf — Technique Stack Pipeline"
     loading="lazy"
@@ -86,13 +84,16 @@ Each row is a generation of the contest. Reading them in order is like watching 
 
 The worst thing you can do in a contest like this is start from scratch. The best public submission already encodes weeks of ablations. Start there.
 
-I chose **#2 (SmearGate)** as my copy base. Reasoning:
+I'm currently building off the **merged SOTA** (`2026-03-23_LeakyReLU_LegalTTT_ParallelMuon`, 1.1194 bpb). It already includes:
 
-- It's the most feature-complete foundation: sliding eval, STE int6 QAT, MLP×3, SmearGate, OrthoInit, Muon WD, SWA, FP16 embed — all already working together.
-- The gap to #1 is small (0.003 bpb) and the diff is legible: int5 MLP, 10th layer, bigger BigramHash.
-- #1's code is readable but its specific combination of changes is harder to learn from as a base.
+- LeakyReLU(0.5)² activation, legal score-first TTT (3ep SGD), Parallel Muon optimizer
+- STE int6 QAT, MLP×3, SmearGate, OrthoInit, Muon WD=0.04, SWA, FP16 embed, sliding eval stride=64
 
-The principle: **minimize the unknown surface area when you start**. When you fork from a strong, clean baseline, every change you make is a clear hypothesis.
+That's every major architectural win from the first two eras, already working together. I don't re-implement any of it — I only add targeted diffs.
+
+**One thing that happened mid-campaign:** I originally planned to build off the #2 SmearGate base (1.1458) with five plans targeting ~1.137 bpb. The leaderboard advanced to 1.1194 before I had Gate 3 results, making those targets uncompetitive. The plans were retired. I re-forked from the merged SOTA and restructured around two new plans.
+
+The principle: **the base you choose is the most consequential decision**. Optimize for "most feature-complete and cleanest code," not "highest score" — you'll be adding diffs on top.
 
 ---
 
@@ -104,26 +105,23 @@ Each plan has:
 - **Hypothesis** — what it's expected to do and by how much
 - **Exact code changes** — which functions change, what new env vars get added
 - **Conflicts** — which other plans this is incompatible with
-- **Fallback** — how to disable if it breaks something (usually an env var)
+- **Fallback** — how to disable if it breaks something
 
-Right now I have five plans queued:
+Right now I have two active plans:
 
-| Plan | Technique | Expected Δbpb | Risk |
-|------|-----------|:-------------:|:----:|
-| P1 | Int5 MLP + 10th layer | −0.003 | Low |
-| P2 | BigramHash(10240) + TrigramHash | −0.002 | Low-Med |
-| P3 | Weight-tied recurrence (13 eff. layers) | −0.003 | **High** |
-| P4 | QAT extend to int5-MLP + SWA(0.4) retune | −0.003 | Med |
-| P5 | seq_len 2048→4096 + LR retune | −0.002 | Med |
+| Plan | Technique | Expected Δbpb | Risk | Depends on |
+|------|-----------|:-------------:|:----:|:----------:|
+| **D** | Int5 MLP → free ~1.5 MB → bigram expand | −0.002 to −0.003 | Low | none |
+| **B** | 15L BI-guided depth recurrence (layers 9-13 tied) | −0.009 to −0.012 | Med | D |
 
-Plans P1→P2→P4→P5 (Track A) are the conservative stack targeting ~1.137 bpb.
+Stack: **D → B**, targeting ≤1.109 bpb (beating PR #857's 1.1093).
 
-> 📊 **Plan dependency graph** — all five plans, expected Δbpb, risk levels, and which are compatible with each other.
+> 📊 **Plan dependency graph** — Plan D and B with gate thresholds, env vars, and run commands. Click any node.
 
 <div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
   <iframe
-    src="/blog/graphs/technique-stack-pipeline.html"
-    style="width:100%;aspect-ratio:1180/860;border:none;display:block"
+    src="/blog/graphs/plan-dependency.html"
+    style="width:100%;height:clamp(460px, 52vw, 720px);border:none;display:block"
     scrolling="no"
     title="Parameter Golf — Plan Dependency Graph"
     loading="lazy"
@@ -141,18 +139,20 @@ I use a four-gate system:
 ```
 Gate 1  →  1×H100 smoke test, 1 seed       ~$0.30   No crash, artifact < 16MB
 Gate 2  →  1×H100 full run vs base         ~$0.30   Visible bpb improvement
-Gate 3  →  8×H100, 1 seed                  ~$3.50   val_bpb < 1.139
-Gate 4  →  8×H100, 3 seeds (final)        ~$10.50   val_bpb < 1.1378, p < 0.01
+Gate 3  →  8×H100, 1 seed                  ~$3.50   val_bpb on track for target
+Gate 4  →  8×H100, 3 seeds (final)        ~$10.50   Mean bpb at target, p < 0.01
 ```
 
 Nothing proceeds past its gate without passing it. This sounds obvious. It required real discipline the first few times I was excited about a technique.
 
-> 📊 **Gate system flowchart** — full decision flow from idea to submission, with abort paths, cost tracker, and gate pass criteria.
+Plan B has an **additional hard gate** that overrides everything: the smoke test must show `step_avg ≤ 130ms`. If the 15-layer recurrence makes each step too slow, we won't complete 600s of training regardless of quality per step. Abort immediately if this fires.
+
+> 📊 **Gate system flowchart** — full decision flow from idea to submission. Hover any node for details on what it checks and what abort looks like.
 
 <div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
   <iframe
     src="/blog/graphs/gate-system-flowchart.html"
-    style="width:100%;aspect-ratio:1180/900;border:none;display:block"
+    style="width:100%;height:clamp(500px, 60vw, 900px);border:none;display:block"
     scrolling="no"
     title="Parameter Golf — Decision Gate System"
     loading="lazy"
@@ -170,10 +170,10 @@ Before every session I check `failures.md` — a document that records every rul
 Example entries:
 
 - **SwiGLU activation** — 45% slower per step, so at the fixed 600s wall-clock budget it trades more steps for slightly better quality per step, and loses. The lesson: *throughput is a first-class resource in fixed-time training*.
-- **Layer recurrence (fixed time budget)** — halves step count; loss in steps far exceeds quality gain from recurrence. But *might* work at 8×H100 scale with a smaller recurrence scope — so it stays as a "conditional failure" not a hard rule.
-- **BigramHash beyond 10240 buckets** — proven diminishing returns by SOTA's own ablation. Marginal gain < parameter cost above this size.
+- **Layer recurrence (naive fixed-time)** — halves step count; loss in steps far exceeds quality gain from recurrence. But this was on a single RTX 5090. PR #857 made it work at 8×H100 scale with BI-guided layer selection and only 5 tied positions instead of all layers. It's now Plan B.
+- **BigramHash beyond 10240 buckets** — proven diminishing returns. Marginal gain < parameter cost above this size.
 
-The failures log saves me from re-running ruled-out ideas. More importantly, the *why* often contains the seed of something that would work: knowing SwiGLU fails because of throughput tells you to look for activations that are quality-positive *and* step-neutral.
+The failures log saves me from re-running ruled-out ideas. More importantly, the *why* often contains the seed of something that would work: knowing naive recurrence fails because of throughput tells you that the right implementation is one where you can control exactly which layers get tied and measure step time before committing.
 
 ---
 
@@ -181,7 +181,7 @@ The failures log saves me from re-running ruled-out ideas. More importantly, the
 
 I use Claude Code throughout this project. Not to generate training algorithms — I do that. I use it for:
 
-**Navigation and cross-reference.** I have five plan files, a failures log, an experiments log, the training script, and a CLAUDE.md state file. Keeping track of "does this env var already exist in the base script?" or "does this technique conflict with P4?" across sessions is where an assistant genuinely helps.
+**Navigation and cross-reference.** Two plan files, a failures log, an experiments log, the training script, a CLAUDE.md state file. Keeping track of "does this env var already exist in the base script?" or "what was the step time on PR #857?" across sessions is where an assistant genuinely helps.
 
 **The testing-adjusting loop.** After a smoke test run, pulling the specific log lines that matter, checking artifact size against the budget, comparing bpb to the expected baseline delta — the mechanical part of iterating. Automating the boring part of the loop.
 
@@ -193,23 +193,25 @@ What I keep to myself: *deciding what to try next*. Reading the leaderboard, for
 
 ## Quantization: the size-quality tradeoff in practice
 
-This contest lives and dies on quantization. The vocabulary is only 1024 tokens, so the model has very little representational budget. Every bit you save in weight storage is a bit you can spend on more weights or more layers.
+This contest lives and dies on quantization. The vocabulary is only 1024 tokens, so the model has very little representational budget. Every bit you save in weight storage is a bit you can spend on more weights, more layers, or bigger hash tables.
 
 The key insight from reading the leaderboard:
 
-**Straight-Through Estimator (STE) QAT** is the technique that made serious compression viable. Before STE, quantizing during training degraded performance — you'd save size but lose quality. With STE, the quantization gap (the bpb penalty from quantizing) went from ~0.016 to ~0.0001. The model trains with simulated quantization and learns to work within it.
+**Straight-Through Estimator (STE) QAT** is the technique that made serious compression viable. Before STE, quantizing during training degraded performance. With STE, the quantization gap went from ~0.016 bpb to ~0.0001. The model trains with simulated quantization and learns to work within it.
 
-The current SOTA uses three precision tiers:
-- **Int5 for MLP weights** `[-16, 15]` — saves ~1.86MB vs int6, enough room to add a 10th layer
-- **Int6 for attention weights** `[-32, 31]` — strong quality, smaller size than int8
-- **FP16 for embeddings and last KV projection** — embeddings are small, keeping them full precision has negligible size cost but real quality impact
+The current approach in the merged SOTA uses three precision tiers:
+- **Int6 for MLP weights** `[-32, 31]` — current base; Plan D tightens this to int5
+- **Int6 for attention weights** `[-32, 31]` — stays int6
+- **FP16 for embeddings** — negligible size cost, real quality impact
 
-> 📊 **Quantization tradeoff chart** — bpb vs artifact size for every public entry, quant scheme selector, and a six-card explainer on how STE QAT and per-row scaling work.
+Plan D's key arithmetic: **int5 MLP saves ~1.5MB** vs int6. That freed space funds either BigramHash expansion (1536→4096) or an additional transformer layer. The base is currently at 15.75MB — barely under the 16MB cap — so this budget management is critical.
+
+> 📊 **Quantization tradeoff chart** — bpb vs artifact size for every public entry, quant scheme selector, and explainer on how STE QAT and per-row scaling work.
 
 <div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
   <iframe
     src="/blog/graphs/quantization-tradeoff.html"
-    style="width:100%;aspect-ratio:1180/960;border:none;display:block"
+    style="width:100%;height:clamp(520px, 64vw, 960px);border:none;display:block"
     scrolling="no"
     title="Parameter Golf — Quantization Tradeoff Chart"
     loading="lazy"
@@ -220,11 +222,13 @@ The current SOTA uses three precision tiers:
 
 ## Where I am right now
 
-Honest status: I haven't run Gate 3 yet. I'm building a clean working copy from the #2 base, applying P1 (int5 MLP + 10th layer), and running the first smoke test before spending real compute.
+Honest status: the leaderboard moved faster than my experiments. I had five plans queued against the #2 SmearGate base (1.1458) when the merged SOTA landed at 1.1194. Those plans were retired — their target bpb of ~1.137 was already behind the base I'd need to fork from.
+
+I re-scoped to two plans: Plan D (low-risk, well-understood) and Plan B (medium-risk, validated by PR #857). The target is ≤1.109 bpb.
 
 The process is what I have to report from this phase. The numbers come later.
 
-If you're working on a similar campaign — this contest or any other constrained optimization — the single most transferable practice is: **write down what didn't work and why, with the same discipline you use for what did**. The failures log is the document I reference most.
+If you're working on a similar campaign — this contest or any other constrained optimization — the single most transferable practice: **write down what didn't work and why, with the same discipline you use for what did**. I use that document more than any other.
 
 ---
 
@@ -233,9 +237,9 @@ If you're working on a similar campaign — this contest or any other constraine
 | Post | Topic | Status |
 |------|-------|--------|
 | **#1 — This post** | Methodology + leaderboard meta-game | ✅ Published |
-| **#2 — The Art of the Baseline Diff** | How to read and fork a top submission intelligently | ⏳ After first smoke test |
-| **#3 — When It Beat My Expectations** | Technical deep-dive on the surprise win | ⏳ After Gate 3 |
-| **#4 — Failures I'm Glad I Documented** | Post-mortem on ruled-out techniques | ⏳ After more experiments |
+| **#2 — How the Leaderboard Moved Underneath Us** | The P1–P5 retirement, pivoting bases, what the pace of this contest teaches | ⏳ After first smoke test |
+| **#3 — When It Beat My Expectations** | Technical deep-dive on whichever plan delivers the surprise win | ⏳ After Gate 3 results |
+| **#4 — Failures I'm Glad I Documented** | Post-mortem on ruled-out techniques; what the failures log actually saved | ⏳ After more experiments |
 | **#5 — Small Models for Real Projects** | Connecting contest learnings to production miniLM use | ⏳ Closing post |
 
 ---

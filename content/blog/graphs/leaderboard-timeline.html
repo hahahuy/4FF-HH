@@ -14,6 +14,7 @@
     --accent2: #ff6b6b;
     --accent3: #43e97b;
     --accent4: #f7971e;
+    --accent5: #38bdf8;
     --text: #e8eaf6;
     --muted: #8892b0;
     --border: #2d3250;
@@ -21,190 +22,191 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
-  header { padding: 2rem 2rem 1rem; border-bottom: 1px solid var(--border); }
-  header h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-  header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.9rem; }
-  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.7rem; padding: 2px 8px; margin-left: 8px; vertical-align: middle; font-weight: 600; letter-spacing: 0.05em; }
+  header { padding: 1.5rem 2rem 1rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; }
+  header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.85rem; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.68rem; padding: 2px 7px; margin-left: 6px; vertical-align: middle; font-weight: 600; }
 
-  .grid { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; padding: 1.5rem 2rem; }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.2rem; padding: 1.2rem 2rem 0; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
-  .chart-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #ccd; }
-  .chart-wrap { position: relative; height: 380px; }
+  /* CHART */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
+  .chart-card h2 { font-size: 0.88rem; font-weight: 600; margin-bottom: 0.8rem; color: #aab; }
+  .chart-hint { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.8rem; }
+  .chart-hint span { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; }
+  .chart-wrap { position: relative; height: 300px; }
 
-  .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+  /* SIDEBAR */
+  .sidebar { display: flex; flex-direction: column; gap: 0.6rem; overflow-y: auto; max-height: 420px; padding-right: 4px; }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 2px 4px; border-bottom: 1px solid var(--border); margin-bottom: 2px; }
 
   .entry-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.2rem;
-    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    position: relative;
   }
-  .entry-card:hover, .entry-card.active { border-color: var(--accent); background: var(--surface2); }
-  .entry-card .rank { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-  .entry-card .score { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 0.1rem 0; }
-  .entry-card .score span { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
-  .entry-card .name { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; }
-  .entry-card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 0.4rem; }
-  .entry-card .pill {
-    font-size: 0.68rem; padding: 2px 7px; border-radius: 20px; font-weight: 500;
-    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  .entry-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 8px 0 0 8px; background: transparent; transition: background 0.15s;
   }
-  .entry-card .pill.new { background: rgba(108,99,255,0.15); border-color: var(--accent); color: var(--accent); }
-  .entry-card .pill.sota { background: rgba(247,151,30,0.15); border-color: var(--accent4); color: var(--accent4); }
+  .entry-card:hover { border-color: #4a5070; background: var(--surface2); }
+  .entry-card.active { border-color: var(--accent); background: var(--surface2); }
+  .entry-card.active::before { background: var(--accent); }
+  .entry-card.base-entry.active::before { background: var(--accent5); }
+  .entry-card.sota-entry::before { background: var(--accent4); }
+  .entry-card.pr-entry::before { background: rgba(108,99,255,0.4); }
+  .entry-card.our-base.active::before { background: var(--accent5); }
 
-  .detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin: 0 2rem 2rem; }
-  .detail-panel h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
-  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
-  .stat-box { background: var(--surface2); border-radius: 8px; padding: 0.8rem 1rem; }
-  .stat-box .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-  .stat-box .val { font-size: 1.2rem; font-weight: 700; color: #fff; margin-top: 0.2rem; }
+  .ec-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .ec-bpb { font-size: 1.1rem; font-weight: 700; color: #fff; }
+  .ec-bpb span { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+  .ec-date { font-size: 0.68rem; color: var(--muted); }
+  .ec-label { font-size: 0.78rem; color: var(--accent5); margin: 1px 0 3px; }
+  .ec-label.sota { color: var(--accent4); }
+  .ec-label.our-base { color: var(--accent5); }
+  .ec-label.pr { color: var(--accent); }
+  .ec-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+  .chip { font-size: 0.62rem; padding: 1px 5px; border-radius: 3px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+  .chip.new { background: rgba(108,99,255,0.1); border-color: rgba(108,99,255,0.3); color: var(--accent); }
+  .chip.pr-chip { background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.25); color: var(--accent5); }
+
+  /* DETAIL PANEL */
+  .detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.5rem; margin: 1rem 2rem 1.2rem; }
+  .detail-panel h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.8rem; }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.7rem; margin-bottom: 0.8rem; }
+  .stat-box { background: var(--surface2); border-radius: 7px; padding: 0.65rem 0.8rem; }
+  .stat-box .label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .stat-box .val { font-size: 1.1rem; font-weight: 700; color: #fff; margin-top: 0.15rem; }
   .stat-box .val.good { color: var(--accent3); }
   .stat-box .val.warn { color: var(--accent4); }
 
-  .tech-list { margin-top: 1rem; }
-  .tech-list h4 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.6rem; }
-  .tech-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .tech-list h4 { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.5rem; }
+  .tech-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
   .tech-row:last-child { border-bottom: none; }
-  .delta { font-family: monospace; font-size: 0.8rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .delta { font-family: monospace; font-size: 0.75rem; padding: 1px 6px; border-radius: 3px; font-weight: 600; white-space: nowrap; }
   .delta.pos { background: rgba(67,233,123,0.12); color: var(--accent3); }
   .delta.neg { background: rgba(255,107,107,0.12); color: var(--accent2); }
   .delta.neu { background: var(--surface2); color: var(--muted); }
 
-  footer { padding: 1rem 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; }
+  .notes-text { margin-top: 0.6rem; font-size: 0.78rem; color: var(--muted); font-style: italic; line-height: 1.5; }
+
+  /* ERA DIVIDERS in sidebar */
+  .era-label { font-size: 0.66rem; color: var(--border); text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 0 2px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .era-label:first-child { border-top: none; margin-top: 0; }
+
+  footer { padding: 0.8rem 2rem 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.73rem; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>OpenAI Parameter Golf — Leaderboard Timeline <span class="tag">Interactive</span></h1>
-  <p>All public submissions · bits-per-byte (↓ better) · click any entry to see technique breakdown</p>
+  <p>All public entries · val_bpb ↓ better · <strong style="color:#ccd">click any point on the chart or card in the list</strong> to see the full technique breakdown below</p>
 </header>
 
-<div class="grid">
+<div class="layout">
   <div class="chart-card">
-    <h2>val_bpb progression over time (all public entries)</h2>
+    <h2>val_bpb over time — each dot is a public submission</h2>
+    <p class="chart-hint">Click a dot to highlight it and load details. <span>🟠 SOTA</span> <span style="color:var(--accent5)">🔵 our base</span> <span style="color:var(--accent)">🟣 old base</span> <span style="color:var(--accent3)">🟢 open PR</span></p>
     <div class="chart-wrap">
       <canvas id="timelineChart"></canvas>
     </div>
   </div>
-
-  <div class="sidebar" id="sidebar"></div>
+  <div class="sidebar">
+    <div class="sidebar-label">↕ scroll · click to select</div>
+    <div id="sidebarInner"></div>
+  </div>
 </div>
 
 <div class="detail-panel" id="detailPanel">
-  <h3 id="detailTitle">Click an entry to see details</h3>
+  <h3 id="detailTitle">← Click any entry above to see technique breakdown</h3>
   <div class="detail-grid" id="detailStats"></div>
   <div class="tech-list" id="techList"></div>
+  <div class="notes-text" id="detailNotes"></div>
 </div>
 
-<footer>Data sourced from public records in <code>records/track_10min_16mb/</code> and <code>.claude/experiments.md</code> · Rendered locally, not fetched from an API</footer>
+<footer>Data from public records in <code>records/track_10min_16mb/</code> and <code>.claude/experiments.md</code> · Updated 2026-03-26</footer>
 
 <script>
 const data = [
+  // ── ERA 1: First moves ──────────────────────────────────────
   {
-    date: "Mar 17",
-    label: "Naive Baseline",
-    author: "Baseline",
+    date: "Mar 17", label: "Naive Baseline", author: "Baseline", era: "Era 1: Foundations",
     bpb: 1.2244, preQuant: 1.2172, gap: 0.0072, mb: 15.86,
-    isOurs: false,
     techniques: [
       { name: "9L × 512d transformer", delta: "—", type: "neu" },
       { name: "int8 + zlib compression", delta: "—", type: "neu" },
       { name: "Vocab 1024 (fixed)", delta: "—", type: "neu" },
     ],
-    notes: "Reference point. 13,780 steps in 600s (43.5 ms/step)",
-    newTechs: []
+    notes: "Reference point. 13,780 steps in 600s (43.5 ms/step). The floor to beat.",
+    newTechs: [],
   },
   {
-    date: "Mar 17",
-    label: "LoRA + Sliding Eval",
-    author: "samacqua",
+    date: "Mar 17", label: "LoRA + Sliding Eval", author: "samacqua", era: "Era 1: Foundations",
     bpb: 1.1928, preQuant: null, gap: null, mb: 15.86,
-    isOurs: false,
     techniques: [
       { name: "Sliding window eval (stride 256)", delta: "−0.034", type: "pos" },
       { name: "Document isolation", delta: "−0.011", type: "pos" },
       { name: "LoRA test-time training", delta: "−0.037", type: "pos" },
     ],
-    notes: "Most gain from eval trick, not TTT itself",
-    newTechs: ["sliding-eval", "doc-isolation"]
+    notes: "Most gain from the sliding eval trick, not TTT itself. Key insight: eval methodology matters as much as training.",
+    newTechs: ["sliding-eval", "TTT"],
   },
   {
-    date: "Mar 18",
-    label: "FP16 Embed + WD",
-    author: "Renier Velazco",
+    date: "Mar 18", label: "FP16 Embed + WD", author: "Renier Velazco", era: "Era 1: Foundations",
     bpb: 1.2197, preQuant: null, gap: 0.0005, mb: 15.90,
-    isOurs: false,
     techniques: [
       { name: "FP16 tied embedding", delta: "quant gap ×32↓", type: "pos" },
-      { name: "Extended warmdown (1200→3600)", delta: "~−0.005", type: "pos" },
-      { name: "❌ SwiGLU", delta: "−45% throughput", type: "neg" },
-      { name: "❌ Naive QAT", delta: "not worth it", type: "neg" },
+      { name: "Extended warmdown 1200→3600", delta: "~−0.005", type: "pos" },
+      { name: "❌ SwiGLU activation", delta: "−45% throughput", type: "neg" },
+      { name: "❌ Naive QAT", delta: "not worth it here", type: "neg" },
     ],
-    notes: "FP16 embed: quant gap 0.007→0.0005 (32×). SwiGLU ruled out.",
-    newTechs: ["fp16-embed"]
+    notes: "FP16 embed: quant gap 0.007→0.0005 (32× reduction). SwiGLU ruled out — slower steps lose more than they gain.",
+    newTechs: ["fp16-embed"],
   },
   {
-    date: "Mar 18",
-    label: "Long Context seq=2048",
-    author: "Spokane Way",
-    bpb: 1.2058, preQuant: 1.2005, gap: 0.0053, mb: 15.87,
-    isOurs: false,
-    techniques: [
-      { name: "seq_len 1024→2048", delta: "−0.023", type: "pos" },
-      { name: "Step time penalty", delta: "+20% ms/step", type: "neg" },
-    ],
-    notes: "Longer context costs ~20% more time but gains −0.023 nats",
-    newTechs: ["long-context"]
-  },
-  {
-    date: "Mar 19",
-    label: "Sliding Eval (stride=64)",
-    author: "Matthew Li",
+    date: "Mar 19", label: "Sliding Eval stride=64", author: "Matthew Li", era: "Era 1: Foundations",
     bpb: 1.1925, preQuant: 1.2196, gap: null, mb: 15.87,
-    isOurs: false,
     techniques: [
       { name: "Sliding window eval stride=64 (vs 256)", delta: "−0.032", type: "pos" },
       { name: "No training changes", delta: "0", type: "neu" },
     ],
-    notes: "Pure eval trick. Eval time 16s→70s. Completely free quality gain.",
-    newTechs: ["sliding-eval-64"]
+    notes: "Pure eval trick — zero training cost. Eval time 16s→70s. Became standard after this.",
+    newTechs: ["sliding-eval-64"],
   },
+  // ── ERA 2: Architecture wins ────────────────────────────────
   {
-    date: "Mar 19",
-    label: "MLP×3 + int6 QAT",
-    author: "aquariouseworkman",
+    date: "Mar 19", label: "MLP×3 + int6 QAT", author: "aquariouseworkman", era: "Era 2: Architecture",
     bpb: 1.1630, preQuant: 1.1950, gap: 0.0015, mb: 15.35,
-    isOurs: false,
     techniques: [
       { name: "MLP hidden ×3 (1536)", delta: "−0.029", type: "pos" },
       { name: "int6 QAT (STE)", delta: "gap 0.016→0.0015", type: "pos" },
       { name: "Sliding eval stride=64", delta: "−0.032", type: "pos" },
     ],
-    notes: "MLP 3× was the biggest single architectural win of the contest",
-    newTechs: ["mlp3x", "int6-qat"]
+    notes: "MLP 3× was the biggest single architectural win of the entire contest. STE QAT made serious quant viable.",
+    newTechs: ["mlp3x", "int6-qat"],
   },
   {
-    date: "Mar 19",
-    label: "Full QAT + zstd-22",
-    author: "aruniyer",
+    date: "Mar 19", label: "Full QAT + zstd-22", author: "aruniyer", era: "Era 2: Architecture",
     bpb: 1.1502, preQuant: 1.1501, gap: 0.0001, mb: 15.56,
-    isOurs: false,
     techniques: [
       { name: "STE int6 QAT all 2D weights", delta: "gap →0.0001", type: "pos" },
       { name: "zstd-22 (vs zlib)", delta: "better compression", type: "pos" },
       { name: "MLP hidden 1344 (2.625×)", delta: "~−0.020", type: "pos" },
       { name: "seq_len=2048, Muon mom=0.99", delta: "~−0.010", type: "pos" },
     ],
-    notes: "Near-eliminates quantization gap entirely with STE. Milestone entry.",
-    newTechs: ["ste-qat", "zstd22"]
+    notes: "Milestone: near-eliminates the quantization gap. zstd-22 became standard after this.",
+    newTechs: ["ste-qat", "zstd22"],
   },
   {
-    date: "Mar 20",
-    label: "#2 SmearGate (our base)",
-    author: "Raahil Shah",
+    date: "Mar 20", label: "#2 SmearGate", author: "Raahil Shah", era: "Era 2: Architecture",
     bpb: 1.1458, preQuant: 1.1616, gap: 0.0158, mb: 15.86,
-    isOurs: false, isBase: true,
+    isOldBase: true,
     techniques: [
       { name: "SmearGate activation", delta: "~−0.003", type: "pos" },
       { name: "BigramHash(4096)", delta: "~−0.004", type: "pos" },
@@ -212,58 +214,134 @@ const data = [
       { name: "Muon WD=0.04", delta: "~−0.001", type: "pos" },
       { name: "SWA frac=0.5", delta: "~−0.002", type: "pos" },
     ],
-    notes: "Our copy base. 7,379 steps in 600s (81 ms/step). Pre-quant 1.1616.",
-    newTechs: ["smeargate", "bigramhash", "orthoinit", "muon-wd", "swa"]
+    notes: "Previously our copy base (P1–P5 era). 7,379 steps in 600s (81 ms/step). Plans P1–P5 retired Mar 26 after leaderboard moved past this.",
+    newTechs: ["smeargate", "bigramhash", "orthoinit", "muon-wd", "swa"],
   },
   {
-    date: "Mar 20",
-    label: "#1 SOTA",
-    author: "thwu1",
+    date: "Mar 20", label: "Old SOTA (thwu1)", author: "thwu1", era: "Era 2: Architecture",
     bpb: 1.1428, preQuant: null, gap: null, mb: 15.90,
-    isOurs: false, isSOTA: true,
+    isOldSOTA: true,
     techniques: [
-      { name: "Int5 MLP [-16,15] (vs int6)", delta: "saves ~1.86MB", type: "pos" },
-      { name: "10 layers (vs 9, funded by int5)", delta: "−0.003", type: "pos" },
-      { name: "BigramHash(10240) (vs 4096)", delta: "−0.002 total", type: "pos" },
-      { name: "SWA frac=0.4 (vs 0.5)", delta: "−0.0006", type: "pos" },
+      { name: "Int5 MLP [-16,15] vs int6", delta: "saves ~1.86MB", type: "pos" },
+      { name: "10 layers (funded by int5 space)", delta: "−0.003", type: "pos" },
+      { name: "BigramHash(10240) vs 4096", delta: "−0.002 total", type: "pos" },
+      { name: "SWA frac=0.4 vs 0.5", delta: "−0.0006", type: "pos" },
       { name: "3% magnitude pruning", delta: "~neutral", type: "neu" },
     ],
-    notes: "σ=0.00016 — extremely stable across seeds. Our target: ≤1.1378 (SOTA−0.005).",
-    newTechs: ["int5-mlp", "10-layers", "bigramhash-10k"]
+    notes: "σ=0.00016 — very stable across seeds. Was SOTA until TTT + LeakyReLU wave on Mar 21–23.",
+    newTechs: ["int5-mlp", "10-layers", "bigramhash-10k"],
+  },
+  // ── ERA 3: TTT + LeakyReLU wave ────────────────────────────
+  {
+    date: "Mar 21–22", label: "EMA + GPTQ-lite", author: "multiple", era: "Era 3: TTT + LeakyReLU",
+    bpb: 1.1228, preQuant: null, gap: null, mb: null,
+    techniques: [
+      { name: "11L + EMA", delta: "~−0.010", type: "pos" },
+      { name: "GPTQ-lite 4-bit", delta: "size savings", type: "pos" },
+      { name: "Extended warmdown 3500", delta: "~−0.005", type: "pos" },
+      { name: "QAT@0.15 schedule", delta: "~−0.003", type: "pos" },
+    ],
+    notes: "Intermediate wave — 11L + quantization refinements. Shortly overtaken by TTT entries.",
+    newTechs: ["ema", "gptq-lite"],
+  },
+  {
+    date: "Mar 23", label: "Merged SOTA — our current base", author: "community merge", era: "Era 3: TTT + LeakyReLU",
+    bpb: 1.1194, preQuant: null, gap: null, mb: 15.75,
+    isBase: true,
+    techniques: [
+      { name: "LeakyReLU(0.5)² activation", delta: "~−0.004", type: "pos" },
+      { name: "Legal score-first TTT (3ep SGD)", delta: "~−0.008", type: "pos" },
+      { name: "BigramHash(1536) tuned", delta: "stable", type: "neu" },
+      { name: "Parallel Muon optimizer", delta: "faster convergence", type: "pos" },
+      { name: "STE int6 QAT, MLP×3, SmearGate, SWA", delta: "from prior stack", type: "neu" },
+    ],
+    notes: "Our current copy base. 3-seed mean 1.1194, std 0.0006. 15.75MB — tight budget, int5 MLP (Plan D) expected to free ~1.5MB.",
+    newTechs: ["leakyrelu2", "legal-ttt", "parallel-muon"],
+  },
+  // ── ERA 4: Open PRs (not yet merged) ───────────────────────
+  {
+    date: "Mar 26 (PR)", label: "PR #852 — Hymba Mamba+Attn", author: "open PR", era: "Era 4: Open PRs",
+    bpb: 1.1189, preQuant: null, gap: null, mb: null,
+    isPR: true,
+    techniques: [
+      { name: "Hymba 11L Mamba+Attn hybrid", delta: "~−0.003", type: "pos" },
+      { name: "Parallel Muon", delta: "from base", type: "neu" },
+      { name: "4-bit QAT", delta: "size savings", type: "pos" },
+      { name: "TTT 3ep", delta: "from base", type: "neu" },
+    ],
+    notes: "Open PR — not merged. Mamba SSM hybrid architecture approach.",
+    newTechs: ["mamba-hybrid", "4bit-qat"],
+  },
+  {
+    date: "Mar 26 (PR)", label: "PR #849 — 11L HedgeMixer", author: "open PR", era: "Era 4: Open PRs",
+    bpb: 1.1105, preQuant: null, gap: null, mb: null,
+    isPR: true,
+    techniques: [
+      { name: "11L int5 + 6-expert HedgeMixer", delta: "~−0.009", type: "pos" },
+      { name: "LeakyReLU(0.9)²", delta: "variant", type: "pos" },
+      { name: "TTT 4ep", delta: "+1 epoch vs base", type: "pos" },
+    ],
+    notes: "Open PR. HedgeMixer = sparse MoE-style routing at MLP. Not yet merged.",
+    newTechs: ["hedgemixer", "int5-plus"],
+  },
+  {
+    date: "Mar 26 (PR)", label: "PR #857 — 15L Recurrence ← our target", author: "open PR", era: "Era 4: Open PRs",
+    bpb: 1.1048, preQuant: null, gap: null, mb: 15.75,
+    isPR: true, isTarget: true,
+    techniques: [
+      { name: "15L depth recurrence (layers 9-13 tied)", delta: "~−0.014", type: "pos" },
+      { name: "LeakyReLU(0.5)²", delta: "from base", type: "neu" },
+      { name: "Cosine TTT 20ep", delta: "~−0.004 vs 3ep", type: "pos" },
+      { name: "BI-guided layer selection", delta: "optimal tie point", type: "pos" },
+      { name: "116 ms/step on 8×H100", delta: "5166 steps in 600s", type: "neu" },
+    ],
+    notes: "Open PR — our target to beat. 3-seed mean 1.1093. Plan B is our implementation of this technique. Gate: step_avg ≤ 130ms.",
+    newTechs: ["depth-recurrence-15L", "bi-guided", "cosine-ttt"],
   },
 ];
 
-// Chart
+// ── Color assignment ───────────────────────────────────────────
+function dotColor(d) {
+  if (d.isPR && d.isTarget) return '#43e97b';
+  if (d.isPR) return '#6c63ff';
+  if (d.isBase) return '#38bdf8';
+  if (d.isOldBase) return '#8866ff';
+  if (d.isOldSOTA) return '#f7971e';
+  return '#4a90e2';
+}
+
+// ── Chart ─────────────────────────────────────────────────────
 const ctx = document.getElementById('timelineChart').getContext('2d');
-const labels = data.map(d => `${d.date}\n${d.label}`);
-const bpbs = data.map(d => d.bpb);
-const colors = data.map(d => d.isSOTA ? '#f7971e' : d.isBase ? '#6c63ff' : d.isOurs ? '#43e97b' : '#4a90e2');
-const sizes = data.map(d => d.isSOTA || d.isBase ? 10 : 7);
+let selectedIdx = data.length - 1;
+
+const baseColors = data.map(dotColor);
+const baseSizes  = data.map(d => (d.isBase || d.isOldSOTA || d.isTarget) ? 11 : 7);
+
+const chartData = {
+  labels: data.map(d => d.date),
+  datasets: [{
+    label: 'val_bpb',
+    data: data.map(d => d.bpb),
+    borderColor: '#2d3250',
+    borderWidth: 1.5,
+    pointBackgroundColor: [...baseColors],
+    pointBorderColor: [...baseColors],
+    pointRadius: [...baseSizes],
+    pointBorderWidth: data.map(() => 2),
+    pointHoverRadius: 13,
+    tension: 0.25,
+    fill: { target: 'origin', above: 'rgba(108,99,255,0.03)' }
+  }]
+};
 
 const chart = new Chart(ctx, {
   type: 'line',
-  data: {
-    labels,
-    datasets: [{
-      label: 'val_bpb',
-      data: bpbs,
-      borderColor: '#6c63ff',
-      borderWidth: 2,
-      pointBackgroundColor: colors,
-      pointBorderColor: colors,
-      pointRadius: sizes,
-      pointHoverRadius: 12,
-      tension: 0.3,
-      fill: {
-        target: 'origin',
-        above: 'rgba(108,99,255,0.04)'
-      }
-    }]
-  },
+  data: chartData,
   options: {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'nearest', intersect: true },
+    animation: { duration: 180 },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -272,69 +350,123 @@ const chart = new Chart(ctx, {
         borderWidth: 1,
         titleColor: '#fff',
         bodyColor: '#8892b0',
+        padding: 10,
         callbacks: {
           title: (items) => data[items[0].dataIndex].label,
-          label: (item) => `bpb: ${item.raw}`,
-          afterLabel: (item) => `Author: ${data[item.dataIndex].author}`
+          label: (item) => `bpb: ${item.raw.toFixed(4)}`,
+          afterLabel: (item) => `${data[item.dataIndex].author} · ${data[item.dataIndex].date}`
         }
       }
     },
     scales: {
       x: {
-        ticks: { color: '#8892b0', font: { size: 10 } },
-        grid: { color: '#1e2136' }
+        ticks: { color: '#8892b0', font: { size: 9 }, maxRotation: 35 },
+        grid: { color: '#1a1e30' }
       },
       y: {
-        reverse: false,
-        min: 1.12,
-        max: 1.24,
-        ticks: { color: '#8892b0', font: { size: 11 }, callback: v => v.toFixed(4) },
-        grid: { color: '#1e2136' }
+        min: 1.09, max: 1.24,
+        ticks: { color: '#8892b0', font: { size: 10 }, callback: v => v.toFixed(4) },
+        grid: { color: '#1a1e30' }
       }
     },
     onClick: (e, elements) => {
-      if (elements.length) showDetail(elements[0].index);
+      if (elements.length) selectEntry(elements[0].index);
     }
   }
 });
 
-// Add SOTA target line annotation manually
-const sotaTarget = 1.1378;
+function highlightChartPoint(idx) {
+  const bg  = data.map((d, i) => i === idx ? '#fff' : dotColor(d) + '99');
+  const bc  = data.map((d, i) => i === idx ? '#fff' : dotColor(d) + '55');
+  const sz  = data.map((d, i) => i === idx ? 13 : (d.isBase || d.isOldSOTA || d.isTarget) ? 9 : 5);
+  const bw  = data.map((d, i) => i === idx ? 3 : 1.5);
+  chart.data.datasets[0].pointBackgroundColor = bg;
+  chart.data.datasets[0].pointBorderColor = bc;
+  chart.data.datasets[0].pointRadius = sz;
+  chart.data.datasets[0].pointBorderWidth = bw;
+  chart.update('none');
+}
 
-// Sidebar cards
-const sidebar = document.getElementById('sidebar');
+// ── Sidebar ───────────────────────────────────────────────────
+const sidebarInner = document.getElementById('sidebarInner');
+const cardEls = [];
+let currentEra = null;
+
 [...data].reverse().forEach((d, ri) => {
   const i = data.length - 1 - ri;
+  if (d.era !== currentEra) {
+    currentEra = d.era;
+    const el = document.createElement('div');
+    el.className = 'era-label';
+    el.textContent = d.era;
+    sidebarInner.appendChild(el);
+  }
   const card = document.createElement('div');
-  card.className = 'entry-card' + (d.isSOTA ? ' active' : '');
+  const cls = d.isBase ? 'our-base' : d.isOldBase ? 'base-entry' : d.isOldSOTA ? 'sota-entry' : d.isPR ? 'pr-entry' : '';
+  card.className = `entry-card ${cls}`;
+  card.dataset.idx = i;
+  const labelCls = d.isBase ? 'our-base' : d.isOldSOTA ? 'sota' : d.isPR ? 'pr' : '';
   card.innerHTML = `
-    <div class="rank">${d.date} · ${d.author}</div>
-    <div class="score">${d.bpb.toFixed(4)} <span>bpb</span></div>
-    <div class="name">${d.label}${d.isSOTA ? ' 🏆' : ''}${d.isBase ? ' ← our base' : ''}</div>
-    <div class="tags">
-      ${d.newTechs.map(t => `<span class="pill new">${t}</span>`).join('')}
-      ${d.isSOTA ? '<span class="pill sota">SOTA</span>' : ''}
+    <div class="ec-top">
+      <div class="ec-bpb">${d.bpb.toFixed(4)} <span>bpb</span></div>
+      <div class="ec-date">${d.date}</div>
+    </div>
+    <div class="ec-label ${labelCls}">${d.label}${d.isBase ? ' ◀ our base' : ''}${d.isTarget ? ' 🎯' : ''}</div>
+    <div class="ec-chips">
+      ${d.newTechs.map(t => `<span class="chip new">${t}</span>`).join('')}
+      ${d.isPR ? '<span class="chip pr-chip">open PR</span>' : ''}
     </div>
   `;
-  card.addEventListener('click', () => showDetail(i));
-  sidebar.appendChild(card);
+  card.addEventListener('click', () => selectEntry(i));
+  sidebarInner.appendChild(card);
+  cardEls[i] = card;
 });
 
-function showDetail(idx) {
+// ── Detail panel ───────────────────────────────────────────────
+function selectEntry(idx) {
+  selectedIdx = idx;
   const d = data[idx];
-  document.querySelectorAll('.entry-card').forEach((c, ci) => {
-    c.classList.toggle('active', data.length - 1 - ci === idx);
+
+  // Chart highlight
+  highlightChartPoint(idx);
+
+  // Sidebar active + scroll into view
+  cardEls.forEach((c, i) => {
+    if (!c) return;
+    c.classList.toggle('active', i === idx);
   });
+  if (cardEls[idx]) {
+    cardEls[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Detail panel
   document.getElementById('detailTitle').textContent = `${d.label} — ${d.author} (${d.date})`;
-  const stats = document.getElementById('detailStats');
-  stats.innerHTML = `
-    <div class="stat-box"><div class="label">val bpb</div><div class="val ${d.isSOTA ? 'good' : ''}">${d.bpb.toFixed(4)}</div></div>
-    <div class="stat-box"><div class="label">pre-quant bpb</div><div class="val">${d.preQuant ? d.preQuant.toFixed(4) : '—'}</div></div>
-    <div class="stat-box"><div class="label">quant gap</div><div class="val ${d.gap !== null && d.gap < 0.002 ? 'good' : d.gap !== null && d.gap > 0.01 ? 'warn' : ''}">${d.gap !== null ? d.gap.toFixed(4) : '—'}</div></div>
-    <div class="stat-box"><div class="label">artifact size</div><div class="val ${d.mb > 15.95 ? 'warn' : 'good'}">${d.mb} MB</div></div>
+
+  const bpbCls = d.isBase || d.isTarget ? 'good' : d.bpb < 1.15 ? 'good' : '';
+  document.getElementById('detailStats').innerHTML = `
+    <div class="stat-box">
+      <div class="label">val bpb</div>
+      <div class="val ${bpbCls}">${d.bpb.toFixed(4)}</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">pre-quant bpb</div>
+      <div class="val">${d.preQuant ? d.preQuant.toFixed(4) : '—'}</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">quant gap</div>
+      <div class="val ${d.gap !== null && d.gap < 0.002 ? 'good' : d.gap !== null && d.gap > 0.01 ? 'warn' : ''}">
+        ${d.gap !== null ? d.gap.toFixed(4) : '—'}
+      </div>
+    </div>
+    <div class="stat-box">
+      <div class="label">artifact</div>
+      <div class="val ${d.mb !== null ? (d.mb > 15.95 ? 'warn' : 'good') : ''}">
+        ${d.mb !== null ? d.mb + ' MB' : '—'}
+      </div>
+    </div>
   `;
-  const tech = document.getElementById('techList');
-  tech.innerHTML = `
+
+  document.getElementById('techList').innerHTML = `
     <h4>Techniques &amp; deltas</h4>
     ${d.techniques.map(t => `
       <div class="tech-row">
@@ -342,10 +474,12 @@ function showDetail(idx) {
         <span>${t.name}</span>
       </div>
     `).join('')}
-    <div style="margin-top:.8rem;font-size:.82rem;color:var(--muted)"><em>${d.notes}</em></div>
   `;
+  document.getElementById('detailNotes').textContent = d.notes;
 }
-showDetail(data.length - 1);
+
+// Init: show latest entry selected
+selectEntry(data.length - 1);
 </script>
 </body>
 </html>
