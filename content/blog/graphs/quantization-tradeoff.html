@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parameter Golf — Quantization Tradeoff Chart</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --accent: #6c63ff; --accent2: #ff6b6b; --accent3: #43e97b; --accent4: #f7971e; --accent5: #38bdf8;
+    --text: #e8eaf6; --muted: #8892b0; --border: #2d3250;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+  header { padding: 2rem 2rem 1.2rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.6rem; font-weight: 700; }
+  header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.9rem; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.7rem; padding: 2px 8px; margin-left: 8px; vertical-align: middle; font-weight: 600; }
+
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; padding: 1.5rem 2rem; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .chart-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #ccd; }
+  .chart-wrap { position: relative; height: 420px; }
+
+  .quant-table { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  .quant-table h2 { font-size: 1rem; font-weight: 600; color: #ccd; }
+
+  .quant-row { background: var(--surface2); border-radius: 8px; padding: 0.9rem 1rem; border-left: 3px solid; cursor: pointer; transition: all 0.15s; }
+  .quant-row:hover, .quant-row.active { filter: brightness(1.15); }
+  .quant-row.int8   { border-color: #8892b0; }
+  .quant-row.int6   { border-color: var(--accent5); }
+  .quant-row.int5   { border-color: var(--accent3); }
+  .quant-row.fp16   { border-color: var(--accent4); }
+  .quant-row.mixed  { border-color: var(--accent); }
+
+  .qr-header { display: flex; justify-content: space-between; align-items: center; }
+  .qr-name { font-weight: 700; font-size: 0.9rem; }
+  .qr-range { font-size: 0.75rem; color: var(--muted); font-family: monospace; }
+  .qr-bar-wrap { margin-top: 0.5rem; }
+  .qr-label-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; }
+  .qr-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .qr-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .qr-stats { display: flex; gap: 1rem; margin-top: 0.4rem; }
+  .qr-stat { font-size: 0.75rem; }
+  .qr-stat .k { color: var(--muted); }
+  .qr-stat .v { font-weight: 600; margin-left: 3px; }
+
+  .explainer { padding: 0 2rem 2rem; }
+  .explainer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .exp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.2rem; }
+  .exp-card h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent5); }
+  .exp-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+  code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-size: 0.85em; color: var(--accent3); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Quantization Tradeoff Chart <span class="tag">Interactive</span></h1>
+  <p>bits-per-byte vs artifact size · quant gap before/after STE QAT · click any scheme for details</p>
+</header>
+
+<div class="layout">
+
+  <div class="chart-card">
+    <h2>val_bpb (y) vs artifact size MB (x) — all public entries, colored by quant scheme</h2>
+    <div class="chart-wrap">
+      <canvas id="scatterChart"></canvas>
+    </div>
+  </div>
+
+  <div class="quant-table">
+    <h2>Quantization schemes</h2>
+
+    <div class="quant-row int8" data-q="int8">
+      <div class="qr-header">
+        <span class="qr-name" style="color:#8892b0">int8</span>
+        <span class="qr-range">[-128, 127]</span>
+      </div>
+      <div class="qr-bar-wrap">
+        <div class="qr-label-row"><span>Size efficiency</span><span>40%</span></div>
+        <div class="qr-bar"><div class="qr-fill" style="width:40%;background:#8892b0"></div></div>
+      </div>
+      <div class="qr-stats">
+        <div class="qr-stat"><span class="k">bits/weight:</span><span class="v">8</span></div>
+        <div class="qr-stat"><span class="k">quant gap:</span><span class="v" style="color:#ff6b6b">~0.007</span></div>
+        <div class="qr-stat"><span class="k">status:</span><span class="v">baseline</span></div>
+      </div>
+    </div>
+
+    <div class="quant-row int6" data-q="int6">
+      <div class="qr-header">
+        <span class="qr-name" style="color:#38bdf8">int6 + STE QAT</span>
+        <span class="qr-range">[-32, 31]</span>
+      </div>
+      <div class="qr-bar-wrap">
+        <div class="qr-label-row"><span>Size efficiency</span><span>75%</span></div>
+        <div class="qr-bar"><div class="qr-fill" style="width:75%;background:#38bdf8"></div></div>
+      </div>
+      <div class="qr-stats">
+        <div class="qr-stat"><span class="k">bits/weight:</span><span class="v">6</span></div>
+        <div class="qr-stat"><span class="k">quant gap:</span><span class="v" style="color:#43e97b">~0.0001</span></div>
+        <div class="qr-stat"><span class="k">status:</span><span class="v" style="color:#38bdf8">in base</span></div>
+      </div>
+    </div>
+
+    <div class="quant-row int5" data-q="int5">
+      <div class="qr-header">
+        <span class="qr-name" style="color:#43e97b">int5 MLP + STE QAT</span>
+        <span class="qr-range">[-16, 15]</span>
+      </div>
+      <div class="qr-bar-wrap">
+        <div class="qr-label-row"><span>Size efficiency</span><span>90%</span></div>
+        <div class="qr-bar"><div class="qr-fill" style="width:90%;background:#43e97b"></div></div>
+      </div>
+      <div class="qr-stats">
+        <div class="qr-stat"><span class="k">bits/weight:</span><span class="v">5</span></div>
+        <div class="qr-stat"><span class="k">saves vs int6:</span><span class="v" style="color:#43e97b">~1.86 MB</span></div>
+        <div class="qr-stat"><span class="k">status:</span><span class="v" style="color:#f7971e">P1 target</span></div>
+      </div>
+    </div>
+
+    <div class="quant-row fp16" data-q="fp16">
+      <div class="qr-header">
+        <span class="qr-name" style="color:#f7971e">FP16 embed</span>
+        <span class="qr-range">IEEE 754 half</span>
+      </div>
+      <div class="qr-bar-wrap">
+        <div class="qr-label-row"><span>Quality preservation</span><span>100%</span></div>
+        <div class="qr-bar"><div class="qr-fill" style="width:100%;background:#f7971e"></div></div>
+      </div>
+      <div class="qr-stats">
+        <div class="qr-stat"><span class="k">bits/weight:</span><span class="v">16</span></div>
+        <div class="qr-stat"><span class="k">quant gap reduction:</span><span class="v" style="color:#43e97b">×32</span></div>
+        <div class="qr-stat"><span class="k">status:</span><span class="v" style="color:#38bdf8">in base</span></div>
+      </div>
+    </div>
+
+    <div class="quant-row mixed" data-q="mixed">
+      <div class="qr-header">
+        <span class="qr-name" style="color:#a0a8ff">Mixed (SOTA)</span>
+        <span class="qr-range">int5 MLP / int6 attn / fp16 emb</span>
+      </div>
+      <div class="qr-bar-wrap">
+        <div class="qr-label-row"><span>Optimal balance</span><span>95%</span></div>
+        <div class="qr-bar"><div class="qr-fill" style="width:95%;background:linear-gradient(90deg,#43e97b,#38bdf8,#f7971e)"></div></div>
+      </div>
+      <div class="qr-stats">
+        <div class="qr-stat"><span class="k">val bpb:</span><span class="v" style="color:#43e97b">1.1428</span></div>
+        <div class="qr-stat"><span class="k">artifact:</span><span class="v">~15.9 MB</span></div>
+        <div class="qr-stat"><span class="k">status:</span><span class="v" style="color:#f7971e">SOTA</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="explainer">
+  <h2 style="font-size:1rem;color:#ccd;margin-bottom:0.3rem">How quantization works in this contest</h2>
+  <div class="explainer-grid">
+    <div class="exp-card">
+      <h3>Why quantize at all?</h3>
+      <p>The 16MB budget covers code + compressed weights. A full-precision (float32) transformer would easily exceed this. Quantization maps each weight to a small integer, then dequantizes at inference time. Fewer bits per weight = more weights = better model quality per byte.</p>
+    </div>
+    <div class="exp-card">
+      <h3>The quant gap problem</h3>
+      <p>Naively quantizing a trained model creates a <em>quantization gap</em> — the difference between pre-quant bpb and post-quant bpb. For int8 this was ~0.007. The key breakthrough was <strong>STE QAT</strong>: training <em>with</em> simulated quantization so the model learns to work within integer constraints, shrinking the gap to ~0.0001.</p>
+    </div>
+    <div class="exp-card">
+      <h3>Straight-Through Estimator (STE)</h3>
+      <p>The rounding operation <code>round(x)</code> has zero gradient — you can't backprop through it. STE is a trick: during the forward pass, apply real quantization. During backward, pretend the round was the identity function (gradient passes straight through). This enables end-to-end training with quantization.</p>
+    </div>
+    <div class="exp-card">
+      <h3>Per-row scaling</h3>
+      <p>Instead of one global scale factor for a whole layer (which gets dominated by outliers), each row of the weight matrix gets its own scale: <code>scale = max(|row|) / 15</code> for int5. This dramatically reduces the representational error for rows with small magnitudes while still capturing rows with large activations.</p>
+    </div>
+    <div class="exp-card">
+      <h3>Why int5 for MLP, int6 for attention?</h3>
+      <p>MLP weights are more numerous and less sensitive to the tighter range [-16,15] — they benefit from a smoother learned distribution. Attention weights carry position-sensitive geometry where the extra precision of int6 [-32,31] matters. The split scheme saves ~1.86 MB (funds a 10th layer) with negligible quality cost.</p>
+    </div>
+    <div class="exp-card">
+      <h3>zstd-22 vs zlib</h3>
+      <p>After quantizing to integer arrays, the weights are compressed before packaging. zstd at level 22 achieves better compression ratios than zlib on weight data (which has structured, near-uniform distributions from quantization). This is a free size saving — no model changes required.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const entries = [
+  { label: "Naive Baseline", bpb: 1.2244, mb: 15.86, gap: 0.0072, scheme: "int8", color: "#8892b0" },
+  { label: "FP16 Embed", bpb: 1.2197, mb: 15.90, gap: 0.0005, scheme: "fp16", color: "#f7971e" },
+  { label: "Long Context 2048", bpb: 1.2058, mb: 15.87, gap: 0.0053, scheme: "int8", color: "#8892b0" },
+  { label: "Sliding Eval 64", bpb: 1.1925, mb: 15.87, gap: null, scheme: "int8", color: "#8892b0" },
+  { label: "MLP×3 + int6 QAT", bpb: 1.1630, mb: 15.35, gap: 0.0015, scheme: "int6", color: "#38bdf8" },
+  { label: "Full QAT + zstd22", bpb: 1.1502, mb: 15.56, gap: 0.0001, scheme: "int6", color: "#38bdf8" },
+  { label: "#2 SmearGate (our base)", bpb: 1.1458, mb: 15.86, gap: 0.0158, scheme: "int6", color: "#6c63ff" },
+  { label: "#1 SOTA", bpb: 1.1428, mb: 15.90, gap: null, scheme: "mixed", color: "#f7971e" },
+  { label: "Our target (≤1.1378)", bpb: 1.1378, mb: 15.90, gap: null, scheme: "mixed", color: "#43e97b" },
+];
+
+const colorMap = { int8: "#8892b0", int6: "#38bdf8", int5: "#43e97b", fp16: "#f7971e", mixed: "#a0a8ff" };
+
+const ctx = document.getElementById('scatterChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: 'Submissions',
+      data: entries.map(e => ({ x: e.mb, y: e.bpb, label: e.label })),
+      backgroundColor: entries.map(e => e.color + 'cc'),
+      borderColor: entries.map(e => e.color),
+      borderWidth: 2,
+      pointRadius: 8,
+      pointHoverRadius: 12,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1a1d27',
+        borderColor: '#2d3250',
+        borderWidth: 1,
+        callbacks: {
+          label: (item) => {
+            const e = entries[item.dataIndex];
+            return [
+              `${e.label}`,
+              `bpb: ${e.bpb.toFixed(4)}`,
+              `size: ${e.mb} MB`,
+              e.gap !== null ? `quant gap: ${e.gap.toFixed(4)}` : '',
+              `scheme: ${e.scheme}`
+            ].filter(Boolean);
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Artifact size (MB)', color: '#8892b0' },
+        min: 15.20, max: 16.00,
+        ticks: { color: '#8892b0', callback: v => v.toFixed(2) },
+        grid: { color: '#1e2136' }
+      },
+      y: {
+        title: { display: true, text: 'val_bpb (lower = better)', color: '#8892b0' },
+        min: 1.12, max: 1.24,
+        ticks: { color: '#8892b0', callback: v => v.toFixed(4) },
+        grid: { color: '#1e2136' }
+      }
+    }
+  },
+  plugins: [{
+    id: 'labels',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets[0].data.forEach((pt, i) => {
+        const meta = chart.getDatasetMeta(0);
+        const el = meta.data[i];
+        if (!el) return;
+        const { x, y } = el.getProps(['x', 'y']);
+        ctx.save();
+        ctx.font = '9px Segoe UI';
+        ctx.fillStyle = '#8892b0';
+        ctx.textAlign = 'left';
+        ctx.fillText(entries[i].label, x + 8, y + 4);
+        ctx.restore();
+      });
+    }
+  }]
+});
+
+// Quant row interactions
+document.querySelectorAll('.quant-row').forEach(row => {
+  row.addEventListener('click', () => {
+    document.querySelectorAll('.quant-row').forEach(r => r.classList.remove('active'));
+    row.classList.add('active');
+    const q = row.dataset.q;
+    // Highlight matching points
+    const newColors = entries.map(e => {
+      const matches = (q === 'mixed' && e.scheme === 'mixed') ||
+                      (q === 'int6' && e.scheme === 'int6') ||
+                      (q === 'int8' && e.scheme === 'int8') ||
+                      (q === 'fp16' && e.scheme === 'fp16') ||
+                      (q === 'int5' && e.scheme === 'int5');
+      return matches ? e.color + 'ff' : '#2d325044';
+    });
+    chart.data.datasets[0].backgroundColor = newColors;
+    chart.update();
+  });
+});
+</script>
+</body>
+</html>

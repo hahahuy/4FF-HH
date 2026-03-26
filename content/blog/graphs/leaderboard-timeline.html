@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parameter Golf — Leaderboard Timeline</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --accent: #6c63ff;
+    --accent2: #ff6b6b;
+    --accent3: #43e97b;
+    --accent4: #f7971e;
+    --text: #e8eaf6;
+    --muted: #8892b0;
+    --border: #2d3250;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  header { padding: 2rem 2rem 1rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.9rem; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.7rem; padding: 2px 8px; margin-left: 8px; vertical-align: middle; font-weight: 600; letter-spacing: 0.05em; }
+
+  .grid { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; padding: 1.5rem 2rem; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .chart-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #ccd; }
+  .chart-wrap { position: relative; height: 380px; }
+
+  .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+  .entry-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.2rem;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  }
+  .entry-card:hover, .entry-card.active { border-color: var(--accent); background: var(--surface2); }
+  .entry-card .rank { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .entry-card .score { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 0.1rem 0; }
+  .entry-card .score span { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+  .entry-card .name { font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; }
+  .entry-card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 0.4rem; }
+  .entry-card .pill {
+    font-size: 0.68rem; padding: 2px 7px; border-radius: 20px; font-weight: 500;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .entry-card .pill.new { background: rgba(108,99,255,0.15); border-color: var(--accent); color: var(--accent); }
+  .entry-card .pill.sota { background: rgba(247,151,30,0.15); border-color: var(--accent4); color: var(--accent4); }
+
+  .detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin: 0 2rem 2rem; }
+  .detail-panel h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+  .stat-box { background: var(--surface2); border-radius: 8px; padding: 0.8rem 1rem; }
+  .stat-box .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-box .val { font-size: 1.2rem; font-weight: 700; color: #fff; margin-top: 0.2rem; }
+  .stat-box .val.good { color: var(--accent3); }
+  .stat-box .val.warn { color: var(--accent4); }
+
+  .tech-list { margin-top: 1rem; }
+  .tech-list h4 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.6rem; }
+  .tech-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .tech-row:last-child { border-bottom: none; }
+  .delta { font-family: monospace; font-size: 0.8rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .delta.pos { background: rgba(67,233,123,0.12); color: var(--accent3); }
+  .delta.neg { background: rgba(255,107,107,0.12); color: var(--accent2); }
+  .delta.neu { background: var(--surface2); color: var(--muted); }
+
+  footer { padding: 1rem 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OpenAI Parameter Golf — Leaderboard Timeline <span class="tag">Interactive</span></h1>
+  <p>All public submissions · bits-per-byte (↓ better) · click any entry to see technique breakdown</p>
+</header>
+
+<div class="grid">
+  <div class="chart-card">
+    <h2>val_bpb progression over time (all public entries)</h2>
+    <div class="chart-wrap">
+      <canvas id="timelineChart"></canvas>
+    </div>
+  </div>
+
+  <div class="sidebar" id="sidebar"></div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+  <h3 id="detailTitle">Click an entry to see details</h3>
+  <div class="detail-grid" id="detailStats"></div>
+  <div class="tech-list" id="techList"></div>
+</div>
+
+<footer>Data sourced from public records in <code>records/track_10min_16mb/</code> and <code>.claude/experiments.md</code> · Rendered locally, not fetched from an API</footer>
+
+<script>
+const data = [
+  {
+    date: "Mar 17",
+    label: "Naive Baseline",
+    author: "Baseline",
+    bpb: 1.2244, preQuant: 1.2172, gap: 0.0072, mb: 15.86,
+    isOurs: false,
+    techniques: [
+      { name: "9L × 512d transformer", delta: "—", type: "neu" },
+      { name: "int8 + zlib compression", delta: "—", type: "neu" },
+      { name: "Vocab 1024 (fixed)", delta: "—", type: "neu" },
+    ],
+    notes: "Reference point. 13,780 steps in 600s (43.5 ms/step)",
+    newTechs: []
+  },
+  {
+    date: "Mar 17",
+    label: "LoRA + Sliding Eval",
+    author: "samacqua",
+    bpb: 1.1928, preQuant: null, gap: null, mb: 15.86,
+    isOurs: false,
+    techniques: [
+      { name: "Sliding window eval (stride 256)", delta: "−0.034", type: "pos" },
+      { name: "Document isolation", delta: "−0.011", type: "pos" },
+      { name: "LoRA test-time training", delta: "−0.037", type: "pos" },
+    ],
+    notes: "Most gain from eval trick, not TTT itself",
+    newTechs: ["sliding-eval", "doc-isolation"]
+  },
+  {
+    date: "Mar 18",
+    label: "FP16 Embed + WD",
+    author: "Renier Velazco",
+    bpb: 1.2197, preQuant: null, gap: 0.0005, mb: 15.90,
+    isOurs: false,
+    techniques: [
+      { name: "FP16 tied embedding", delta: "quant gap ×32↓", type: "pos" },
+      { name: "Extended warmdown (1200→3600)", delta: "~−0.005", type: "pos" },
+      { name: "❌ SwiGLU", delta: "−45% throughput", type: "neg" },
+      { name: "❌ Naive QAT", delta: "not worth it", type: "neg" },
+    ],
+    notes: "FP16 embed: quant gap 0.007→0.0005 (32×). SwiGLU ruled out.",
+    newTechs: ["fp16-embed"]
+  },
+  {
+    date: "Mar 18",
+    label: "Long Context seq=2048",
+    author: "Spokane Way",
+    bpb: 1.2058, preQuant: 1.2005, gap: 0.0053, mb: 15.87,
+    isOurs: false,
+    techniques: [
+      { name: "seq_len 1024→2048", delta: "−0.023", type: "pos" },
+      { name: "Step time penalty", delta: "+20% ms/step", type: "neg" },
+    ],
+    notes: "Longer context costs ~20% more time but gains −0.023 nats",
+    newTechs: ["long-context"]
+  },
+  {
+    date: "Mar 19",
+    label: "Sliding Eval (stride=64)",
+    author: "Matthew Li",
+    bpb: 1.1925, preQuant: 1.2196, gap: null, mb: 15.87,
+    isOurs: false,
+    techniques: [
+      { name: "Sliding window eval stride=64 (vs 256)", delta: "−0.032", type: "pos" },
+      { name: "No training changes", delta: "0", type: "neu" },
+    ],
+    notes: "Pure eval trick. Eval time 16s→70s. Completely free quality gain.",
+    newTechs: ["sliding-eval-64"]
+  },
+  {
+    date: "Mar 19",
+    label: "MLP×3 + int6 QAT",
+    author: "aquariouseworkman",
+    bpb: 1.1630, preQuant: 1.1950, gap: 0.0015, mb: 15.35,
+    isOurs: false,
+    techniques: [
+      { name: "MLP hidden ×3 (1536)", delta: "−0.029", type: "pos" },
+      { name: "int6 QAT (STE)", delta: "gap 0.016→0.0015", type: "pos" },
+      { name: "Sliding eval stride=64", delta: "−0.032", type: "pos" },
+    ],
+    notes: "MLP 3× was the biggest single architectural win of the contest",
+    newTechs: ["mlp3x", "int6-qat"]
+  },
+  {
+    date: "Mar 19",
+    label: "Full QAT + zstd-22",
+    author: "aruniyer",
+    bpb: 1.1502, preQuant: 1.1501, gap: 0.0001, mb: 15.56,
+    isOurs: false,
+    techniques: [
+      { name: "STE int6 QAT all 2D weights", delta: "gap →0.0001", type: "pos" },
+      { name: "zstd-22 (vs zlib)", delta: "better compression", type: "pos" },
+      { name: "MLP hidden 1344 (2.625×)", delta: "~−0.020", type: "pos" },
+      { name: "seq_len=2048, Muon mom=0.99", delta: "~−0.010", type: "pos" },
+    ],
+    notes: "Near-eliminates quantization gap entirely with STE. Milestone entry.",
+    newTechs: ["ste-qat", "zstd22"]
+  },
+  {
+    date: "Mar 20",
+    label: "#2 SmearGate (our base)",
+    author: "Raahil Shah",
+    bpb: 1.1458, preQuant: 1.1616, gap: 0.0158, mb: 15.86,
+    isOurs: false, isBase: true,
+    techniques: [
+      { name: "SmearGate activation", delta: "~−0.003", type: "pos" },
+      { name: "BigramHash(4096)", delta: "~−0.004", type: "pos" },
+      { name: "OrthoInit", delta: "~−0.001", type: "pos" },
+      { name: "Muon WD=0.04", delta: "~−0.001", type: "pos" },
+      { name: "SWA frac=0.5", delta: "~−0.002", type: "pos" },
+    ],
+    notes: "Our copy base. 7,379 steps in 600s (81 ms/step). Pre-quant 1.1616.",
+    newTechs: ["smeargate", "bigramhash", "orthoinit", "muon-wd", "swa"]
+  },
+  {
+    date: "Mar 20",
+    label: "#1 SOTA",
+    author: "thwu1",
+    bpb: 1.1428, preQuant: null, gap: null, mb: 15.90,
+    isOurs: false, isSOTA: true,
+    techniques: [
+      { name: "Int5 MLP [-16,15] (vs int6)", delta: "saves ~1.86MB", type: "pos" },
+      { name: "10 layers (vs 9, funded by int5)", delta: "−0.003", type: "pos" },
+      { name: "BigramHash(10240) (vs 4096)", delta: "−0.002 total", type: "pos" },
+      { name: "SWA frac=0.4 (vs 0.5)", delta: "−0.0006", type: "pos" },
+      { name: "3% magnitude pruning", delta: "~neutral", type: "neu" },
+    ],
+    notes: "σ=0.00016 — extremely stable across seeds. Our target: ≤1.1378 (SOTA−0.005).",
+    newTechs: ["int5-mlp", "10-layers", "bigramhash-10k"]
+  },
+];
+
+// Chart
+const ctx = document.getElementById('timelineChart').getContext('2d');
+const labels = data.map(d => `${d.date}\n${d.label}`);
+const bpbs = data.map(d => d.bpb);
+const colors = data.map(d => d.isSOTA ? '#f7971e' : d.isBase ? '#6c63ff' : d.isOurs ? '#43e97b' : '#4a90e2');
+const sizes = data.map(d => d.isSOTA || d.isBase ? 10 : 7);
+
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'val_bpb',
+      data: bpbs,
+      borderColor: '#6c63ff',
+      borderWidth: 2,
+      pointBackgroundColor: colors,
+      pointBorderColor: colors,
+      pointRadius: sizes,
+      pointHoverRadius: 12,
+      tension: 0.3,
+      fill: {
+        target: 'origin',
+        above: 'rgba(108,99,255,0.04)'
+      }
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'nearest', intersect: true },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1a1d27',
+        borderColor: '#2d3250',
+        borderWidth: 1,
+        titleColor: '#fff',
+        bodyColor: '#8892b0',
+        callbacks: {
+          title: (items) => data[items[0].dataIndex].label,
+          label: (item) => `bpb: ${item.raw}`,
+          afterLabel: (item) => `Author: ${data[item.dataIndex].author}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#8892b0', font: { size: 10 } },
+        grid: { color: '#1e2136' }
+      },
+      y: {
+        reverse: false,
+        min: 1.12,
+        max: 1.24,
+        ticks: { color: '#8892b0', font: { size: 11 }, callback: v => v.toFixed(4) },
+        grid: { color: '#1e2136' }
+      }
+    },
+    onClick: (e, elements) => {
+      if (elements.length) showDetail(elements[0].index);
+    }
+  }
+});
+
+// Add SOTA target line annotation manually
+const sotaTarget = 1.1378;
+
+// Sidebar cards
+const sidebar = document.getElementById('sidebar');
+[...data].reverse().forEach((d, ri) => {
+  const i = data.length - 1 - ri;
+  const card = document.createElement('div');
+  card.className = 'entry-card' + (d.isSOTA ? ' active' : '');
+  card.innerHTML = `
+    <div class="rank">${d.date} · ${d.author}</div>
+    <div class="score">${d.bpb.toFixed(4)} <span>bpb</span></div>
+    <div class="name">${d.label}${d.isSOTA ? ' 🏆' : ''}${d.isBase ? ' ← our base' : ''}</div>
+    <div class="tags">
+      ${d.newTechs.map(t => `<span class="pill new">${t}</span>`).join('')}
+      ${d.isSOTA ? '<span class="pill sota">SOTA</span>' : ''}
+    </div>
+  `;
+  card.addEventListener('click', () => showDetail(i));
+  sidebar.appendChild(card);
+});
+
+function showDetail(idx) {
+  const d = data[idx];
+  document.querySelectorAll('.entry-card').forEach((c, ci) => {
+    c.classList.toggle('active', data.length - 1 - ci === idx);
+  });
+  document.getElementById('detailTitle').textContent = `${d.label} — ${d.author} (${d.date})`;
+  const stats = document.getElementById('detailStats');
+  stats.innerHTML = `
+    <div class="stat-box"><div class="label">val bpb</div><div class="val ${d.isSOTA ? 'good' : ''}">${d.bpb.toFixed(4)}</div></div>
+    <div class="stat-box"><div class="label">pre-quant bpb</div><div class="val">${d.preQuant ? d.preQuant.toFixed(4) : '—'}</div></div>
+    <div class="stat-box"><div class="label">quant gap</div><div class="val ${d.gap !== null && d.gap < 0.002 ? 'good' : d.gap !== null && d.gap > 0.01 ? 'warn' : ''}">${d.gap !== null ? d.gap.toFixed(4) : '—'}</div></div>
+    <div class="stat-box"><div class="label">artifact size</div><div class="val ${d.mb > 15.95 ? 'warn' : 'good'}">${d.mb} MB</div></div>
+  `;
+  const tech = document.getElementById('techList');
+  tech.innerHTML = `
+    <h4>Techniques &amp; deltas</h4>
+    ${d.techniques.map(t => `
+      <div class="tech-row">
+        <span class="delta ${t.type}">${t.delta}</span>
+        <span>${t.name}</span>
+      </div>
+    `).join('')}
+    <div style="margin-top:.8rem;font-size:.82rem;color:var(--muted)"><em>${d.notes}</em></div>
+  `;
+}
+showDetail(data.length - 1);
+</script>
+</body>
+</html>

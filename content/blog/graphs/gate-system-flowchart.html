@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parameter Golf — Decision Gate System</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --accent: #6c63ff; --accent2: #ff6b6b; --accent3: #43e97b; --accent4: #f7971e; --accent5: #38bdf8;
+    --text: #e8eaf6; --muted: #8892b0; --border: #2d3250;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+  header { padding: 2rem 2rem 1.2rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.6rem; font-weight: 700; }
+  header p { color: var(--muted); margin-top: 0.4rem; font-size: 0.9rem; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; border-radius: 4px; font-size: 0.7rem; padding: 2px 8px; margin-left: 8px; vertical-align: middle; font-weight: 600; }
+
+  .canvas-area { padding: 2rem; overflow-x: auto; }
+  svg { display: block; max-width: 100%; }
+
+  .legend { display: flex; gap: 1.5rem; padding: 0 2rem 1rem; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+  .info-panel { margin: 0 2rem 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; }
+  .info-panel h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.8rem; }
+  .gates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+  .gate-card { background: var(--surface2); border-radius: 8px; padding: 1rem 1.2rem; border-left: 3px solid; }
+  .gate-card.g1 { border-color: var(--accent5); }
+  .gate-card.g2 { border-color: var(--accent3); }
+  .gate-card.g3 { border-color: var(--accent4); }
+  .gate-card.g4 { border-color: var(--accent); }
+  .gate-card h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .gate-card.g1 h4 { color: var(--accent5); }
+  .gate-card.g2 h4 { color: var(--accent3); }
+  .gate-card.g3 h4 { color: var(--accent4); }
+  .gate-card.g4 h4 { color: var(--accent); }
+  .gate-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+  .gate-card .cost { font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; display: inline-block; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Decision Gate System <span class="tag">Interactive</span></h1>
+  <p>How each experiment idea flows from hypothesis → final submission · hover nodes for detail</p>
+</header>
+
+<div class="canvas-area">
+<svg id="flowchart" viewBox="0 0 1100 820" xmlns="http://www.w3.org/2000/svg" style="min-width:700px">
+<defs>
+  <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#4a5070"/>
+  </marker>
+  <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#43e97b"/>
+  </marker>
+  <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#ff6b6b"/>
+  </marker>
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<!-- BACKGROUND LANES -->
+<rect x="10" y="10" width="1080" height="800" rx="12" fill="#12151f" stroke="#1e2136" stroke-width="1"/>
+
+<!-- Phase labels -->
+<text x="30" y="40" fill="#2d3250" font-family="monospace" font-size="11">IDEA</text>
+<text x="30" y="150" fill="#2d3250" font-family="monospace" font-size="11">PRE-CHECK</text>
+<text x="30" y="280" fill="#2d3250" font-family="monospace" font-size="11">GATE 1</text>
+<text x="30" y="400" fill="#2d3250" font-family="monospace" font-size="11">GATE 2</text>
+<text x="30" y="530" fill="#2d3250" font-family="monospace" font-size="11">GATE 3</text>
+<text x="30" y="660" fill="#2d3250" font-family="monospace" font-size="11">GATE 4</text>
+<text x="30" y="780" fill="#2d3250" font-family="monospace" font-size="11">SUBMIT</text>
+
+<!-- Horizontal dividers -->
+<line x1="10" y1="80" x2="1090" y2="80" stroke="#1a1d27" stroke-width="1" stroke-dasharray="4,6"/>
+<line x1="10" y1="210" x2="1090" y2="210" stroke="#1a1d27" stroke-width="1" stroke-dasharray="4,6"/>
+<line x1="10" y1="340" x2="1090" y2="340" stroke="#1a1d27" stroke-width="1" stroke-dasharray="4,6"/>
+<line x1="10" y1="470" x2="1090" y2="470" stroke="#1a1d27" stroke-width="1" stroke-dasharray="4,6"/>
+<line x1="10" y1="600" x2="1090" y2="600" stroke="#1a1d27" stroke-width="1" stroke-dasharray="4,6"/>
+<line x1="10" y1="720" x2="1090" y2="720" stroke="#1a1d27" stroke-width="1" stroke-dasharray="4,6"/>
+
+<!-- ====== NODES ====== -->
+
+<!-- NODE: New Idea -->
+<g class="node" id="n-idea">
+  <rect x="420" y="22" width="260" height="48" rx="8" fill="#1a1d27" stroke="#6c63ff" stroke-width="2"/>
+  <text x="550" y="44" text-anchor="middle" fill="#a0a8ff" font-size="13" font-weight="700">💡 New Technique Idea</text>
+  <text x="550" y="61" text-anchor="middle" fill="#8892b0" font-size="10">e.g. int5 MLP, trigram hash, SWA retune</text>
+</g>
+
+<!-- ARROW: idea → failures check -->
+<line x1="550" y1="70" x2="550" y2="95" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- NODE: Check failures.md -->
+<g class="node" id="n-fail-check">
+  <rect x="385" y="96" width="330" height="44" rx="8" fill="#22263a" stroke="#2d3250" stroke-width="1.5"/>
+  <text x="550" y="115" text-anchor="middle" fill="#ccd" font-size="12" font-weight="600">📋 Check failures.md</text>
+  <text x="550" y="132" text-anchor="middle" fill="#8892b0" font-size="10">Has this been tried and ruled out?</text>
+</g>
+
+<!-- ARROW: fail check → diamond -->
+<line x1="550" y1="140" x2="550" y2="163" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- DIAMOND: already failed? -->
+<g id="n-failed-q">
+  <polygon points="550,164 640,192 550,220 460,192" fill="#1a2030" stroke="#ff6b6b" stroke-width="1.5"/>
+  <text x="550" y="188" text-anchor="middle" fill="#ff6b6b" font-size="11" font-weight="600">Ruled out?</text>
+  <text x="550" y="203" text-anchor="middle" fill="#8892b0" font-size="9">in failures.md</text>
+</g>
+
+<!-- Yes → stop -->
+<line x1="640" y1="192" x2="790" y2="192" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arr-red)"/>
+<text x="710" y="184" text-anchor="middle" fill="#ff6b6b" font-size="10" font-weight="700">YES</text>
+<rect x="792" y="174" width="160" height="36" rx="6" fill="#2a1c1c" stroke="#ff6b6b" stroke-width="1"/>
+<text x="872" y="190" text-anchor="middle" fill="#ff9090" font-size="11" font-weight="600">🚫 Drop idea</text>
+<text x="872" y="204" text-anchor="middle" fill="#8892b0" font-size="9">unless new context changes outcome</text>
+
+<!-- No → write plan -->
+<line x1="550" y1="220" x2="550" y2="245" stroke="#43e97b" stroke-width="1.5" marker-end="url(#arr-green)"/>
+<text x="562" y="237" fill="#43e97b" font-size="10" font-weight="700">NO</text>
+
+<!-- NODE: Write plan file -->
+<g id="n-plan">
+  <rect x="385" y="246" width="330" height="44" rx="8" fill="#1a2030" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="550" y="266" text-anchor="middle" fill="#7dd3f0" font-size="12" font-weight="600">📝 Write plan file</text>
+  <text x="550" y="282" text-anchor="middle" fill="#8892b0" font-size="10">hypothesis · changes · conflicts · fallback · env vars</text>
+</g>
+
+<!-- ARROW: plan → Gate 1 -->
+<line x1="550" y1="290" x2="550" y2="315" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+
+<!-- === GATE 1 === -->
+<g id="n-g1">
+  <rect x="360" y="316" width="380" height="60" rx="10" fill="#0e1a2a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="550" y="339" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="700">🔵 Gate 1 — Smoke Test</text>
+  <text x="550" y="355" text-anchor="middle" fill="#8892b0" font-size="10">1×H100, 1 seed · Check: no crash, artifact &lt; 16MB</text>
+  <text x="550" y="370" text-anchor="middle" fill="#5a8a9a" font-size="10">~$0.30 · ~10 minutes</text>
+</g>
+
+<!-- DIAMOND: Gate 1 pass? -->
+<line x1="550" y1="376" x2="550" y2="393" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+<g id="n-g1-q">
+  <polygon points="550,394 630,414 550,434 470,414" fill="#1a1d27" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="550" y="418" text-anchor="middle" fill="#38bdf8" font-size="10" font-weight="600">Pass?</text>
+</g>
+
+<!-- Gate 1 fail → debug -->
+<line x1="630" y1="414" x2="780" y2="414" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arr-red)"/>
+<text x="705" y="406" text-anchor="middle" fill="#ff6b6b" font-size="10" font-weight="700">FAIL</text>
+<rect x="782" y="397" width="160" height="34" rx="6" fill="#2a1c1c" stroke="#ff6b6b" stroke-width="1"/>
+<text x="862" y="412" text-anchor="middle" fill="#ff9090" font-size="11" font-weight="600">🔧 Debug &amp; fix</text>
+<text x="862" y="425" text-anchor="middle" fill="#8892b0" font-size="9">then retry G1</text>
+<line x1="862" y1="431" x2="862" y2="460" stroke="#ff6b6b" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="862" y1="460" x2="630" y2="460" stroke="#ff6b6b" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="630" y1="460" x2="630" y2="434" stroke="#ff6b6b" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arr-red)"/>
+
+<!-- Gate 1 pass → Gate 2 -->
+<line x1="550" y1="434" x2="550" y2="455" stroke="#43e97b" stroke-width="1.5" marker-end="url(#arr-green)"/>
+<text x="562" y="448" fill="#43e97b" font-size="10" font-weight="700">PASS</text>
+
+<!-- === GATE 2 === -->
+<g id="n-g2">
+  <rect x="360" y="456" width="380" height="60" rx="10" fill="#0e2018" stroke="#43e97b" stroke-width="2"/>
+  <text x="550" y="479" text-anchor="middle" fill="#43e97b" font-size="13" font-weight="700">🟢 Gate 2 — 1×H100 Full Run</text>
+  <text x="550" y="495" text-anchor="middle" fill="#8892b0" font-size="10">1×H100, compare val_bpb vs base · bpb improvement visible?</text>
+  <text x="550" y="510" text-anchor="middle" fill="#5a7a5a" font-size="10">~$0.30 · ~12 minutes</text>
+</g>
+
+<!-- DIAMOND: Gate 2 pass? -->
+<line x1="550" y1="516" x2="550" y2="533" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+<g id="n-g2-q">
+  <polygon points="550,534 630,554 550,574 470,554" fill="#1a1d27" stroke="#43e97b" stroke-width="1.5"/>
+  <text x="550" y="558" text-anchor="middle" fill="#43e97b" font-size="10" font-weight="600">Improvement?</text>
+</g>
+
+<!-- Gate 2 fail → log failure -->
+<line x1="630" y1="554" x2="780" y2="554" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arr-red)"/>
+<text x="705" y="546" text-anchor="middle" fill="#ff6b6b" font-size="10" font-weight="700">NO</text>
+<rect x="782" y="537" width="160" height="34" rx="6" fill="#2a1c1c" stroke="#ff6b6b" stroke-width="1"/>
+<text x="862" y="552" text-anchor="middle" fill="#ff9090" font-size="11" font-weight="600">📋 Log failure</text>
+<text x="862" y="565" text-anchor="middle" fill="#8892b0" font-size="9">add to failures.md with reason</text>
+
+<!-- Gate 2 pass → Gate 3 -->
+<line x1="550" y1="574" x2="550" y2="595" stroke="#43e97b" stroke-width="1.5" marker-end="url(#arr-green)"/>
+<text x="562" y="588" fill="#43e97b" font-size="10" font-weight="700">YES</text>
+
+<!-- === GATE 3 === -->
+<g id="n-g3">
+  <rect x="360" y="596" width="380" height="60" rx="10" fill="#20180e" stroke="#f7971e" stroke-width="2"/>
+  <text x="550" y="619" text-anchor="middle" fill="#f7971e" font-size="13" font-weight="700">🟠 Gate 3 — 8×H100 Single Seed</text>
+  <text x="550" y="635" text-anchor="middle" fill="#8892b0" font-size="10">8×H100, 1 seed · target: val_bpb &lt; 1.139</text>
+  <text x="550" y="650" text-anchor="middle" fill="#7a6a4a" font-size="10">~$3.50 · ~12 minutes (full 600s run)</text>
+</g>
+
+<!-- DIAMOND: Gate 3 pass? -->
+<line x1="550" y1="656" x2="550" y2="673" stroke="#4a5070" stroke-width="1.5" marker-end="url(#arr)"/>
+<g id="n-g3-q">
+  <polygon points="550,674 630,694 550,714 470,694" fill="#1a1d27" stroke="#f7971e" stroke-width="1.5"/>
+  <text x="550" y="698" text-anchor="middle" fill="#f7971e" font-size="10" font-weight="600">&lt; 1.139?</text>
+</g>
+
+<!-- Gate 3 fail → analyze -->
+<line x1="630" y1="694" x2="780" y2="694" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arr-red)"/>
+<text x="705" y="686" text-anchor="middle" fill="#ff6b6b" font-size="10" font-weight="700">NO</text>
+<rect x="782" y="677" width="160" height="34" rx="6" fill="#2a1c1c" stroke="#ff6b6b" stroke-width="1"/>
+<text x="862" y="692" text-anchor="middle" fill="#ff9090" font-size="11" font-weight="600">🔍 Analyze &amp; retune</text>
+<text x="862" y="705" text-anchor="middle" fill="#8892b0" font-size="9">or log as conditional failure</text>
+
+<!-- Gate 3 pass → Gate 4 -->
+<line x1="550" y1="714" x2="550" y2="730" stroke="#43e97b" stroke-width="1.5" marker-end="url(#arr-green)"/>
+<text x="562" y="724" fill="#43e97b" font-size="10" font-weight="700">YES</text>
+
+<!-- === GATE 4 === -->
+<g id="n-g4">
+  <rect x="360" y="731" width="380" height="60" rx="10" fill="#1a1040" stroke="#6c63ff" stroke-width="2" filter="url(#glow)"/>
+  <text x="550" y="754" text-anchor="middle" fill="#a0a8ff" font-size="13" font-weight="700">🟣 Gate 4 — 8×H100 · 3 Seeds</text>
+  <text x="550" y="770" text-anchor="middle" fill="#8892b0" font-size="10">8×H100, seeds 42/1337/7 · mean bpb &lt; 1.1378, p &lt; 0.01</text>
+  <text x="550" y="785" text-anchor="middle" fill="#5a4a8a" font-size="10">~$10.50 · 3 × 12 min · final validation</text>
+</g>
+
+<!-- Cost tracker (right side) -->
+<rect x="960" y="290" width="110" height="170" rx="8" fill="#1a1d27" stroke="#2d3250" stroke-width="1"/>
+<text x="1015" y="310" text-anchor="middle" fill="#8892b0" font-size="11" font-weight="600">COST TRACKER</text>
+<text x="1015" y="335" text-anchor="middle" fill="#38bdf8" font-size="10">G1: $0.30</text>
+<text x="1015" y="355" text-anchor="middle" fill="#43e97b" font-size="10">G2: $0.30</text>
+<text x="1015" y="375" text-anchor="middle" fill="#f7971e" font-size="10">G3: $3.50</text>
+<text x="1015" y="395" text-anchor="middle" fill="#6c63ff" font-size="10">G4: $10.50</text>
+<line x1="970" y1="405" x2="1060" y2="405" stroke="#2d3250" stroke-width="1"/>
+<text x="1015" y="425" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">$14.60</text>
+<text x="1015" y="442" text-anchor="middle" fill="#8892b0" font-size="9">max per technique</text>
+<text x="1015" y="455" text-anchor="middle" fill="#43e97b" font-size="9">if G1/G2 abort: $0.60</text>
+</svg>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Gate 1 — cheap smoke</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#43e97b"></div> Gate 2 — quality check</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f7971e"></div> Gate 3 — scale check</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6c63ff"></div> Gate 4 — final 3-seed</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div> Abort / document</div>
+</div>
+
+<div class="info-panel">
+  <h3>Gate details</h3>
+  <div class="gates-grid">
+    <div class="gate-card g1">
+      <h4>🔵 Gate 1 — Smoke Test</h4>
+      <p>1×H100, 1 seed (42). Pass criteria: training doesn't crash, artifact file is under 16,000,000 bytes. Does <em>not</em> require bpb improvement — just that the code works.</p>
+      <span class="cost">~$0.30</span>
+    </div>
+    <div class="gate-card g2">
+      <h4>🟢 Gate 2 — Single GPU Quality</h4>
+      <p>1×H100 full 600s run vs base. val_bpb must show visible improvement vs the copy base (1.1458). Even a small positive delta is enough to continue.</p>
+      <span class="cost">~$0.30</span>
+    </div>
+    <div class="gate-card g3">
+      <h4>🟠 Gate 3 — Scale Validation</h4>
+      <p>8×H100, 1 seed. val_bpb must be &lt; 1.139 to continue to final 3-seed run. This is where single-GPU gains that don't scale get caught before spending $10.</p>
+      <span class="cost">~$3.50</span>
+    </div>
+    <div class="gate-card g4">
+      <h4>🟣 Gate 4 — Statistical Confirmation</h4>
+      <p>8×H100, seeds 42, 1337, and 7. Mean val_bpb &lt; 1.1378 (SOTA − 0.005) with p &lt; 0.01 variance across seeds. This is the final bar for submission.</p>
+      <span class="cost">~$10.50</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
