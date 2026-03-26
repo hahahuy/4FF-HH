@@ -14,7 +14,7 @@ const ContextMenu = (() => {
         icon: "⬡",
         label: "Normal Portfolio",
         action: () =>
-          window.open("https://hahahuy.github.io/portfoliosite/", "_blank", "noopener,noreferrer"),
+          window.open("https://normal.hahuy.site/", "_blank", "noopener,noreferrer"),
       },
       { separator: true },
       {
