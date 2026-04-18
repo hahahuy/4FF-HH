@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journal Protocols Map — First-Year Grad Student Guide</title>
+<style>
+  :root {
+    --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a;
+    --text:#e8eaf6; --muted:#8892b0; --border:#2d3250;
+    --ok:#43e97b; --warn:#f7971e; --bad:#ff6b6b; --info:#38bdf8; --accent:#6c63ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  header{padding:1.4rem 1.6rem;border-bottom:1px solid var(--border)}
+  header h1{font-size:1.3rem;font-weight:700}
+  header p{margin-top:.3rem;color:var(--muted);font-size:.86rem}
+  .tag{display:inline-block;background:var(--accent);color:#fff;border-radius:4px;font-size:.68rem;padding:2px 7px;margin-left:6px;font-weight:600}
+
+  .layout{display:grid;grid-template-columns:1fr 320px;gap:1rem;padding:1rem 1.4rem}
+  @media (max-width:860px){.layout{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px}
+  .flow-wrap{padding:1rem;overflow:auto}
+  svg{display:block;max-width:100%;min-width:720px}
+
+  .controls{padding:1rem;border-left:1px solid var(--border)}
+  .controls h2{font-size:.82rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.6rem}
+  .btn{width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.6rem .7rem;border-radius:8px;cursor:pointer;margin-bottom:.5rem;font-size:.82rem}
+  .btn:hover,.btn.active{border-color:var(--accent);background:#262b44}
+
+  .panel{margin:.2rem 1.4rem 1.2rem;padding:1rem 1.2rem}
+  .panel h3{font-size:.95rem;margin-bottom:.55rem}
+  .panel p{font-size:.84rem;color:var(--muted);line-height:1.55}
+  .list{margin-top:.6rem;display:grid;gap:.45rem}
+  .row{display:flex;align-items:center;gap:.45rem;font-size:.8rem;color:var(--text)}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem;margin-top:.8rem}
+  .k{background:var(--surface2);border-radius:7px;padding:.6rem .7rem}
+  .k .l{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .k .v{font-size:1rem;font-weight:700;margin-top:.15rem}
+
+  #tt{position:fixed;z-index:999;pointer-events:none;background:#1a1d27;border:1px solid #2d3250;border-radius:8px;padding:10px 12px;max-width:260px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  #tt .t{font-size:.8rem;font-weight:700;margin-bottom:4px}
+  #tt .b{font-size:.74rem;color:var(--muted);line-height:1.45}
+</style>
+</head>
+<body>
+<header>
+  <h1>Journal Protocols Decision Map <span class="tag">Interactive</span></h1>
+  <p>Pick your lane, avoid predatory traps, and submit with fewer avoidable mistakes.</p>
+</header>
+
+<div class="layout card">
+  <div class="flow-wrap">
+    <svg id="flow" viewBox="0 0 1180 760" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4a5070"/></marker>
+        <marker id="arr-ok" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#43e97b"/></marker>
+        <marker id="arr-bad" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ff6b6b"/></marker>
+      </defs>
+
+      <rect x="10" y="10" width="1160" height="740" rx="12" fill="#12151f" stroke="#1e2136"/>
+
+      <text x="28" y="44" fill="#2d3250" font-size="11" font-family="monospace">START</text>
+      <text x="28" y="178" fill="#2d3250" font-size="11" font-family="monospace">FIT CHECK</text>
+      <text x="28" y="315" fill="#2d3250" font-size="11" font-family="monospace">LEGIT CHECK</text>
+      <text x="28" y="456" fill="#2d3250" font-size="11" font-family="monospace">SUBMISSION SETUP</text>
+      <text x="28" y="618" fill="#2d3250" font-size="11" font-family="monospace">FINAL PRECHECK</text>
+
+      <line x1="10" y1="88" x2="1170" y2="88" stroke="#1a1d27" stroke-dasharray="4,6"/>
+      <line x1="10" y1="230" x2="1170" y2="230" stroke="#1a1d27" stroke-dasharray="4,6"/>
+      <line x1="10" y1="370" x2="1170" y2="370" stroke="#1a1d27" stroke-dasharray="4,6"/>
+      <line x1="10" y1="530" x2="1170" y2="530" stroke="#1a1d27" stroke-dasharray="4,6"/>
+
+      <g class="node" id="n1">
+        <rect x="420" y="30" width="330" height="44" rx="8" fill="#1a1d27" stroke="#38bdf8" stroke-width="1.7"/>
+        <text x="585" y="50" text-anchor="middle" fill="#9bd8ff" font-size="12" font-weight="700">Define paper type and target audience</text>
+        <text x="585" y="66" text-anchor="middle" fill="#8892b0" font-size="10">original research, methods, review, perspective</text>
+      </g>
+
+      <line x1="585" y1="74" x2="585" y2="102" stroke="#4a5070" marker-end="url(#arr)"/>
+
+      <g class="node" id="n2">
+        <rect x="390" y="104" width="390" height="46" rx="8" fill="#1f2538" stroke="#6c63ff" stroke-width="1.5"/>
+        <text x="585" y="124" text-anchor="middle" fill="#c6c2ff" font-size="12" font-weight="700">Pick 3 candidate journals (A/B/C list)</text>
+        <text x="585" y="141" text-anchor="middle" fill="#8892b0" font-size="10">1 stretch, 1 realistic, 1 safe fallback</text>
+      </g>
+
+      <line x1="585" y1="150" x2="585" y2="173" stroke="#4a5070" marker-end="url(#arr)"/>
+
+      <g id="q1" class="node">
+        <polygon points="585,174 700,204 585,234 470,204" fill="#1a2030" stroke="#43e97b" stroke-width="1.5"/>
+        <text x="585" y="206" text-anchor="middle" fill="#43e97b" font-size="11" font-weight="700">Scope + readership fit?</text>
+        <text x="585" y="220" text-anchor="middle" fill="#8892b0" font-size="9">check aims, recent issues, methods fit</text>
+      </g>
+
+      <line x1="700" y1="204" x2="860" y2="204" stroke="#ff6b6b" marker-end="url(#arr-bad)"/>
+      <text x="780" y="196" fill="#ff6b6b" font-size="10" font-weight="700">NO</text>
+      <rect x="865" y="187" width="250" height="34" rx="6" fill="#2a1c1c" stroke="#ff6b6b"/>
+      <text x="990" y="208" text-anchor="middle" fill="#ff9090" font-size="10.5">Rebuild shortlist (avoid desk rejection)</text>
+
+      <line x1="585" y1="234" x2="585" y2="257" stroke="#43e97b" marker-end="url(#arr-ok)"/>
+      <text x="598" y="248" fill="#43e97b" font-size="10" font-weight="700">YES</text>
+
+      <g class="node" id="n3">
+        <rect x="382" y="258" width="406" height="44" rx="8" fill="#0f1f2a" stroke="#38bdf8" stroke-width="1.6"/>
+        <text x="585" y="278" text-anchor="middle" fill="#7dd3f0" font-size="12" font-weight="700">Legitimacy checks</text>
+        <text x="585" y="294" text-anchor="middle" fill="#8892b0" font-size="10">indexing, editorial board, peer-review process, fees transparency</text>
+      </g>
+
+      <line x1="585" y1="302" x2="585" y2="326" stroke="#4a5070" marker-end="url(#arr)"/>
+
+      <g id="q2" class="node">
+        <polygon points="585,327 700,357 585,387 470,357" fill="#1a2030" stroke="#f7971e" stroke-width="1.6"/>
+        <text x="585" y="359" text-anchor="middle" fill="#f7971e" font-size="11" font-weight="700">Predatory risk present?</text>
+        <text x="585" y="373" text-anchor="middle" fill="#8892b0" font-size="9">spam invites, fake metrics, vague review promises</text>
+      </g>
+
+      <line x1="700" y1="357" x2="860" y2="357" stroke="#ff6b6b" marker-end="url(#arr-bad)"/>
+      <text x="782" y="349" fill="#ff6b6b" font-size="10" font-weight="700">YES</text>
+      <rect x="865" y="340" width="250" height="34" rx="6" fill="#2a1c1c" stroke="#ff6b6b"/>
+      <text x="990" y="361" text-anchor="middle" fill="#ff9090" font-size="10.5">Reject venue and return to shortlist</text>
+
+      <line x1="585" y1="387" x2="585" y2="412" stroke="#43e97b" marker-end="url(#arr-ok)"/>
+      <text x="598" y="401" fill="#43e97b" font-size="10" font-weight="700">NO</text>
+
+      <g class="node" id="n4">
+        <rect x="360" y="413" width="450" height="50" rx="8" fill="#20180e" stroke="#f7971e" stroke-width="1.7"/>
+        <text x="585" y="435" text-anchor="middle" fill="#f8be73" font-size="12" font-weight="700">Submission package assembly</text>
+        <text x="585" y="452" text-anchor="middle" fill="#8892b0" font-size="10">cover letter, figures, formatting, author metadata, ethics/conflict statements</text>
+      </g>
+
+      <line x1="585" y1="463" x2="585" y2="487" stroke="#4a5070" marker-end="url(#arr)"/>
+
+      <g class="node" id="n5">
+        <rect x="385" y="488" width="400" height="44" rx="8" fill="#1d1f30" stroke="#6c63ff" stroke-width="1.5"/>
+        <text x="585" y="508" text-anchor="middle" fill="#c6c2ff" font-size="12" font-weight="700">Preprint and policy check</text>
+        <text x="585" y="524" text-anchor="middle" fill="#8892b0" font-size="10">confirm preprint compatibility + funder open-access obligations</text>
+      </g>
+
+      <line x1="585" y1="532" x2="585" y2="555" stroke="#4a5070" marker-end="url(#arr)"/>
+
+      <g id="q3" class="node">
+        <polygon points="585,556 705,588 585,620 465,588" fill="#1a2030" stroke="#38bdf8" stroke-width="1.6"/>
+        <text x="585" y="590" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="700">Ready to submit?</text>
+        <text x="585" y="605" text-anchor="middle" fill="#8892b0" font-size="9">co-author approval, clean PDF, references, checklist complete</text>
+      </g>
+
+      <line x1="705" y1="588" x2="865" y2="588" stroke="#ff6b6b" marker-end="url(#arr-bad)"/>
+      <text x="782" y="580" fill="#ff6b6b" font-size="10" font-weight="700">NO</text>
+      <rect x="870" y="571" width="245" height="34" rx="6" fill="#2a1c1c" stroke="#ff6b6b"/>
+      <text x="992" y="592" text-anchor="middle" fill="#ff9090" font-size="10.5">Fix missing items before upload</text>
+
+      <line x1="585" y1="620" x2="585" y2="648" stroke="#43e97b" marker-end="url(#arr-ok)"/>
+      <text x="598" y="636" fill="#43e97b" font-size="10" font-weight="700">YES</text>
+
+      <g class="node" id="n6">
+        <rect x="450" y="650" width="270" height="52" rx="9" fill="#13291b" stroke="#43e97b" stroke-width="2"/>
+        <text x="585" y="674" text-anchor="middle" fill="#7dedab" font-size="12" font-weight="700">Submit to journal</text>
+        <text x="585" y="691" text-anchor="middle" fill="#8892b0" font-size="10">track status and prepare revisions</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="controls">
+    <h2>Highlight mode</h2>
+    <button class="btn active" data-mode="all">Show full workflow</button>
+    <button class="btn" data-mode="fit">Venue fit checks</button>
+    <button class="btn" data-mode="risk">Predatory risk checks</button>
+    <button class="btn" data-mode="submit">Submission readiness</button>
+
+    <div class="panel card" style="margin-top:.7rem;padding:.8rem">
+      <h3 style="font-size:.86rem">Legend</h3>
+      <div class="list">
+        <div class="row"><span class="dot" style="background:var(--info)"></span>Information-gathering step</div>
+        <div class="row"><span class="dot" style="background:var(--warn)"></span>Risk-sensitive step</div>
+        <div class="row"><span class="dot" style="background:var(--ok)"></span>Approved / move forward</div>
+        <div class="row"><span class="dot" style="background:var(--bad)"></span>Stop and reroute</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel card">
+  <h3>What this map is designed to prevent</h3>
+  <p>Most first-year mistakes are preventable: submitting to a mismatched journal, missing predatory red flags, and rushing metadata/package prep. This workflow front-loads decision quality so peer review cycles are spent on science, not avoidable admin or venue mistakes.</p>
+  <div class="kpi">
+    <div class="k"><div class="l">Decision gates</div><div class="v">3</div></div>
+    <div class="k"><div class="l">Core workflow stages</div><div class="v">5</div></div>
+    <div class="k"><div class="l">Primary risk loops</div><div class="v">2</div></div>
+    <div class="k"><div class="l">Final output</div><div class="v">Submission-ready package</div></div>
+  </div>
+</div>
+
+<div id="tt"><div class="t" id="ttT"></div><div class="b" id="ttB"></div></div>
+
+<script>
+const tip = {
+  n1:{t:'Define paper type',b:'Clarify contribution type and who should care. This choice drives venue fit and review expectations.'},
+  n2:{t:'Build A/B/C shortlist',b:'Avoid single-point failure by keeping one stretch, one realistic, and one safe option.'},
+  q1:{t:'Fit check gate',b:'Read aims/scope and recent issues. If your method question mismatch is obvious, desk rejection is likely.'},
+  n3:{t:'Legitimacy checks',b:'Use trusted resources to verify indexing, board identity, and transparent review/fees.'},
+  q2:{t:'Predatory risk gate',b:'One strong red flag is enough to pause and re-evaluate.'},
+  n4:{t:'Assemble package',b:'Most delays happen here: missing metadata, non-compliant formatting, or unclear disclosures.'},
+  n5:{t:'Policy check',b:'Verify preprint and OA obligations before final upload; fix conflicts early.'},
+  q3:{t:'Readiness gate',b:'Do a final checklist run with co-author sign-off before submission.'},
+  n6:{t:'Submit + track',b:'Submission is the start of review operations: track decisions and prep revision plan.'}
+};
+
+const groups = {
+  fit:['n1','n2','q1'],
+  risk:['n3','q2'],
+  submit:['n4','n5','q3','n6']
+};
+
+const allNodes = [...document.querySelectorAll('.node')];
+function setMode(mode){
+  allNodes.forEach(n=>n.style.opacity='0.22');
+  if(mode==='all'){allNodes.forEach(n=>n.style.opacity='1');return;}
+  (groups[mode]||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.style.opacity='1';});
+}
+
+const btns=[...document.querySelectorAll('.btn')];
+btns.forEach(b=>b.addEventListener('click',()=>{
+  btns.forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  setMode(b.dataset.mode);
+}));
+
+const tt=document.getElementById('tt');
+const ttT=document.getElementById('ttT');
+const ttB=document.getElementById('ttB');
+let mx=0,my=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+
+Object.keys(tip).forEach(id=>{
+  const el=document.getElementById(id); if(!el) return;
+  el.style.cursor='pointer';
+  el.addEventListener('mouseenter',()=>{
+    ttT.textContent=tip[id].t; ttB.textContent=tip[id].b; tt.style.display='block';
+  });
+  el.addEventListener('mousemove',()=>{
+    const w=tt.offsetWidth,h=tt.offsetHeight; let l=mx+14,t=my+12;
+    if(l+w>window.innerWidth-10) l=mx-w-10;
+    if(t+h>window.innerHeight-10) t=my-h-10;
+    tt.style.left=l+'px'; tt.style.top=t+'px';
+  });
+  el.addEventListener('mouseleave',()=>tt.style.display='none');
+});
+</script>
+</body>
+</html>

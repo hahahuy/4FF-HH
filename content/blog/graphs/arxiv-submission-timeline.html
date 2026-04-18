@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>arXiv Submission Timeline — Community and Workflow</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a;
+    --text:#e8eaf6; --muted:#8892b0; --border:#2d3250;
+    --accent:#6c63ff; --ok:#43e97b; --warn:#f7971e; --info:#38bdf8; --risk:#ff6b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  header{padding:1.35rem 1.5rem;border-bottom:1px solid var(--border)}
+  header h1{font-size:1.3rem}
+  header p{margin-top:.32rem;color:var(--muted);font-size:.85rem}
+  .tag{display:inline-block;background:var(--accent);color:#fff;border-radius:4px;font-size:.68rem;padding:2px 7px;margin-left:6px;font-weight:600}
+
+  .grid{display:grid;grid-template-columns:1fr 350px;gap:1rem;padding:1rem 1.5rem}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px}
+
+  .chart-card{padding:1rem}
+  .chart-card h2{font-size:.86rem;color:#aab;margin-bottom:.4rem}
+  .hint{font-size:.74rem;color:var(--muted);margin-bottom:.7rem}
+  .chart-wrap{position:relative;height:330px}
+
+  .steps{padding:.8rem .9rem;max-height:430px;overflow:auto}
+  .step{border:1px solid var(--border);border-radius:8px;padding:.65rem .75rem;background:var(--surface2);margin-bottom:.55rem;cursor:pointer}
+  .step:hover,.step.active{border-color:var(--accent);background:#262b44}
+  .step .top{display:flex;justify-content:space-between;gap:.6rem}
+  .step .name{font-size:.82rem;font-weight:700}
+  .step .day{font-size:.7rem;color:var(--muted)}
+  .step .meta{margin-top:.28rem;font-size:.74rem;color:var(--muted);line-height:1.45}
+  .chip{display:inline-block;font-size:.63rem;padding:1px 6px;border-radius:4px;border:1px solid var(--border);margin-top:.35rem}
+  .chip.ok{color:var(--ok);border-color:rgba(67,233,123,.35);background:rgba(67,233,123,.08)}
+  .chip.warn{color:var(--warn);border-color:rgba(247,151,30,.35);background:rgba(247,151,30,.08)}
+  .chip.risk{color:var(--risk);border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.08)}
+
+  .detail{margin:0 1.5rem 1.2rem;padding:1rem 1.2rem}
+  .detail h3{font-size:.95rem;margin-bottom:.55rem}
+  .detail p{font-size:.83rem;color:var(--muted);line-height:1.55}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:.58rem;margin-top:.8rem}
+  .k{background:var(--surface2);border-radius:7px;padding:.58rem .68rem}
+  .k .l{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .k .v{font-size:1rem;font-weight:700;margin-top:.12rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>arXiv Submission Timeline <span class="tag">Interactive</span></h1>
+  <p>From draft readiness to public announcement: timeline, moderation touchpoints, and versioning lifecycle.</p>
+</header>
+
+<div class="grid">
+  <div class="card chart-card">
+    <h2>Typical timeline (days, not to scale across all fields)</h2>
+    <p class="hint">Click chart points or a step card to inspect details and risk checkpoints.</p>
+    <div class="chart-wrap"><canvas id="timeline"></canvas></div>
+  </div>
+
+  <div class="card steps" id="steps"></div>
+</div>
+
+<div class="card detail">
+  <h3 id="title">Select a stage</h3>
+  <p id="desc">Use the timeline to inspect preparation, submission, moderation, announcement cutoff effects, and post-publication updates.</p>
+  <div class="kpi" id="kpi"></div>
+</div>
+
+<script>
+const stages = [
+  {name:'Prepare source bundle',day:0,y:1,kind:'ok',meta:'Compile cleanly, include figures/bib/style files',desc:'arXiv compiles from your source. Missing assets and local-only dependencies are common first-time failures.',k:{'Primary owner':'Author','Artifacts':'TeX + figures + bib','Risk level':'Low'}},
+  {name:'Category + endorsement check',day:0.1,y:2,kind:'warn',meta:'First-time or new category may require endorsement',desc:'Category selection controls discovery and moderation path. Endorsement can be required for first submission in a category.',k:{'Primary owner':'Author + endorser','Typical delay':'Hours to days','Risk level':'Medium'}},
+  {name:'Metadata and license selection',day:0.2,y:3,kind:'warn',meta:'Title, abstract, authors, comments, license',desc:'Metadata errors are visible immediately on release and are annoying to correct later. License choice should align with journal/funder policy.',k:{'Primary owner':'Author','Rework cost':'Moderate','Risk level':'Medium'}},
+  {name:'Submit and validate',day:0.3,y:4,kind:'ok',meta:'System checks + final author confirmation',desc:'Run through upload checks and preview carefully. Catch formatting issues before final submit.',k:{'Primary owner':'Author','System status':'Pending','Risk level':'Low'}},
+  {name:'Moderation review',day:1.0,y:5,kind:'warn',meta:'Category fit and policy compliance review',desc:'Most submissions clear quickly. Holds can happen for category mismatch, policy concerns, or unclear scientific framing.',k:{'Primary owner':'arXiv moderators','Typical window':'0–1 business days','Risk level':'Medium'}},
+  {name:'Announcement cutoff window',day:1.2,y:6,kind:'risk',meta:'Weekday cutoff affects next public listing',desc:'Missing cutoff shifts visibility to a later announcement cycle. Plan around conference/journal timing if relevant.',k:{'Primary owner':'Author timing','Visibility impact':'High','Risk level':'High'}},
+  {name:'Public listing + arXiv ID',day:2.0,y:7,kind:'ok',meta:'Permanent identifier and first public timestamp',desc:'The v1 timestamp is permanent and establishes precedence. Share this ID in submissions, talks, and repos.',k:{'Primary owner':'Community record','Identifier':'arXiv:YYMM.NNNNN','Risk level':'Low'}},
+  {name:'Version updates (v2, v3...)',day:10,y:8,kind:'ok',meta:'Post-review updates remain linked to same ID',desc:'Use new versions for corrections and journal-aligned revisions while preserving history and provenance.',k:{'Primary owner':'Author','History model':'Immutable versions','Risk level':'Low'}}
+];
+
+const color = k => k==='ok' ? '#43e97b' : k==='warn' ? '#f7971e' : '#ff6b6b';
+const pointBg = stages.map(s=>color(s.kind));
+
+const ctx = document.getElementById('timeline').getContext('2d');
+const chart = new Chart(ctx, {
+  type:'line',
+  data:{
+    labels: stages.map(s=>`D${s.day}`),
+    datasets:[{
+      data: stages.map(s=>s.y),
+      borderColor:'#2d3250', borderWidth:1.5, tension:0.2,
+      pointBackgroundColor: pointBg, pointBorderColor: pointBg, pointRadius:8, pointHoverRadius:11, pointBorderWidth:2
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#1a1d27', borderColor:'#2d3250', borderWidth:1,
+        titleColor:'#fff', bodyColor:'#8892b0',
+        callbacks:{
+          title:(items)=>stages[items[0].dataIndex].name,
+          label:(item)=>`Approx day: ${stages[item.dataIndex].day}`,
+          afterLabel:(item)=>stages[item.dataIndex].meta
+        }
+      }
+    },
+    scales:{
+      x:{ticks:{color:'#8892b0',font:{size:10}},grid:{color:'#1a1e30'}},
+      y:{display:false,min:0,max:9}
+    },
+    onClick:(e,els)=>{ if(els.length) select(els[0].index); }
+  }
+});
+
+const stepsEl = document.getElementById('steps');
+const cards = [];
+stages.forEach((s,i)=>{
+  const d = document.createElement('div');
+  d.className = 'step';
+  d.innerHTML = `
+    <div class="top"><div class="name">${s.name}</div><div class="day">~ Day ${s.day}</div></div>
+    <div class="meta">${s.meta}</div>
+    <span class="chip ${s.kind}">${s.kind==='ok'?'stable stage':s.kind==='warn'?'attention needed':'timing-critical'}</span>
+  `;
+  d.addEventListener('click',()=>select(i));
+  stepsEl.appendChild(d);
+  cards.push(d);
+});
+
+function select(i){
+  cards.forEach((c,idx)=>c.classList.toggle('active',idx===i));
+  const s = stages[i];
+  document.getElementById('title').textContent = s.name;
+  document.getElementById('desc').textContent = s.desc;
+  document.getElementById('kpi').innerHTML = Object.entries(s.k).map(([k,v])=>`<div class="k"><div class="l">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  chart.data.datasets[0].pointRadius = stages.map((_,idx)=>idx===i?12:7);
+  chart.data.datasets[0].pointBorderWidth = stages.map((_,idx)=>idx===i?3:2);
+  chart.data.datasets[0].pointBackgroundColor = stages.map((x,idx)=>idx===i?'#ffffff':color(x.kind)+'aa');
+  chart.data.datasets[0].pointBorderColor = stages.map((x,idx)=>idx===i?'#ffffff':color(x.kind));
+  chart.update('none');
+
+  cards[i].scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+select(0);
+</script>
+</body>
+</html>
