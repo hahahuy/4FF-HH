@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum AI 90-Day Roadmap</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --border: #2d3250;
+      --accent: #6c63ff;
+      --ok: #43e97b;
+      --warn: #f7971e;
+      --info: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 1rem 1.2rem .7rem;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 1.1rem; }
+    header p { margin-top: .25rem; font-size: .78rem; color: var(--muted); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: .9rem;
+      padding: .9rem 1rem 1rem;
+    }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .timeline-wrap { padding: .9rem; overflow: auto; }
+    svg { display: block; min-width: 880px; max-width: 100%; }
+
+    .panel { padding: .85rem; }
+    .panel h2 {
+      font-size: .78rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: .5rem;
+    }
+    .phase {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      padding: .55rem .65rem;
+      margin-bottom: .45rem;
+      cursor: pointer;
+    }
+    .phase:hover,
+    .phase.active {
+      border-color: var(--accent);
+      background: #262b44;
+    }
+    .phase .name { font-size: .83rem; font-weight: 700; }
+    .phase .meta { font-size: .73rem; color: var(--muted); margin-top: .2rem; }
+
+    .detail {
+      margin-top: .65rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .7rem;
+      background: #171b2b;
+    }
+    .detail h3 { font-size: .85rem; margin-bottom: .35rem; }
+    .detail p { font-size: .76rem; color: var(--muted); line-height: 1.5; }
+
+    .kpis {
+      margin-top: .55rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .45rem;
+    }
+    .k {
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface2);
+      padding: .45rem .52rem;
+    }
+    .k .l { font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .k .v { font-size: .82rem; margin-top: .15rem; font-weight: 700; }
+
+    #tt {
+      position: fixed;
+      display: none;
+      max-width: 250px;
+      pointer-events: none;
+      z-index: 999;
+      background: #121726;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .55rem .62rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    }
+    #tt .t { font-size: .78rem; font-weight: 700; margin-bottom: .2rem; }
+    #tt .b { font-size: .72rem; color: var(--muted); line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Quantum AI 90-Day Roadmap</h1>
+    <p>A compact execution path: foundations → toolchain under noise → security/domain capstone.</p>
+  </header>
+
+  <div class="layout">
+    <div class="card timeline-wrap">
+      <svg viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" id="roadmap">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#5f6aa3"></path>
+          </marker>
+        </defs>
+
+        <rect x="10" y="12" width="1180" height="495" rx="12" fill="#121624" stroke="#1e2340" />
+
+        <line x1="120" y1="260" x2="1080" y2="260" stroke="#45507f" stroke-width="3" stroke-linecap="round" />
+
+        <text x="120" y="292" fill="#8892b0" font-size="13" text-anchor="middle">Day 0</text>
+        <text x="440" y="292" fill="#8892b0" font-size="13" text-anchor="middle">Day 30</text>
+        <text x="760" y="292" fill="#8892b0" font-size="13" text-anchor="middle">Day 60</text>
+        <text x="1080" y="292" fill="#8892b0" font-size="13" text-anchor="middle">Day 90</text>
+
+        <line x1="440" y1="228" x2="440" y2="292" stroke="#2d3250" stroke-dasharray="4,4" />
+        <line x1="760" y1="228" x2="760" y2="292" stroke="#2d3250" stroke-dasharray="4,4" />
+
+        <g class="phase-node" id="p1" data-phase="0">
+          <rect x="100" y="85" width="300" height="120" rx="10" fill="#10202b" stroke="#38bdf8" stroke-width="2" />
+          <text x="250" y="112" text-anchor="middle" fill="#7dd3fc" font-size="15" font-weight="700">Phase 1 — Foundations</text>
+          <text x="250" y="135" text-anchor="middle" fill="#dbeafe" font-size="12">Quantum mechanics + core algorithms</text>
+          <text x="250" y="155" text-anchor="middle" fill="#9fb2c5" font-size="11">Deliverable: reproducible notebook</text>
+          <text x="250" y="174" text-anchor="middle" fill="#9fb2c5" font-size="11">(Deutsch-Jozsa, Grover, QFT)</text>
+        </g>
+
+        <g class="phase-node" id="p2" data-phase="1">
+          <rect x="420" y="85" width="300" height="120" rx="10" fill="#2a210f" stroke="#f7971e" stroke-width="2" />
+          <text x="570" y="112" text-anchor="middle" fill="#fdba74" font-size="15" font-weight="700">Phase 2 — Toolchain</text>
+          <text x="570" y="135" text-anchor="middle" fill="#fff1df" font-size="12">Qiskit / Cirq / PennyLane</text>
+          <text x="570" y="155" text-anchor="middle" fill="#d3b998" font-size="11">Noise-aware simulation + transpilation</text>
+          <text x="570" y="174" text-anchor="middle" fill="#d3b998" font-size="11">Deliverable: benchmark report</text>
+        </g>
+
+        <g class="phase-node" id="p3" data-phase="2">
+          <rect x="740" y="85" width="340" height="120" rx="10" fill="#132417" stroke="#43e97b" stroke-width="2" />
+          <text x="910" y="112" text-anchor="middle" fill="#86efac" font-size="15" font-weight="700">Phase 3 — Capstone</text>
+          <text x="910" y="135" text-anchor="middle" fill="#dcfce7" font-size="12">Security/domain project (QRNG/QKD/PQC)</text>
+          <text x="910" y="155" text-anchor="middle" fill="#a6c8b0" font-size="11">Deliverable: repo + technical report</text>
+          <text x="910" y="174" text-anchor="middle" fill="#a6c8b0" font-size="11">+ 1-page executive summary</text>
+        </g>
+
+        <line x1="400" y1="145" x2="420" y2="145" stroke="#5f6aa3" stroke-width="2" marker-end="url(#arr)" />
+        <line x1="720" y1="145" x2="740" y2="145" stroke="#5f6aa3" stroke-width="2" marker-end="url(#arr)" />
+
+        <circle class="milestone" id="m1" cx="250" cy="260" r="11" fill="#38bdf8" data-tip="Foundation checkpoint" data-body="Can explain state vectors, measurement, and run one algorithm end-to-end without hand-waving." />
+        <circle class="milestone" id="m2" cx="570" cy="260" r="11" fill="#f7971e" data-tip="Engineering checkpoint" data-body="Can compare at least two circuit variants under noise and justify trade-offs with data." />
+        <circle class="milestone" id="m3" cx="910" cy="260" r="11" fill="#43e97b" data-tip="Portfolio checkpoint" data-body="Has a publishable-style mini project with code, report, and decision-oriented summary." />
+
+        <text x="250" y="333" text-anchor="middle" fill="#9fb2c5" font-size="12">Research readiness</text>
+        <text x="570" y="333" text-anchor="middle" fill="#d3b998" font-size="12">Tooling readiness</text>
+        <text x="910" y="333" text-anchor="middle" fill="#a6c8b0" font-size="12">Interview readiness</text>
+
+        <rect x="80" y="370" width="1040" height="96" rx="8" fill="#1a1f32" stroke="#2d3250" />
+        <text x="100" y="397" fill="#cfd6ff" font-size="13" font-weight="700">Hiring signal alignment</text>
+        <text x="100" y="420" fill="#9ca8d6" font-size="12">• FPT-aligned: formal outputs, research depth, and long-horizon capability building.</text>
+        <text x="100" y="442" fill="#9ca8d6" font-size="12">• Viettel-aligned: implementation quality, noisy-system optimization, and security-aware integration.</text>
+      </svg>
+    </div>
+
+    <div class="card panel">
+      <h2>Roadmap phases</h2>
+      <div class="phase active" data-phase="0">
+        <div class="name">Days 1–30</div>
+        <div class="meta">Build first-principles confidence and one reproducible artifact.</div>
+      </div>
+      <div class="phase" data-phase="1">
+        <div class="name">Days 31–60</div>
+        <div class="meta">Translate theory into measurable circuit performance under noise.</div>
+      </div>
+      <div class="phase" data-phase="2">
+        <div class="name">Days 61–90</div>
+        <div class="meta">Ship a focused capstone aligned with target employer signals.</div>
+      </div>
+
+      <div class="detail">
+        <h3 id="dTitle">Days 1–30: Foundation + reproducible notebook</h3>
+        <p id="dBody">Prioritize conceptual clarity and reproducibility. If your notebook cannot be rerun and explained by another engineer, you are not interview-ready yet.</p>
+        <div class="kpis">
+          <div class="k"><div class="l">Output</div><div class="v" id="k1">Notebook</div></div>
+          <div class="k"><div class="l">Primary skill</div><div class="v" id="k2">Core theory</div></div>
+          <div class="k"><div class="l">Risk</div><div class="v" id="k3">Shallow understanding</div></div>
+          <div class="k"><div class="l">Target</div><div class="v" id="k4">Research baseline</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tt"><div class="t" id="ttT"></div><div class="b" id="ttB"></div></div>
+
+  <script>
+    const data = [
+      {
+        title: 'Days 1–30: Foundation + reproducible notebook',
+        body: 'Prioritize conceptual clarity and reproducibility. If your notebook cannot be rerun and explained by another engineer, you are not interview-ready yet.',
+        k: ['Notebook', 'Core theory', 'Shallow understanding', 'Research baseline']
+      },
+      {
+        title: 'Days 31–60: Toolchain + noisy constraints',
+        body: 'Focus on benchmark-driven decisions: depth, gate count, and error behavior. Treat performance claims as invalid without measured comparison.',
+        k: ['Benchmark report', 'Simulation + transpile', 'Tool-only fluency', 'Engineering baseline']
+      },
+      {
+        title: 'Days 61–90: Security/domain capstone',
+        body: 'Produce a hiring-grade package: code, technical report, and executive summary that explains why your approach matters in practice.',
+        k: ['Repo + report', 'Applied integration', 'No deployment narrative', 'Interview baseline']
+      }
+    ];
+
+    const phases = [...document.querySelectorAll('.phase')];
+    const nodes = [...document.querySelectorAll('.phase-node')];
+
+    function selectPhase(idx) {
+      phases.forEach((p, i) => p.classList.toggle('active', i === idx));
+      nodes.forEach((n, i) => n.style.opacity = i === idx ? '1' : '.55');
+      const d = data[idx];
+      document.getElementById('dTitle').textContent = d.title;
+      document.getElementById('dBody').textContent = d.body;
+      document.getElementById('k1').textContent = d.k[0];
+      document.getElementById('k2').textContent = d.k[1];
+      document.getElementById('k3').textContent = d.k[2];
+      document.getElementById('k4').textContent = d.k[3];
+    }
+
+    phases.forEach((p, i) => p.addEventListener('click', () => selectPhase(i)));
+    nodes.forEach((n, i) => {
+      n.style.cursor = 'pointer';
+      n.addEventListener('click', () => selectPhase(i));
+    });
+
+    const tt = document.getElementById('tt');
+    const ttT = document.getElementById('ttT');
+    const ttB = document.getElementById('ttB');
+    let mx = 0, my = 0;
+
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+    [...document.querySelectorAll('.milestone')].forEach(m => {
+      m.addEventListener('mouseenter', () => {
+        ttT.textContent = m.dataset.tip;
+        ttB.textContent = m.dataset.body;
+        tt.style.display = 'block';
+      });
+      m.addEventListener('mousemove', () => {
+        const w = tt.offsetWidth, h = tt.offsetHeight;
+        let l = mx + 14, t = my + 12;
+        if (l + w > window.innerWidth - 10) l = mx - w - 10;
+        if (t + h > window.innerHeight - 10) t = my - h - 10;
+        tt.style.left = l + 'px';
+        tt.style.top = t + 'px';
+      });
+      m.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+    });
+
+    selectPhase(0);
+  </script>
+</body>
+</html>
