@@ -115,10 +115,10 @@
 <div id="tooltip"></div>
 
 <script>
-const SVG_W = 1180, SVG_H = 860;
+const SVG_W = 1180, SVG_H = 1000;
 const NW = 236, NH = 72;
 const COL_X  = { 2: 168, 3: 572, 4: 1004 };
-const V_SPACE = { 2: 148, 3: 148, 4: 116  };
+const V_SPACE = { 2: 190, 3: 155, 4: 96   };
 
 const DC = {
   theory: "#a78bfa",
@@ -197,6 +197,14 @@ const NODES = [
     body:"94-page community roadmap on donor-in-silicon qubits and atomic-precision tunneling devices. Maps the entire SoTA for STM-based device engineering and atomic-scale quantum computing hardware.",
     link:"https://arxiv.org/abs/2501.04535" },
 
+  { id:"nobel_bg", tier:3, domain:"qc", access:"qpu",
+    name:"Nobel Committee 2025",
+    short:"Nobel Physics 2025 Sci. Background",
+    year:"Oct 2025 — nobelprize.org",
+    accessNote:"QPU: the Josephson junction experiments described here are the direct physical foundation of every superconducting QPU. This document is the authoritative account of how macroscopic quantum tunneling was first engineered.",
+    body:"Nobel Prize in Physics 2025 Scientific Background: documents Clarke, Devoret & Martinis' 1984–85 discovery of macroscopic quantum tunneling and energy quantisation in a current-biased Josephson junction. Bridges the foundational theory (Razavy, Caldeira-Leggett) to modern circuit QED (Blais et al.) and current coherence records.",
+    link:"https://www.nobelprize.org/uploads/2025/10/advanced-physicsprize2025.pdf" },
+
   // ── Tier 4
   { id:"takayoshi", tier:4, domain:"theory", access:"hpc",
     name:"Takayoshi & Oka",
@@ -245,6 +253,39 @@ const NODES = [
     accessNote:"Not directly accessible: cosmological/GR tunneling at the Planck scale cannot be simulated by HPC or QPU. Valuable conceptually — shows the universality of the tunneling framework.",
     body:"Applies Parikh-Wilczek quantum tunneling formalism to black hole horizons. Shows tunneling is a universal framework beyond condensed matter — connects to cosmology and the information paradox.",
     link:"https://arxiv.org/abs/2512.06361" },
+
+  // ── Tier 4 (2025–2026 additions)
+  { id:"princeton_qubit", tier:4, domain:"qc", access:"qpu",
+    name:"Bland et al. — Princeton",
+    short:"Millisecond 2D Transmon (Ta/Si)",
+    year:"Nature 647, 343 (2025) · arXiv:2503.14798",
+    accessNote:"QPU: T1 = 1.68 ms and 99.994% single-qubit gate fidelity represent the current 2D transmon SoTA. Tantalum-on-silicon is the new materials benchmark — directly relevant to understanding QPU coherence limits.",
+    body:"Current record for 2D transmon coherence: T1 = 1.68 ms (T2E exceeds T1), 99.994% single-qubit fidelity. Key insight: replacing sapphire substrate with high-resistivity silicon eliminates bulk dielectric loss. Platform is wafer-scale manufacturable — first credible path to industrial-scale millisecond qubits.",
+    link:"https://arxiv.org/abs/2503.14798" },
+
+  { id:"google_echoes", tier:4, domain:"qc", access:"qpu",
+    name:"Google Quantum AI",
+    short:"Verifiable Quantum Advantage",
+    year:"Nature 646, 825 (2025) · Willow chip",
+    accessNote:"QPU: the Quantum Echoes (OTOC) algorithm is directly runnable on superconducting QPUs. The verifiable structure means you can classically check results from your own QPU run — a natural benchmarking experiment.",
+    body:"First verifiable quantum advantage: 105-qubit Willow chip runs 'Quantum Echoes' (OTOC-based algorithm) 13,000× faster than the best classical supercomputer, with classically checkable output. Distinguishes itself from prior RCS claims by scientific verifiability. Read after Blais to understand why superconducting hardware reached this milestone.",
+    link:"https://www.nature.com/articles/s41586-025-09526-6" },
+
+  { id:"ubr", tier:4, domain:"theory", access:"hpc",
+    name:"Khurelbaatar et al.",
+    short:"Under-Barrier Recollision (UBR)",
+    year:"Phys. Rev. Lett. 134, 213201 (2025)",
+    accessNote:"HPC: strong-field ionisation simulations (TDSE, SFA) now need to account for UBR. Recollision trajectories under the barrier are computationally accessible via saddle-point integration on HPC — a publishable extension of existing codes.",
+    body:"First direct observation of electron dynamics inside the classically forbidden barrier. Electrons collide with the nucleus mid-tunnel ('Freeman resonance'), generating ionisation 10–100× stronger than predicted by standard theory. The barrier is an active dynamical zone, not a passive transmission medium — overturns the century-old picture of tunneling.",
+    link:"https://link.aps.org/doi/10.1103/PhysRevLett.134.213201" },
+
+  { id:"majorana_readout", tier:4, domain:"qc", access:"qpu",
+    name:"Zatelli et al. — QuTech/CSIC",
+    short:"Single-Shot Majorana Parity Readout",
+    year:"Nature (Feb 2026) · Kitaev chain",
+    accessNote:"QPU: topological protection is now measurable. The quantum-capacitance readout protocol described here is a direct complement to standard transmon readout — read alongside Blais to contrast conventional vs. topological qubit architectures.",
+    body:"First single-shot parity readout of a Majorana qubit using quantum capacitance via RF resonator on a minimal Kitaev chain (2 quantum dots + superconductor). Parity coherence > 1 ms measured. Resolves the decade-long readout problem for topological qubits — non-local information made locally accessible. Bottom-up 'Lego-block' fabrication is scalable. Read after Blais to understand the topological alternative to transmons.",
+    link:"https://www.nature.com/articles/s41586-025-09927-7" },
 ];
 
 const EDGES = [
@@ -268,6 +309,17 @@ const EDGES = [
   { from:"blais",     to:"nishimura",  skip:false },
   { from:"tsang",     to:"choi",       skip:false },
   { from:"schofield", to:"choi",       skip:false },
+  // 2025–2026 additions
+  { from:"caldeira",  to:"nobel_bg",   skip:true  },
+  { from:"sakurai",   to:"nobel_bg",   skip:false },
+  { from:"blais",     to:"nobel_bg",   skip:false },
+  { from:"nobel_bg",  to:"princeton_qubit", skip:false },
+  { from:"nobel_bg",  to:"google_echoes",   skip:false },
+  { from:"blais",     to:"majorana_readout", skip:true  },
+  { from:"ll",        to:"ubr",        skip:true  },
+  { from:"razavy",    to:"ubr",        skip:true  },
+  { from:"nishimura", to:"ubr",        skip:false },
+  { from:"princeton_qubit", to:"google_echoes", skip:false },
 ];
 
 // ─── LAYOUT ──────────────────────────────────────────────────────────────────
@@ -341,7 +393,7 @@ el('rect', { width:SVG_W, height:SVG_H, fill:'url(#grid)' }, svg);
 [
   { tier:2, label:"TIER 2 — CORE THEORY" },
   { tier:3, label:"TIER 3 — DOMAIN REVIEWS" },
-  { tier:4, label:"TIER 4 — CUTTING EDGE 2025+" },
+  { tier:4, label:"TIER 4 — CUTTING EDGE 2025–2026" },
 ].forEach(({ tier, label }) => {
   const cx = COL_X[tier];
   el('rect', { x: cx - NW/2 - 10, y:0, width: NW + 20, height: SVG_H,

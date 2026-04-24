@@ -193,7 +193,7 @@ Hover any node for a paper summary, HPC/QPU access notes, and a direct link. Edg
 <div style="width:100%;overflow:hidden;border:1px solid #30363d;border-radius:6px;margin:1rem 0">
   <iframe
     src="/blog/graphs/quantum-tunneling-reading-graph.html"
-    style="width:100%;aspect-ratio:1180/1000;border:none;display:block"
+    style="width:100%;aspect-ratio:1180/1200;border:none;display:block"
     scrolling="no"
     title="Quantum Tunneling Reading Graph — Tiers 2–4"
     loading="lazy"
